@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nethub-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: nethub-gateway }
+  template:
+    metadata:
+      labels: { app: nethub-gateway }
+    spec:
+      containers:
+        - name: api
+          image: nethub/payment-gateway:1.1.0
+          ports: [{ containerPort: 8000 }]
+          envFrom: [{ secretRef: { name: nethub-gateway-secrets } }]
+          env:
+            - { name: ENVIRONMENT, value: production }
+            - { name: REDIS_REQUIRED, value: "true" }
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 15
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nethub-gateway
+spec:
+  selector: { app: nethub-gateway }
+  ports: [{ port: 80, targetPort: 8000 }]
