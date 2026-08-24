@@ -80,5 +80,5 @@ docker run --rm -p 8000:8000 \
 # Health: http://localhost:8000/health
 ```
 
-CI pushes to GHCR after tests pass on `main` and on version tags (`v*`).
+CI pushes a **multi-arch** image (`linux/amd64`, `linux/arm64`) to GHCR after tests pass on `main` and on version tags (`v*`). Typical VPS = amd64; Apple Silicon / some cloud = arm64.
 
