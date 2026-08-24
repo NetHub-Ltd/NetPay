@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from loguru import logger
+from app.core.logging import logger
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.crud.integration import integration_crud

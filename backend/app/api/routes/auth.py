@@ -7,6 +7,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import get_current_user, get_session, require_admin
 from app.core.security import create_access_token, hash_password, verify_password
+from app.core.logging import logger
 from app.crud.oauth_client import oauth_client_crud
 from app.crud.user import user_crud
 from app.models.user import User
@@ -33,6 +34,7 @@ async def login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+    logger.info("Login ok email={} role={}", user.email, user.role)
     token = create_access_token(str(user.id), extra={"role": user.role, "email": user.email})
     return TokenResponse(
         access_token=token,

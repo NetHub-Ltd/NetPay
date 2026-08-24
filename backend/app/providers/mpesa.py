@@ -4,7 +4,7 @@ import base64
 from datetime import datetime
 from typing import Any, Literal
 import httpx
-from loguru import logger
+from app.core.logging import logger
 from app.core.redis import cache_get, cache_set
 
 MpesaEnv = Literal["sandbox", "production"]

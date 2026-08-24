@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional
 import redis.asyncio as redis
-from loguru import logger
+from app.core.logging import logger
 from app.core.config import settings
 
 _client: Optional[redis.Redis] = None

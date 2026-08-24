@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir uv \
 FROM python:3.12-slim
 WORKDIR /app
 RUN useradd -m -u 10001 gateway \
- && mkdir -p /app/data /app/static \
+ && mkdir -p /app/data /app/static /app/logs \
  && chown -R gateway:gateway /app
 
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
@@ -37,6 +37,7 @@ RUN chown -R gateway:gateway /app/static
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     ENVIRONMENT=production \
+    LOG_DIR=/app/logs \
     STATIC_DIR=/app/static
 
 USER gateway
