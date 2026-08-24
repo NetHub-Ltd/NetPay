@@ -11,6 +11,7 @@ import httpx
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
+from app.core.logging import logger
 from app.crud.webhook import webhook_crud, webhook_delivery_crud
 
 
@@ -36,7 +37,9 @@ async def probe_webhook_liveness(url: str, secret: str) -> None:
                 },
             )
         if res.status_code < 200 or res.status_code >= 300:
+            logger.warning("Webhook probe failed url={} status={}", url, res.status_code)
             raise RuntimeError(f"Webhook liveness failed: HTTP {res.status_code}")
+        logger.info("Webhook probe ok url={} status={}", url, res.status_code)
     except httpx.TimeoutException as exc:
         raise RuntimeError(f"Webhook liveness timed out ({timeout}s)") from exc
     except RuntimeError:

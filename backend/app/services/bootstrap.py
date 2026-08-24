@@ -2,7 +2,7 @@
 from __future__ import annotations
 import sys
 from pathlib import Path
-from loguru import logger
+from app.core.logging import logger
 from sqlalchemy import create_engine, text
 from sqlmodel import Session, select
 from app.core.config import settings

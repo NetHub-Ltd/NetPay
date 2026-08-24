@@ -4,7 +4,7 @@ from typing import Any, Dict, Generic, List, Optional, Sequence, Tuple, Type, Ty
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from loguru import logger
+from app.core.logging import logger
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError

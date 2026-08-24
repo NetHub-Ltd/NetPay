@@ -6,11 +6,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from loguru import logger
 from app.api.routes import auth, events, health, integrations, internal, payments, tenants, webhooks
 from app.core.config import settings
 from app.core.db import engine
-from app.core.logging import setup_logging
+from app.core.logging import logger, setup_logging
 from app.services.bootstrap import startup_sequence
 
 def _resolve_static_dir() -> Path:
