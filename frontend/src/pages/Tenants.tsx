@@ -14,8 +14,6 @@ export function Tenants() {
   const [slug, setSlug] = useState('')
   const [busy, setBusy] = useState(false)
 
-  if (!isAdmin) return <Navigate to="/forbidden" replace />
-
   async function load() {
     try {
       setItems(await api.get<Tenant[]>('/v1/tenants'))
@@ -24,7 +22,11 @@ export function Tenants() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    if (isAdmin) load()
+  }, [isAdmin])
+
+  if (!isAdmin) return <Navigate to="/forbidden" replace />
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()
