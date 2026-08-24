@@ -1,66 +1,59 @@
-# NetHub Payment Gateway v1.1
+# NetHub Payment Gateway (NetPay)
 
-Multi-tenant M-Pesa orchestration. Clients never talk to Daraja. Cloudflare Worker stays edge-only; this FastAPI service owns auth, intents, provider adapters, webhooks, and events.
+Multi-tenant M-Pesa payment gateway — FastAPI backend + React dashboard.
 
-## Acceptance checklist
+## Layout
 
-| # | Criterion | Implementation |
-|---|-----------|----------------|
-| 1 | Env admin → login | `bootstrap.ensure_admin` + `POST /auth/login` |
-| 2 | Onboard client + sandbox M-Pesa creds | `POST /v1/tenants`, `POST /v1/integrations` |
-| 3 | Register Daraja C2B URLs | `POST /v1/integrations/{id}/register-urls` |
-| 4 | ≤3 webhooks after liveness | `POST /v1/webhooks` + probe |
-| 5 | STK → callback → status + webhook | `POST /v1/payment-intents` + `POST /internal/events` |
-| 6 | Worker path requires internal secret | `X-Internal-Api-Key` on `/internal/*` |
-| 7 | Alembic on startup (no create_all) | `startup_sequence` → `alembic upgrade head` |
-| 8 | DB + Redis + admin at startup | Health probes; Redis fail-fast when required |
+```text
+backend/     FastAPI app, Alembic, tests, static/ (SPA build output)
+frontend/    Vite + React source
+deploy/      docker-compose, k8s
+scripts/     helper scripts (e.g. build-frontend.sh)
+```
 
-## Quick start
+## Backend
 
 ```bash
+cd backend
 cp .env.example .env
 ./run.sh
-# http://localhost:8000/docs
+# API: http://127.0.0.1:8000  docs: /docs
 ```
 
-## Docker / k3s
+Tests:
 
 ```bash
-docker compose up --build          # local Postgres + Redis
-docker build -t nethub/payment-gateway:1.1.0 .
-kubectl apply -f k8s/deployment.yaml
+cd backend
+pip install -e ".[dev]"
+pytest -q
 ```
 
-## Worker contract
-
-```
-POST /internal/events
-X-Internal-Api-Key: <INTERNAL_API_KEY>
-Body: { "event_id", "provider", "event_type", "integration": {"public_id": "gw_…"}, "payload": … }
-```
-
-Missing/wrong key → **401**.
-
-## Roles
-
-- `admin` — full access
-- `user` — scoped to `tenant_id`
-
-## Tests
+## Frontend (dev)
 
 ```bash
-uv run pytest -q
+cd frontend
+npm ci
+npm run dev    # http://127.0.0.1:5173 (proxies API to :8000)
 ```
 
-## Dashboard (React)
+## SPA into FastAPI static
 
 ```bash
-# development (proxies API to :8000)
-cd frontend && npm install && npm run dev
-
-# production static (served by FastAPI)
-cd frontend && npm run build
-# then start API — UI at http://localhost:8000/
+./scripts/build-frontend.sh   # lint + build → backend/static/
+# then start backend; it serves backend/static at / and /assets
 ```
 
-Screens: login, health, tenants, integrations (+ Daraja URL register), webhooks, payment intents, event log, OAuth clients. RBAC: admin | user.
+Or set `STATIC_DIR` to any folder containing `index.html` + `assets/`.
+
+## Docker
+
+```bash
+# from repo root
+docker compose -f deploy/docker-compose.yml up --build
+```
+
+Build context is the repo root (`backend/Dockerfile` copies frontend + backend).
+
+## CI
+
+PRs to `main` run backend pytest and frontend lint + build. Prefer merging only when checks are green.

@@ -1,16 +1,20 @@
 services:
   api:
-    build: .
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
     ports: ["8000:8000"]
-    env_file: .env
+    env_file: ../backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://gateway:gateway@db:5432/gateway
       REDIS_URL: redis://redis:6379/0
       REDIS_REQUIRED: "true"
       ENVIRONMENT: development
+      STATIC_DIR: /app/static
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
+
   db:
     image: postgres:16-alpine
     environment: { POSTGRES_USER: gateway, POSTGRES_PASSWORD: gateway, POSTGRES_DB: gateway }
@@ -20,6 +24,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
   redis:
     image: redis:7-alpine
     ports: ["6379:6379"]

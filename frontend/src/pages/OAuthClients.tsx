@@ -14,14 +14,15 @@ export function OAuthClients() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  if (!isAdmin) return <Navigate to="/forbidden" replace />
-
   useEffect(() => {
+    if (!isAdmin) return
     api.get<Tenant[]>('/v1/tenants').then((t) => {
       setTenants(t)
       if (!tenantId && t[0]) setTenantId(t[0].id)
     }).catch(() => {})
-  }, [])
+  }, [isAdmin])
+
+  if (!isAdmin) return <Navigate to="/forbidden" replace />
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()

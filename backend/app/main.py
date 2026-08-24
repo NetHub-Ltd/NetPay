@@ -13,7 +13,15 @@ from app.core.db import engine
 from app.core.logging import setup_logging
 from app.services.bootstrap import startup_sequence
 
-FRONTEND_DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+def _resolve_static_dir() -> Path:
+    """SPA build output. Prefer STATIC_DIR env, else backend/static next to app/."""
+    import os
+    override = os.environ.get("STATIC_DIR")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parents[1] / "static"
+
+STATIC_DIR = _resolve_static_dir()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,14 +48,14 @@ app.include_router(payments.router)
 app.include_router(events.router)
 app.include_router(internal.router)
 
-if FRONTEND_DIST.is_dir():
-    assets = FRONTEND_DIST / "assets"
+if STATIC_DIR.is_dir():
+    assets = STATIC_DIR / "assets"
     if assets.is_dir():
         app.mount("/assets", StaticFiles(directory=assets), name="assets")
 
     @app.get("/")
     async def spa_index():
-        index = FRONTEND_DIST / "index.html"
+        index = STATIC_DIR / "index.html"
         if index.is_file():
             return FileResponse(index)
         return {"message": "NetHub Payment Gateway", "docs": "/docs"}
@@ -59,7 +67,7 @@ if FRONTEND_DIST.is_dir():
         first = full_path.split("/", 1)[0]
         if first in blocked:
             return {"detail": "Not Found"}
-        index = FRONTEND_DIST / "index.html"
+        index = STATIC_DIR / "index.html"
         if index.is_file():
             return FileResponse(index)
         return {"detail": "Not Found"}
