@@ -57,3 +57,28 @@ Build context is the repo root (`backend/Dockerfile` copies frontend + backend).
 ## CI
 
 PRs to `main` run backend pytest and frontend lint + build. Prefer merging only when checks are green.
+
+## Container (GHCR)
+
+Images: `ghcr.io/nethub-ltd/netpay`
+
+| Ref | Tags |
+|-----|------|
+| `main` branch | `main`, `sha-<short>` |
+| Tag `v1.2.3` | `1.2.3`, `1.2`, `latest` |
+
+```bash
+# from repo root — builds SPA into /app/static inside the image
+docker build -f backend/Dockerfile -t netpay:local .
+
+docker run --rm -p 8000:8000 \
+  -e DATABASE_URL=sqlite+aiosqlite:///./data/gateway.db \
+  -e REDIS_REQUIRED=false \
+  -e SECRET_KEY=dev \
+  netpay:local
+# API + dashboard: http://localhost:8000
+# Health: http://localhost:8000/health
+```
+
+CI pushes to GHCR after tests pass on `main` and on version tags (`v*`).
+
