@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 from typing import Annotated
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+
 from app.api.deps import can_access_tenant, get_current_user, get_session
+from app.crud.event import event_crud
 from app.models.event import GatewayEvent
 from app.models.user import User
 from app.schemas.event import EventOut
@@ -12,13 +15,20 @@ from app.services.webhooks import fanout_webhooks
 
 router = APIRouter(prefix="/v1/events", tags=["events"])
 
+
 @router.get("", response_model=list[EventOut])
-async def list_events(session: Annotated[AsyncSession, Depends(get_session)], user: Annotated[User, Depends(get_current_user)]) -> list[GatewayEvent]:
-    q = select(GatewayEvent).order_by(GatewayEvent.created_at.desc()).limit(100)
-    if user.role != "admin" and user.tenant_id:
-        q = q.where(GatewayEvent.tenant_id == user.tenant_id)
-    r = await session.exec(q)
-    return list(r.all())
+async def list_events(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> list[GatewayEvent]:
+    return list(
+        await event_crud.list_for_user(
+            session,
+            tenant_id=user.tenant_id,
+            is_admin=user.role == "admin",
+        )
+    )
+
 
 @router.post("/{event_id}/replay")
 async def replay_event(
@@ -26,8 +36,7 @@ async def replay_event(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
-    r = await session.exec(select(GatewayEvent).where(GatewayEvent.id == event_id))
-    ev = r.first()
+    ev = await event_crud.get(session, event_id)
     if not ev:
         raise HTTPException(status_code=404, detail="Event not found")
     if not can_access_tenant(user, ev.tenant_id):
