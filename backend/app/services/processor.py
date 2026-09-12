@@ -12,6 +12,7 @@ from app.domain.payment_status import IllegalTransitionError, is_terminal
 from app.models.payment_intent import PaymentIntent
 from app.schemas.event import EnvelopeIn, ProcessResult
 from app.services.events import record_event
+from app.services.ledger import post_collection_credit
 from app.services.transitions import transition_payment_intent
 from app.services.webhooks import fanout_webhooks
 
@@ -58,6 +59,8 @@ async def apply_payment_result(
     except IllegalTransitionError as exc:
         logger.warning("Illegal transition on apply_payment_result: {}", exc)
         return intent
+    if status == "succeeded":
+        await post_collection_credit(session, intent)
     await session.commit()
     await session.refresh(intent)
     await fanout_webhooks(

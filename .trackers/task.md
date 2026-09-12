@@ -1,18 +1,14 @@
-# Task: P0-A Payment integrity
+# Task: P0-B Append-only ledger
 
 **Milestone:** P0 — Financial integrity  
-**Issues:** #15 #16 #18 #19 (partial) #20  
-**Branch:** feat/p0-payment-integrity-a  
-**Status:** Implementation complete — PR pending
+**Issue:** #17 (+ ledger assertions for #19)  
+**Branch:** feat/p0-ledger  
 
-## Completed in this PR
-- State machine + transition helper
-- Idempotency-Key required on create; unique (tenant_id, key)
-- amount_minor (100 = 1 KES); major units at Daraja boundary
-- Unique provider_checkout_id
-- Migration 002
-- Tests: unit transitions + idempotency/replay/concurrent/double-callback/tenant isolation
-- Frontend sends amount_minor + Idempotency-Key
+## Completed
+- ledger_entries model + migration 003
+- post_collection_credit on succeeded
+- GET /v1/payment-intents/{id}/ledger
+- Tests: one credit on success+duplicate callback; none on failed
 
-## Deferred (P0-B)
-- Append-only ledger (#17)
+## After merge
+Close #17; verify P0 milestone complete.

@@ -300,3 +300,131 @@ async def test_tenant_isolation_forbidden(client: AsyncClient, p0_env):
         headers={"Authorization": f"Bearer {other_token}"},
     )
     assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_ledger_one_credit_on_success_and_duplicate_callback(client: AsyncClient, p0_env):
+    headers = {
+        "Authorization": f"Bearer {p0_env['token']}",
+        "Idempotency-Key": f"idem-ledger-{uuid4()}",
+    }
+    with patch(
+        "app.api.routes.payments.stk_push",
+        new_callable=AsyncMock,
+        return_value={
+            "checkout_request_id": "ws_ledger_1",
+            "merchant_request_id": "mr_l",
+        },
+    ), patch(
+        "app.api.routes.payments.get_access_token",
+        new_callable=AsyncMock,
+        return_value="token",
+    ):
+        created = await client.post(
+            "/v1/payment-intents",
+            headers=headers,
+            json={
+                "integration_public_id": p0_env["public_id"],
+                "phone": "254733333333",
+                "amount_minor": 500,
+            },
+        )
+        assert created.status_code == 201, created.text
+        intent_id = created.json()["id"]
+
+    envelope = {
+        "event_id": "evt_led_1",
+        "provider": "mpesa",
+        "event_type": "stk.callback",
+        "integration": {"public_id": p0_env["public_id"]},
+        "payload": {
+            "Body": {
+                "stkCallback": {
+                    "CheckoutRequestID": "ws_ledger_1",
+                    "ResultCode": 0,
+                    "ResultDesc": "Success",
+                    "CallbackMetadata": {
+                        "Item": [{"Name": "MpesaReceiptNumber", "Value": "LEDGER1"}]
+                    },
+                }
+            }
+        },
+    }
+    h = {"X-Internal-Api-Key": "test-internal-key"}
+    r1 = await client.post("/internal/events", json=envelope, headers=h)
+    assert r1.status_code == 200
+    assert r1.json().get("status") == "succeeded"
+    envelope["event_id"] = "evt_led_2"
+    r2 = await client.post("/internal/events", json=envelope, headers=h)
+    assert r2.json().get("status") == "duplicate"
+
+    led = await client.get(
+        f"/v1/payment-intents/{intent_id}/ledger",
+        headers={"Authorization": f"Bearer {p0_env['token']}"},
+    )
+    assert led.status_code == 200, led.text
+    rows = led.json()
+    assert len(rows) == 1
+    assert rows[0]["entry_type"] == "collection_credit"
+    assert rows[0]["amount_minor"] == 500
+    assert rows[0]["provider_ref"] == "LEDGER1"
+
+
+@pytest.mark.asyncio
+async def test_failed_intent_has_no_ledger_credit(client: AsyncClient, p0_env):
+    headers = {
+        "Authorization": f"Bearer {p0_env['token']}",
+        "Idempotency-Key": f"idem-fail-led-{uuid4()}",
+    }
+    with patch(
+        "app.api.routes.payments.stk_push",
+        new_callable=AsyncMock,
+        return_value={
+            "checkout_request_id": "ws_fail_led",
+            "merchant_request_id": "mr_f",
+        },
+    ), patch(
+        "app.api.routes.payments.get_access_token",
+        new_callable=AsyncMock,
+        return_value="token",
+    ):
+        created = await client.post(
+            "/v1/payment-intents",
+            headers=headers,
+            json={
+                "integration_public_id": p0_env["public_id"],
+                "phone": "254744444444",
+                "amount_minor": 100,
+            },
+        )
+        assert created.status_code == 201, created.text
+        intent_id = created.json()["id"]
+
+    envelope = {
+        "event_id": "evt_fail_1",
+        "provider": "mpesa",
+        "event_type": "stk.callback",
+        "integration": {"public_id": p0_env["public_id"]},
+        "payload": {
+            "Body": {
+                "stkCallback": {
+                    "CheckoutRequestID": "ws_fail_led",
+                    "ResultCode": 1032,
+                    "ResultDesc": "Cancelled by user",
+                }
+            }
+        },
+    }
+    r = await client.post(
+        "/internal/events",
+        json=envelope,
+        headers={"X-Internal-Api-Key": "test-internal-key"},
+    )
+    assert r.status_code == 200
+    assert r.json().get("status") == "failed"
+    led = await client.get(
+        f"/v1/payment-intents/{intent_id}/ledger",
+        headers={"Authorization": f"Bearer {p0_env['token']}"},
+    )
+    assert led.status_code == 200
+    assert led.json() == []
