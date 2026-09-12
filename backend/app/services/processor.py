@@ -98,6 +98,12 @@ async def process_envelope(session: AsyncSession, envelope: EnvelopeIn) -> Proce
         if not intent:
             return ProcessResult(status="not_found", message=f"No intent for {checkout_id}")
         if is_terminal(intent.status):
+            if intent.status == "expired":
+                return ProcessResult(
+                    status="ignored",
+                    intent_id=intent.id,
+                    message="Intent expired; late callback not applied (no auto-succeed)",
+                )
             return ProcessResult(
                 status="duplicate",
                 intent_id=intent.id,

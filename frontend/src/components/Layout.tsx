@@ -25,7 +25,7 @@ export function Layout() {
           {isAdmin && <NavLink to="/tenants" className={linkClass}>Tenants</NavLink>}
           <NavLink to="/integrations" className={linkClass}>Integrations</NavLink>
           <NavLink to="/webhooks" className={linkClass}>Webhooks</NavLink>
-          <NavLink to="/intents" className={linkClass}>Payment Intents</NavLink>
+          <NavLink to="/intents" className={linkClass}>Payments</NavLink>
           <NavLink to="/events" className={linkClass}>Event Log</NavLink>
           {isAdmin && <NavLink to="/oauth-clients" className={linkClass}>OAuth Clients</NavLink>}
         </nav>

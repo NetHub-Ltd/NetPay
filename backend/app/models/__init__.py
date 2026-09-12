@@ -6,8 +6,9 @@ from app.models.webhook import Webhook, WebhookDelivery
 from app.models.payment_intent import PaymentIntent
 from app.models.event import GatewayEvent
 from app.models.ledger import LedgerEntry
+from app.models.inbound_event import InboundEvent
 
 __all__ = [
     "User", "Tenant", "Integration", "Credential", "OAuthClient",
-    "Webhook", "WebhookDelivery", "PaymentIntent", "GatewayEvent", "LedgerEntry",
+    "Webhook", "WebhookDelivery", "PaymentIntent", "GatewayEvent", "LedgerEntry", "InboundEvent",
 ]
