@@ -25,3 +25,11 @@ Duplicate STK callbacks after settle return `status: duplicate`.
 ## Provider checkout id
 
 `provider_checkout_id` is unique when set (one intent per checkout conversation).
+
+## Ledger (P0-B)
+
+- Table `ledger_entries` is **append-only**.
+- On transition to `succeeded`, one `collection_credit` row is written (`amount_minor`, currency, provider_ref).
+- Unique `(payment_intent_id, entry_type)` prevents double-posting on duplicate callbacks.
+- `GET /v1/payment-intents/{id}/ledger` lists rows (tenant-scoped).
+- Future refunds must add compensating entries, never edit existing rows.

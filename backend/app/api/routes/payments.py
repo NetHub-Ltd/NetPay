@@ -16,6 +16,8 @@ from app.domain.payment_status import IllegalTransitionError, major_units_from_m
 from app.models.payment_intent import PaymentIntent
 from app.models.user import User
 from app.providers.mpesa import get_access_token, normalize_msisdn, stk_push
+from app.crud.ledger import ledger_entry_crud
+from app.schemas.ledger import LedgerEntryOut
 from app.schemas.payment import IntentCreate, IntentCreateResponse, IntentOut
 from app.services.events import record_event
 from app.services.processor import apply_payment_result
@@ -195,6 +197,22 @@ async def create_intent(
         provider_merchant_id=intent.provider_merchant_id,
     )
 
+
+
+
+@router.get("/{intent_id}/ledger", response_model=list[LedgerEntryOut])
+async def list_intent_ledger(
+    intent_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> list:
+    """Append-only ledger rows for a payment intent (tenant-scoped)."""
+    intent = await payment_intent_crud.get(session, intent_id)
+    if not intent:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not can_access_tenant(user, intent.tenant_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return list(await ledger_entry_crud.list_for_intent(session, payment_intent_id=intent_id))
 
 @router.post("/{intent_id}/simulate", response_model=IntentOut)
 async def simulate_callback(
