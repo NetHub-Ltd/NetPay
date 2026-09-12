@@ -1,15 +1,7 @@
-# Task: P1-B Reconciliation + Help docs UI
+# Task: Document mpesa-edge ↔ NetPay secure ingest
 
-**Milestone:** P1  
-**Issue:** #23  
-**Branch:** feat/p1-reconciliation-ui-docs  
+**Milestone:** process-only / P1 ops
+**Branch:** docs/edge-worker-integration
 
 ## Done
-- reconciliation_exceptions + scan (succeeded w/o ledger, stale pending)
-- APIs list / scan (admin) / resolve
-- UI: Needs attention + Help (how-tos)
-- Nav: Help, Needs attention; softer gateway subtitle
-
-## Deferred
-- Full Daraja statement import
-- C2B (#24)
+- docs/edge-worker-integration.md
