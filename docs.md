@@ -38,3 +38,9 @@ Intent → STK with tenant creds → store `CheckoutRequestID` → Worker envelo
 | `/v1/payment-intents` | admin/tenant |
 | `/v1/events` | admin/tenant |
 | `POST /internal/events` | X-Internal-Api-Key |
+
+## Auth model
+
+**NetPay does not own user registration or login.** Users authenticate via **NetHub AS** and present a bearer token. See [docs/auth-model.md](docs/auth-model.md).
+
+Local password login remains transitional for development until AS token validation is enabled.
