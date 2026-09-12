@@ -1,15 +1,15 @@
-# Task: P1-A Durable events + guided payments UI
+# Task: P1-B Reconciliation + Help docs UI
 
 **Milestone:** P1  
-**Issues:** #21 #22 (core); UI guidance  
-**Branch:** feat/p1-durable-events-ui  
+**Issue:** #23  
+**Branch:** feat/p1-reconciliation-ui-docs  
 
 ## Done
-- inbound_events + ingest_and_process
-- expire-stale internal endpoint
-- late callback after expired ignored
-- Payments UI: guided create, filters, plain-language status, detail timeline + ledger
+- reconciliation_exceptions + scan (succeeded w/o ledger, stale pending)
+- APIs list / scan (admin) / resolve
+- UI: Needs attention + Help (how-tos)
+- Nav: Help, Needs attention; softer gateway subtitle
 
-## Next
-- P1-B reconciliation skeleton (#23)
-- C2B deferred (#24)
+## Deferred
+- Full Daraja statement import
+- C2B (#24)
