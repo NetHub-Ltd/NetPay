@@ -28,8 +28,8 @@ Solidify existing M-Pesa orchestration behavior and establish that **NetPay does
 
 ## Remaining (this PR)
 
-- [ ] Open PR `chore/engineer-mode-foundation` → `dev`.
-- [ ] User merges when satisfied.
+- [x] Open PR `chore/engineer-mode-foundation` → `dev` — https://github.com/NetHub-Ltd/NetPay/pull/7
+- [ ] User reviews and merges when satisfied.
 
 ## Explicitly out of scope
 

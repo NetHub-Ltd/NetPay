@@ -7,7 +7,7 @@
 | Repository | https://github.com/NetHub-Ltd/NetPay.git |
 | Default branch | `main` (protected) |
 | Integration branch | `dev` (all PRs target `dev`) |
-| Current topic branch | `chore/engineer-mode-foundation` |
+| Current topic branch | `chore/engineer-mode-foundation` @ PR #7 → `dev` |
 | Known-good commit (main/dev tip at foundation) | `709ceb9b05e7b0df939f77642e2176a8e83a9834` |
 | App version | 1.1.0 |
 | Preferred deployment | k3s (`deploy/k8s/`) |
