@@ -25,7 +25,7 @@ Automated CI for tests/lint/build; on push to `main`, auto patch-tag, multi-arch
 
 ## Remaining
 
-- [ ] PR → `dev`
+- [x] PR → `dev` — https://github.com/NetHub-Ltd/NetPay/pull/8
 - [ ] User merge; later promote `dev` → `main` to exercise release
 
 ## Out of scope

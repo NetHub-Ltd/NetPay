@@ -14,3 +14,7 @@
 
 - CI/release automation PR (this branch).
 - Foundation PR #7 may still be open separately (`chore/engineer-mode-foundation`).
+
+## Active PR
+
+- https://github.com/NetHub-Ltd/NetPay/pull/8 → `dev`
