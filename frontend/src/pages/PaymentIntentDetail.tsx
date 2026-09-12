@@ -1,11 +1,30 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type PaymentIntent } from '../api/client'
-import { StatusBadge } from '../components/StatusBadge'
+import { StatusBadge, formatKes, statusHint } from '../components/StatusBadge'
+
+type LedgerRow = {
+  id: string
+  entry_type: string
+  amount_minor: number
+  currency: string
+  provider_ref?: string | null
+  created_at?: string
+}
+
+const STEPS = ['created', 'provider_requested', 'succeeded'] as const
+
+function stepIndex(status: string): number {
+  if (status === 'succeeded') return 2
+  if (status === 'provider_requested') return 1
+  if (status === 'failed' || status === 'expired') return 1
+  return 0
+}
 
 export function PaymentIntentDetail() {
   const { id } = useParams()
   const [item, setItem] = useState<PaymentIntent | null>(null)
+  const [ledger, setLedger] = useState<LedgerRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -13,20 +32,27 @@ export function PaymentIntentDetail() {
   async function load() {
     try {
       setItem(await api.get<PaymentIntent>(`/v1/payment-intents/${id}`))
+      try {
+        setLedger(await api.get<LedgerRow[]>(`/v1/payment-intents/${id}/ledger`))
+      } catch {
+        setLedger([])
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Not found')
     }
   }
 
-  useEffect(() => { load() }, [id])
+  useEffect(() => {
+    load()
+  }, [id])
 
   async function simulate() {
     setBusy(true)
     setError(null)
     setMsg(null)
     try {
-      await api.post(`/v1/payment-intents/${id}/simulate`, { result_code: '0', result_desc: 'Success (simulated)' })
-      setMsg('Simulated success callback applied')
+      await api.post(`/v1/payment-intents/${id}/simulate`, {})
+      setMsg('Simulated success applied — ledger should show a collection credit.')
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Simulate failed')
@@ -38,39 +64,119 @@ export function PaymentIntentDetail() {
   if (error && !item) return <div className="alert error" data-testid="intent-detail-page">{error}</div>
   if (!item) return <div data-testid="intent-detail-page">Loading…</div>
 
+  const idx = stepIndex(item.status)
+  const terminalBad = item.status === 'failed' || item.status === 'expired'
+
   return (
     <div data-testid="intent-detail-page">
       <div className="page-header">
         <div>
-          <h1>Intent</h1>
-          <p className="mono">{item.id}</p>
+          <p className="muted" style={{ margin: 0 }}>
+            <Link to="/intents">← Payments</Link>
+          </p>
+          <h1>Payment</h1>
+          <p className="mono muted">{item.id}</p>
         </div>
         <StatusBadge value={item.status} />
       </div>
+
       {error && <div className="alert error">{error}</div>}
       {msg && <div className="alert ok">{msg}</div>}
 
-      <div className="grid-2">
-        <div className="card">
-          <h2>Payment</h2>
-          <p><span className="muted">Amount</span><br /><strong>{item.amount} {item.currency}</strong></p>
-          <p><span className="muted">Phone</span><br /><span className="mono">{item.phone}</span></p>
-          <p><span className="muted">Reference</span><br />{item.account_reference || '—'}</p>
-          <p><span className="muted">Description</span><br />{item.description || '—'}</p>
-        </div>
-        <div className="card">
-          <h2>Provider</h2>
-          <p><span className="muted">CheckoutRequestID</span><br /><span className="mono">{item.provider_checkout_id || '—'}</span></p>
-          <p><span className="muted">MerchantRequestID</span><br /><span className="mono">{item.provider_merchant_id || '—'}</span></p>
-          <p><span className="muted">Transaction ID</span><br /><span className="mono">{item.provider_transaction_id || '—'}</span></p>
-          {item.failure_reason && <p><span className="muted">Failure</span><br />{item.failure_reason}</p>}
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <p style={{ marginTop: 0 }}>{statusHint(item.status)}</p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {STEPS.map((s, i) => (
+            <span
+              key={s}
+              className={`badge ${i <= idx && !terminalBad ? 'status-ok' : terminalBad && i <= idx ? 'status-err' : 'status-neutral'}`}
+            >
+              {s === 'provider_requested' ? 'Waiting' : s === 'succeeded' ? 'Paid' : 'Created'}
+            </span>
+          ))}
+          {terminalBad && <StatusBadge value={item.status} />}
         </div>
       </div>
 
-      <div className="card">
-        <h2>Dev tools</h2>
-        <p className="muted">Simulate a successful STK callback without waiting for Daraja (sandbox / test only).</p>
-        <button className="btn" type="button" onClick={simulate} disabled={busy}>{busy ? 'Applying…' : 'Simulate success callback'}</button>
+      <div className="grid-2">
+        <div className="card">
+          <h2>Summary</h2>
+          <p>
+            <span className="muted">Amount</span>
+            <br />
+            <strong>{formatKes(item.amount_minor, item.amount, item.currency)}</strong>
+          </p>
+          <p>
+            <span className="muted">Phone</span>
+            <br />
+            <span className="mono">{item.phone}</span>
+          </p>
+          <p>
+            <span className="muted">Reference</span>
+            <br />
+            {item.account_reference || '—'}
+          </p>
+          {item.failure_reason && (
+            <p>
+              <span className="muted">Reason</span>
+              <br />
+              {item.failure_reason}
+            </p>
+          )}
+        </div>
+        <div className="card">
+          <h2>Provider</h2>
+          <p>
+            <span className="muted">Checkout ID</span>
+            <br />
+            <span className="mono">{item.provider_checkout_id || '—'}</span>
+          </p>
+          <p>
+            <span className="muted">Receipt / txn</span>
+            <br />
+            <span className="mono">{item.provider_transaction_id || '—'}</span>
+          </p>
+          {(item.status === 'created' || item.status === 'provider_requested') && (
+            <button className="btn" type="button" disabled={busy} onClick={simulate}>
+              {busy ? 'Working…' : 'Simulate success (dev)'}
+            </button>
+          )}
+          {(item.status === 'failed' || item.status === 'expired') && (
+            <p>
+              <Link className="btn primary" to="/intents">
+                Start a new payment
+              </Link>
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1rem' }}>
+        <h2>Ledger</h2>
+        {ledger.length === 0 ? (
+          <p className="muted">No ledger entries yet. A collection credit appears when status becomes Paid.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Provider ref</th>
+                <th>When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ledger.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.entry_type}</td>
+                  <td>{formatKes(row.amount_minor, null, row.currency)}</td>
+                  <td className="mono">{row.provider_ref || '—'}</td>
+                  <td className="muted">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )

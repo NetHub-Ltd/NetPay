@@ -1,14 +1,15 @@
-# Task: P0-B Append-only ledger
+# Task: P1-A Durable events + guided payments UI
 
-**Milestone:** P0 — Financial integrity  
-**Issue:** #17 (+ ledger assertions for #19)  
-**Branch:** feat/p0-ledger  
+**Milestone:** P1  
+**Issues:** #21 #22 (core); UI guidance  
+**Branch:** feat/p1-durable-events-ui  
 
-## Completed
-- ledger_entries model + migration 003
-- post_collection_credit on succeeded
-- GET /v1/payment-intents/{id}/ledger
-- Tests: one credit on success+duplicate callback; none on failed
+## Done
+- inbound_events + ingest_and_process
+- expire-stale internal endpoint
+- late callback after expired ignored
+- Payments UI: guided create, filters, plain-language status, detail timeline + ledger
 
-## After merge
-Close #17; verify P0 milestone complete.
+## Next
+- P1-B reconciliation skeleton (#23)
+- C2B deferred (#24)

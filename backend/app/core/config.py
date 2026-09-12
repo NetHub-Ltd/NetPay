@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     cors_origins: str = "*"
     log_level: str = "INFO"
     webhook_timeout_seconds: float = 8.0
+    stk_timeout_seconds: float = Field(default=120.0, alias="STK_TIMEOUT_SECONDS")
+    inbound_event_max_attempts: int = Field(default=5, alias="INBOUND_EVENT_MAX_ATTEMPTS")
     max_webhooks_per_tenant: int = 3
 
     # NetHub AS (Authorization Server) — placeholders only.

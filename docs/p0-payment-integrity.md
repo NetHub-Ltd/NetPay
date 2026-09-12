@@ -33,3 +33,11 @@ Duplicate STK callbacks after settle return `status: duplicate`.
 - Unique `(payment_intent_id, entry_type)` prevents double-posting on duplicate callbacks.
 - `GET /v1/payment-intents/{id}/ledger` lists rows (tenant-scoped).
 - Future refunds must add compensating entries, never edit existing rows.
+
+## P1-A durable inbound events
+
+- `POST /internal/events` persists by unique `event_id` then processes.
+- Replays return the stored result (`processed`).
+- Failures increment `attempts`; after max → `dead`.
+- `POST /internal/expire-stale` moves stale `provider_requested` → `expired` (`STK_TIMEOUT_SECONDS`, default 120).
+- Late success after `expired` is **ignored** (no auto-succeed).
