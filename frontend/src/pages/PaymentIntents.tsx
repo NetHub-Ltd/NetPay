@@ -95,9 +95,12 @@ export function PaymentIntents() {
           <h1>Payments</h1>
           <p>Collect money with M-Pesa STK Push. Status updates when the customer completes the prompt.</p>
         </div>
-        <button className="btn primary" type="button" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Cancel' : 'Take a payment'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Link className="btn" to="/docs">Help</Link>
+          <button className="btn primary" type="button" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Cancel' : 'Take a payment'}
+          </button>
+        </div>
       </div>
 
       {error && <div className="alert error">{error}</div>}

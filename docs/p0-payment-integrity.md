@@ -41,3 +41,12 @@ Duplicate STK callbacks after settle return `status: duplicate`.
 - Failures increment `attempts`; after max → `dead`.
 - `POST /internal/expire-stale` moves stale `provider_requested` → `expired` (`STK_TIMEOUT_SECONDS`, default 120).
 - Late success after `expired` is **ignored** (no auto-succeed).
+
+## P1-B reconciliation
+
+- Table `reconciliation_exceptions` (open/resolved).
+- `POST /v1/reconciliation/scan` (admin) opens exceptions for:
+  - succeeded without `collection_credit`
+  - `provider_requested` older than 2× `STK_TIMEOUT_SECONDS`
+- `GET /v1/reconciliation/exceptions`, `POST .../resolve`
+- SPA: **Needs attention** + **Help** how-to guides.

@@ -9,6 +9,8 @@ import { Integrations } from './pages/Integrations'
 import { IntegrationDetail } from './pages/IntegrationDetail'
 import { Webhooks } from './pages/Webhooks'
 import { PaymentIntents } from './pages/PaymentIntents'
+import { Docs } from './pages/Docs'
+import { Reconciliation } from './pages/Reconciliation'
 import { PaymentIntentDetail } from './pages/PaymentIntentDetail'
 import { Events } from './pages/Events'
 import { OAuthClients } from './pages/OAuthClients'
@@ -42,6 +44,8 @@ export default function App() {
         <Route path="webhooks" element={<Webhooks />} />
         <Route path="intents" element={<PaymentIntents />} />
         <Route path="intents/:id" element={<PaymentIntentDetail />} />
+        <Route path="reconciliation" element={<Reconciliation />} />
+        <Route path="docs" element={<Docs />} />
         <Route path="events" element={<Events />} />
         <Route path="oauth-clients" element={<OAuthClients />} />
         <Route path="forbidden" element={<Forbidden />} />
