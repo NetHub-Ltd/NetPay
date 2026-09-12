@@ -1,0 +1,251 @@
+name: Release
+
+# On every push to main (after tests):
+#   1. Bump patch version from latest v* tag (or pyproject.toml)
+#   2. Create annotated tag vX.Y.Z (no manual tags required)
+#   3. Multi-arch build + push to GHCR
+#   4. GitHub Release with changelog-style notes
+#
+# Skip: commit message contains [skip release]
+# Images are NOT published from feature branches (see ci.yml).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          pip install -U pip
+          pip install -e ".[dev]"
+      - name: Pytest
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./data/test.db
+          REDIS_REQUIRED: "false"
+          SECRET_KEY: test-secret
+          ENVIRONMENT: test
+        run: |
+          mkdir -p data static
+          pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        env:
+          npm_config_registry: https://registry.npmjs.org/
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm ci --prefer-offline=false
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Static path check
+        run: |
+          test -f dist/index.html
+
+  version:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+      skip: ${{ steps.bump.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Decide version and create tag
+        id: bump
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+
+          if echo "${COMMIT_MSG:-}" | grep -q '\[skip release\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "Skipping release: [skip release] in commit message"
+            exit 0
+          fi
+
+          # Already tagged at this commit?
+          if git describe --exact-match --tags HEAD 2>/dev/null | grep -q '^v'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "Skipping release: HEAD already has a version tag"
+            exit 0
+          fi
+
+          py_ver="$(python3 -c "import tomllib; print(tomllib.load(open('backend/pyproject.toml','rb'))['project']['version'])" 2>/dev/null || echo "1.1.0")"
+          latest="$(git tag -l 'v*' --sort=-v:refname | head -n1 || true)"
+          if [ -z "${latest}" ]; then
+            base="$py_ver"
+          else
+            base="${latest#v}"
+          fi
+
+          IFS=. read -r major minor patch <<EOF
+          ${base}
+          EOF
+          major=${major:-1}
+          minor=${minor:-0}
+          patch=${patch:-0}
+          # strip any pre-release suffix from patch
+          patch="${patch%%-*}"
+          patch=$((patch + 1))
+          version="${major}.${minor}.${patch}"
+          tag="v${version}"
+
+          # Collision guard
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists; skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release ${tag}
+
+          Automated patch release from main (${GITHUB_SHA}).
+          Image: ghcr.io/nethub-ltd/netpay:${tag}"
+
+          git push origin "$tag"
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Created and pushed ${tag}"
+
+  docker:
+    needs: [version]
+    if: needs.version.outputs.skip != 'true' && needs.version.outputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Image name
+        id: image
+        run: echo "name=ghcr.io/nethub-ltd/netpay" >> "$GITHUB_OUTPUT"
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=${{ needs.version.outputs.tag }}
+            type=raw,value=${{ needs.version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.version }}
+            type=raw,value=latest
+            type=raw,value=main
+            type=sha,prefix=sha-,format=short
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  github-release:
+    needs: [version, docker]
+    if: needs.version.outputs.skip != 'true' && needs.version.outputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: ${{ needs.version.outputs.tag }}
+          generate_release_notes: true
+          body: |
+            ## NetPay ${{ needs.version.outputs.tag }}
+
+            Automated release from `main` (patch bump). Changelog below is generated from commits since the previous tag.
+
+            ### Container image
+
+            Multi-arch (`linux/amd64`, `linux/arm64`):
+
+            ```text
+            ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}
+            ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.version }}
+            ghcr.io/nethub-ltd/netpay:latest
+            ```
+
+            ```bash
+            docker pull ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}
+            docker run --rm -p 8000:8000 \
+              -e DATABASE_URL=sqlite+aiosqlite:///./data/gateway.db \
+              -e REDIS_REQUIRED=false \
+              -e SECRET_KEY=change-me \
+              ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}
+            ```
+
+            Health: `http://localhost:8000/health`
+
+            ### Notes
+
+            - User authentication is intended via **NetHub AS** (see `docs/auth-model.md` when present on the branch).
+            - To skip the next automated release, include `[skip release]` in the merge commit message on `main`.

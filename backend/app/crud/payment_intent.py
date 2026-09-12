@@ -19,6 +19,7 @@ class PaymentIntentCreateIn(BaseModel):
     intent_type: str = "collection"
     status: str = "created"
     amount: Decimal
+    amount_minor: int
     currency: str = "KES"
     phone: str
     account_reference: Optional[str] = None
@@ -29,6 +30,7 @@ class PaymentIntentCreateIn(BaseModel):
     provider_merchant_id: Optional[str] = None
     provider_transaction_id: Optional[str] = None
     failure_reason: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 class PaymentIntentUpdate(BaseModel):
@@ -37,6 +39,8 @@ class PaymentIntentUpdate(BaseModel):
     provider_merchant_id: Optional[str] = None
     provider_transaction_id: Optional[str] = None
     failure_reason: Optional[str] = None
+    amount_minor: Optional[int] = None
+    amount: Optional[Decimal] = None
 
 
 class PaymentIntentCRUD(BaseCRUD[PaymentIntent, PaymentIntentCreateIn, PaymentIntentUpdate]):
@@ -71,6 +75,20 @@ class PaymentIntentCRUD(BaseCRUD[PaymentIntent, PaymentIntentCreateIn, PaymentIn
     ) -> Optional[PaymentIntent]:
         rows = await self.get_by_attributes(
             db, filters={"provider_checkout_id": checkout_id}, limit=1
+        )
+        return rows[0] if rows else None
+
+    async def get_by_idempotency(
+        self,
+        db: AsyncSession,
+        *,
+        tenant_id: UUID,
+        idempotency_key: str,
+    ) -> Optional[PaymentIntent]:
+        rows = await self.get_by_attributes(
+            db,
+            filters={"tenant_id": tenant_id, "idempotency_key": idempotency_key},
+            limit=1,
         )
         return rows[0] if rows else None
 

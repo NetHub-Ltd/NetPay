@@ -56,7 +56,12 @@ Build context is the repo root (`backend/Dockerfile` copies frontend + backend).
 
 ## CI
 
-PRs to `main` run backend pytest and frontend lint + build. Prefer merging only when checks are green.
+- **PRs** to `main` or `dev`: backend pytest + frontend lint + build (`.github/workflows/ci.yml`).
+- **Push to `main`**: after tests, CI **auto-creates** the next patch tag (`vX.Y.Z`), builds multi-arch images, pushes to GHCR, and opens a GitHub Release with changelog notes (`.github/workflows/release.yml`).
+- No manual version tags required. Include `[skip release]` in a `main` commit message to skip tagging/release.
+- Images: `ghcr.io/nethub-ltd/netpay` (`latest`, `vX.Y.Z`, `main`, `sha-…`).
+
+Prefer merging only when checks are green.
 
 ## Container (GHCR)
 

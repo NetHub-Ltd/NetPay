@@ -16,7 +16,7 @@ export function Layout() {
           <span className="brand-mark">⬡</span>
           <div>
             <strong>NetHub</strong>
-            <div className="muted tiny">Payment Gateway</div>
+            <div className="muted tiny">Collect & track payments</div>
           </div>
         </div>
 
@@ -25,8 +25,10 @@ export function Layout() {
           {isAdmin && <NavLink to="/tenants" className={linkClass}>Tenants</NavLink>}
           <NavLink to="/integrations" className={linkClass}>Integrations</NavLink>
           <NavLink to="/webhooks" className={linkClass}>Webhooks</NavLink>
-          <NavLink to="/intents" className={linkClass}>Payment Intents</NavLink>
-          <NavLink to="/events" className={linkClass}>Event Log</NavLink>
+          <NavLink to="/intents" className={linkClass}>Payments</NavLink>
+          <NavLink to="/reconciliation" className={linkClass}>Needs attention</NavLink>
+          <NavLink to="/docs" className={linkClass}>Help</NavLink>
+          <NavLink to="/events" className={linkClass}>Activity</NavLink>
           {isAdmin && <NavLink to="/oauth-clients" className={linkClass}>OAuth Clients</NavLink>}
         </nav>
 

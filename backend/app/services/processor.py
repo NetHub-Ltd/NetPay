@@ -3,14 +3,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.logging import logger
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.logging import logger
 from app.crud.integration import integration_crud
 from app.crud.payment_intent import payment_intent_crud
+from app.domain.payment_status import IllegalTransitionError, is_terminal
 from app.models.payment_intent import PaymentIntent
 from app.schemas.event import EnvelopeIn, ProcessResult
 from app.services.events import record_event
+from app.services.ledger import post_collection_credit
+from app.services.transitions import transition_payment_intent
 from app.services.webhooks import fanout_webhooks
 
 
@@ -33,12 +36,31 @@ async def apply_payment_result(
     transaction_id: str | None = None,
     failure: str | None = None,
 ) -> PaymentIntent:
-    update: dict[str, Any] = {"status": status}
-    if transaction_id:
-        update["provider_transaction_id"] = transaction_id
-    if failure:
-        update["failure_reason"] = failure[:512]
-    intent = await payment_intent_crud.update(session, db_obj=intent, obj_in=update)
+    """Apply terminal result via state machine; no-op if already same terminal status."""
+    if intent.status == status:
+        return intent
+    if is_terminal(intent.status):
+        # Already settled to a different terminal state — do not regress
+        logger.info(
+            "Skip apply_payment_result intent={} current={} requested={}",
+            intent.id,
+            intent.status,
+            status,
+        )
+        return intent
+    try:
+        intent = await transition_payment_intent(
+            session,
+            intent,
+            to_status=status,
+            provider_transaction_id=transaction_id,
+            failure_reason=failure,
+        )
+    except IllegalTransitionError as exc:
+        logger.warning("Illegal transition on apply_payment_result: {}", exc)
+        return intent
+    if status == "succeeded":
+        await post_collection_credit(session, intent)
     await session.commit()
     await session.refresh(intent)
     await fanout_webhooks(
@@ -48,7 +70,7 @@ async def apply_payment_result(
         {
             "event": "payment.update",
             "intent_id": str(intent.id),
-            "status": status,
+            "status": intent.status,
             "provider_transaction_id": transaction_id,
             "failure_reason": failure,
         },
@@ -75,8 +97,18 @@ async def process_envelope(session: AsyncSession, envelope: EnvelopeIn) -> Proce
         intent = await payment_intent_crud.get_by_checkout_id(session, str(checkout_id))
         if not intent:
             return ProcessResult(status="not_found", message=f"No intent for {checkout_id}")
-        if intent.status in ("succeeded", "failed"):
-            return ProcessResult(status="duplicate", intent_id=intent.id, message="Already settled")
+        if is_terminal(intent.status):
+            if intent.status == "expired":
+                return ProcessResult(
+                    status="ignored",
+                    intent_id=intent.id,
+                    message="Intent expired; late callback not applied (no auto-succeed)",
+                )
+            return ProcessResult(
+                status="duplicate",
+                intent_id=intent.id,
+                message="Already settled",
+            )
         ok = str(result_code) in ("0", "00")
         tx_id = None
         items = (
