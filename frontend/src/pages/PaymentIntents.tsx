@@ -34,10 +34,23 @@ export function PaymentIntents() {
     setBusy(true)
     setError(null)
     try {
-      await api.post('/v1/payment-intents', {
-        ...form,
-        amount: Number(form.amount),
-      })
+      const amountMajor = Number(form.amount)
+      const amount_minor = Math.round(amountMajor * 100)
+      const idempotencyKey =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `web-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      await api.post(
+        '/v1/payment-intents',
+        {
+          integration_public_id: form.integration_public_id,
+          phone: form.phone,
+          amount_minor,
+          account_reference: form.account_reference,
+          description: form.description,
+        },
+        { headers: { 'Idempotency-Key': idempotencyKey } },
+      )
       setShowForm(false)
       await load()
     } catch (err) {
@@ -106,7 +119,7 @@ export function PaymentIntents() {
               {items.map((p) => (
                 <tr key={p.id}>
                   <td><StatusBadge value={p.status} /></td>
-                  <td>{p.amount} {p.currency}</td>
+                  <td>{(p.amount_minor != null ? (Number(p.amount_minor) / 100) : p.amount)} {p.currency}</td>
                   <td className="mono">{p.phone}</td>
                   <td className="mono tiny">{p.provider_checkout_id || '—'}</td>
                   <td className="muted tiny">{new Date(p.created_at).toLocaleString()}</td>

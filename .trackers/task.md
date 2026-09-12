@@ -1,38 +1,18 @@
-# Task: CI test/lint/build + auto-release to GHCR
+# Task: P0-A Payment integrity
 
-**Status:** Implementation  
-**Tier:** 2  
-**Approved:** 2026-09-12 (proceed / defaults)
+**Milestone:** P0 — Financial integrity  
+**Issues:** #15 #16 #18 #19 (partial) #20  
+**Branch:** feat/p0-payment-integrity-a  
+**Status:** Implementation complete — PR pending
 
-## Goal
+## Completed in this PR
+- State machine + transition helper
+- Idempotency-Key required on create; unique (tenant_id, key)
+- amount_minor (100 = 1 KES); major units at Daraja boundary
+- Unique provider_checkout_id
+- Migration 002
+- Tests: unit transitions + idempotency/replay/concurrent/double-callback/tenant isolation
+- Frontend sends amount_minor + Idempotency-Key
 
-Automated CI for tests/lint/build; on push to `main`, auto patch-tag, multi-arch GHCR push, GitHub Release with changelog. No manual tags.
-
-## Approved scope
-
-- Split `ci.yml` (PR/branch tests) and `release.yml` (main → version → GHCR → Release).
-- PR targets: `main` and `dev`.
-- Images only from main-driven tags.
-- Patch bump; tag-only (no pyproject commit).
-- `[skip release]` escape hatch.
-
-## Completed
-
-- [x] Rewrite `.github/workflows/ci.yml`
-- [x] Add `.github/workflows/release.yml`
-- [x] README CI section
-- [x] Trackers for this task
-
-## Remaining
-
-- [x] PR → `dev` — https://github.com/NetHub-Ltd/NetPay/pull/8
-- [ ] User merge; later promote `dev` → `main` to exercise release
-
-## Out of scope
-
-- AS auth cutover, app feature work, manual tag workflow as primary path.
-
-## Verification
-
-- PR CI green on this branch.
-- After merge to main: tag + GHCR + Release (or `[skip release]` for dry merges).
+## Deferred (P0-B)
+- Append-only ledger (#17)
