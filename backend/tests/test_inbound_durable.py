@@ -8,75 +8,21 @@ from uuid import UUID, uuid4
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import create_engine
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.core.config import settings
-from app.core.security import hash_password
-from app.models.integration import Credential, Integration
 from app.models.payment_intent import PaymentIntent
-from app.models.tenant import Tenant
-from app.models.user import User
-
-
-def _seed():
-    engine = create_engine(settings.sync_database_url)
-    with Session(engine) as session:
-        admin = session.exec(select(User).where(User.email == "admin@nethub.test")).first()
-        assert admin
-        tenant = session.exec(select(Tenant).where(Tenant.slug == "p1-tenant")).first()
-        if not tenant:
-            tenant = Tenant(name="P1", slug="p1-tenant", status="active", created_by=admin.id)
-            session.add(tenant)
-            session.commit()
-            session.refresh(tenant)
-        user = session.exec(select(User).where(User.email == "p1user@nethub.test")).first()
-        if not user:
-            user = User(
-                email="p1user@nethub.test",
-                hashed_password=hash_password("P1UserPass123!"),
-                role="user",
-                tenant_id=tenant.id,
-                is_active=True,
-            )
-            session.add(user)
-            session.commit()
-        integ = session.exec(select(Integration).where(Integration.public_id == "gw_p1_test")).first()
-        if not integ:
-            integ = Integration(
-                tenant_id=tenant.id,
-                public_id="gw_p1_test",
-                shortcode="174379",
-                type="paybill",
-                environment="sandbox",
-                status="active",
-            )
-            session.add(integ)
-            session.commit()
-            session.refresh(integ)
-            for kind, val in [
-                ("consumer_key", "k"),
-                ("consumer_secret", "s"),
-                ("passkey", "p"),
-            ]:
-                session.add(Credential(integration_id=integ.id, kind=kind, value=val))
-            session.commit()
-        out = {"public_id": "gw_p1_test"}
-    engine.dispose()
-    return out
-
-
-async def _login(client: AsyncClient) -> str:
-    res = await client.post(
-        "/auth/login", json={"email": "p1user@nethub.test", "password": "P1UserPass123!"}
-    )
-    assert res.status_code == 200, res.text
-    return res.json()["access_token"]
+from tests.helpers import FIXTURE_USER_PASSWORD, internal_headers, login, seed_tenant_user_integration
 
 
 @pytest.fixture
 async def p1_env(client: AsyncClient):
-    meta = _seed()
-    token = await _login(client)
+    meta = seed_tenant_user_integration(
+        slug="p1-tenant",
+        email="p1user@nethub.test",
+        public_id="gw_p1_test",
+    )
+    token = await login(client, meta["email"], FIXTURE_USER_PASSWORD)
     return {**meta, "token": token}
 
 
@@ -93,7 +39,7 @@ async def test_duplicate_event_id_does_not_reprocess(client: AsyncClient, p1_env
     ), patch(
         "app.api.routes.payments.get_access_token",
         new_callable=AsyncMock,
-        return_value="token",
+        return_value="fixture-access-token",
     ):
         created = await client.post(
             "/v1/payment-intents",
@@ -124,13 +70,11 @@ async def test_duplicate_event_id_does_not_reprocess(client: AsyncClient, p1_env
             }
         },
     }
-    h = {"X-Internal-Api-Key": "test-internal-key"}
-    r1 = await client.post("/internal/events", json=envelope, headers=h)
+    r1 = await client.post("/internal/events", json=envelope, headers=internal_headers())
     assert r1.status_code == 200
     assert r1.json().get("status") == "succeeded"
-    r2 = await client.post("/internal/events", json=envelope, headers=h)
+    r2 = await client.post("/internal/events", json=envelope, headers=internal_headers())
     assert r2.status_code == 200
-    # Cached processed result (not a second business apply)
     assert r2.json().get("status") == "succeeded"
 
 
@@ -147,7 +91,7 @@ async def test_expire_stale_provider_requested(client: AsyncClient, p1_env):
     ), patch(
         "app.api.routes.payments.get_access_token",
         new_callable=AsyncMock,
-        return_value="token",
+        return_value="fixture-access-token",
     ):
         created = await client.post(
             "/v1/payment-intents",
@@ -161,7 +105,6 @@ async def test_expire_stale_provider_requested(client: AsyncClient, p1_env):
         assert created.status_code == 201, created.text
         intent_id = created.json()["id"]
 
-    # Backdate updated_at so it looks stale
     engine = create_engine(settings.sync_database_url)
     with Session(engine) as session:
         intent = session.get(PaymentIntent, UUID(str(intent_id)))
@@ -171,10 +114,7 @@ async def test_expire_stale_provider_requested(client: AsyncClient, p1_env):
         session.commit()
     engine.dispose()
 
-    res = await client.post(
-        "/internal/expire-stale",
-        headers={"X-Internal-Api-Key": "test-internal-key"},
-    )
+    res = await client.post("/internal/expire-stale", headers=internal_headers())
     assert res.status_code == 200, res.text
     assert res.json().get("expired", 0) >= 1
 
@@ -184,7 +124,6 @@ async def test_expire_stale_provider_requested(client: AsyncClient, p1_env):
     )
     assert got.json()["status"] == "expired"
 
-    # Late success callback must not revive
     envelope = {
         "event_id": f"evt_late_{uuid4()}",
         "provider": "mpesa",
@@ -200,11 +139,7 @@ async def test_expire_stale_provider_requested(client: AsyncClient, p1_env):
             }
         },
     }
-    late = await client.post(
-        "/internal/events",
-        json=envelope,
-        headers={"X-Internal-Api-Key": "test-internal-key"},
-    )
+    late = await client.post("/internal/events", json=envelope, headers=internal_headers())
     assert late.status_code == 200
     assert late.json().get("status") == "ignored"
     got2 = await client.get(
