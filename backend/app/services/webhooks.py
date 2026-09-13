@@ -3,8 +3,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import secrets as pysecrets
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 import httpx
@@ -13,6 +14,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import settings
 from app.core.logging import logger
 from app.crud.webhook import webhook_crud, webhook_delivery_crud
+from app.models.payment_intent import PaymentIntent
 
 
 def sign_payload(secret: str, body: str) -> str:
@@ -74,18 +76,56 @@ async def fanout_webhooks(
     tenant_id: UUID,
     intent_id: UUID,
     payload: dict[str, Any],
+    *,
+    intent: Optional[PaymentIntent] = None,
 ) -> None:
-    hooks = await webhook_crud.list_by_tenant(session, tenant_id)
-    for h in hooks:
-        delivery = await deliver_webhook(h.url, h.secret, payload)
-        await webhook_delivery_crud.create(
-            session,
-            obj_in={
-                "webhook_id": h.id,
-                "payment_intent_id": intent_id,
-                "status_code": delivery.get("status"),
-                "ok": bool(delivery.get("ok")),
-                "error": delivery.get("error"),
-            },
-        )
+    """
+    After payment is resolved:
+    1. If intent.status_callback_url → POST once (ephemeral secret for signature)
+    2. Else tenant stored webhooks
+    3. Else no merchant notify (STK/C2B still always went to edge)
+    """
+    if intent is None:
+        from app.crud.payment_intent import payment_intent_crud
+
+        intent = await payment_intent_crud.get(session, intent_id)
+
+    targets: list[tuple[str, str, UUID | None]] = []
+    # (url, secret, webhook_id for delivery log)
+
+    if intent and intent.status_callback_url:
+        # Per-intent URL: sign with a one-off secret embedded in payload for verification by partners who share nothing
+        # Prefer deterministic HMAC using settings.secret_key + intent id so partner can verify if documented
+        secret = hashlib.sha256(f"{settings.secret_key}:{intent_id}".encode()).hexdigest()
+        targets.append((intent.status_callback_url, secret, None))
+        logger.info("Notify via intent status_callback_url intent={}", intent_id)
+    else:
+        hooks = await webhook_crud.list_by_tenant(session, tenant_id)
+        for h in hooks:
+            targets.append((h.url, h.secret, h.id))
+        if not targets:
+            logger.info("No merchant notify targets for intent={} (edge-only callbacks)", intent_id)
+            return
+
+    for url, secret, webhook_id in targets:
+        delivery = await deliver_webhook(url, secret, payload)
+        if webhook_id is not None:
+            await webhook_delivery_crud.create(
+                session,
+                obj_in={
+                    "webhook_id": webhook_id,
+                    "payment_intent_id": intent_id,
+                    "status_code": delivery.get("status"),
+                    "ok": bool(delivery.get("ok")),
+                    "error": delivery.get("error"),
+                },
+            )
+        else:
+            logger.info(
+                "Intent callback delivery intent={} ok={} status={} err={}",
+                intent_id,
+                delivery.get("ok"),
+                delivery.get("status"),
+                delivery.get("error"),
+            )
     await session.commit()

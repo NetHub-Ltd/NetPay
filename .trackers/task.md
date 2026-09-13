@@ -1,20 +1,13 @@
-# Task: Professional home + Lucide icons + observability
+# Task: S1 STK intent audit + notify fanout
 
-**Branch:** feat/lucide-professional-home → **dev**  
-**Related:** follow-up to merged #46 (home/logging/outbound audit)
+**Branch:** feat/s1-stk-intent-audit → **dev**
 
-## Goals
-- [x] Replace emoji nav/header with **lucide-react** icons
-- [x] Professional Home: quiet copy, stats, recent payments, single suggested next step (not shouty checklist)
-- [x] Top bar actions with icons
-- [x] package.json dependency `lucide-react`
-
-## Prior (#46) still in scope context
-- [x] DEBUG logging, no noise filter
-- [x] outbound_requests audit for Daraja
-- [x] register-urls error detail
-- [x] Home as landing; System status at `/status`
-
-## Verify
-- [ ] `npm run build` (tsc + vite) with lucide-react
-- [ ] Visual: sidebar + header + home on light/dark
+## Done
+- [x] stk_request_json / stk_response_json on intent (Password redacted)
+- [x] payment_intent_id on outbound_requests
+- [x] STK fail → failed + failure_reason
+- [x] Till → CustomerBuyGoodsOnline; paybill → CustomerPayBillOnline
+- [x] status_callback_url + metadata on create; detail GET
+- [x] Fanout: intent URL → tenant webhooks → none (edge always for provider callbacks)
+- [x] Payment detail: provider call section
+- [x] Migration 007

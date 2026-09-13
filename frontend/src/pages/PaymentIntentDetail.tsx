@@ -81,7 +81,28 @@ export function PaymentIntentDetail() {
       </div>
 
       {error && <div className="alert error">{error}</div>}
+      {item.failure_reason && (
+        <div className="alert error">Could not complete: {item.failure_reason}</div>
+      )}
       {msg && <div className="alert ok">{msg}</div>}
+
+      {(item as { stk_request_json?: string; stk_response_json?: string; status_callback_url?: string }).stk_request_json && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h2>Provider call</h2>
+          <p className="muted tiny" style={{ marginTop: 0 }}>
+            What we sent to the network and what came back (secrets redacted).
+          </p>
+          <div className="muted tiny">Request</div>
+          <pre className="mono tiny" style={{ whiteSpace: 'pre-wrap', maxHeight: 180, overflow: 'auto' }}>
+            {(item as { stk_request_json?: string }).stk_request_json}
+          </pre>
+          <div className="muted tiny">Response</div>
+          <pre className="mono tiny" style={{ whiteSpace: 'pre-wrap', maxHeight: 180, overflow: 'auto' }}>
+            {(item as { stk_response_json?: string }).stk_response_json || '—'}
+          </pre>
+        </div>
+      )}
+
 
       <div className="card" style={{ marginBottom: '1rem' }}>
         <p style={{ marginTop: 0 }}>{statusHint(item.status)}</p>

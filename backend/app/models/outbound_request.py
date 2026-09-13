@@ -15,6 +15,7 @@ class OutboundRequest(BaseMixin, table=True):
 
     tenant_id: Optional[UUID] = Field(default=None, index=True)
     integration_id: Optional[UUID] = Field(default=None, index=True)
+    payment_intent_id: Optional[UUID] = Field(default=None, index=True)
     provider: str = Field(default="mpesa", max_length=32, index=True)
     operation: str = Field(max_length=64, index=True)  # oauth, stk_push, c2b_register_urls, …
     method: str = Field(max_length=10)

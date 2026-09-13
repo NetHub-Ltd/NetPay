@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class IntentCreate(BaseModel):
@@ -15,7 +15,8 @@ class IntentCreate(BaseModel):
     account_reference: Optional[str] = Field(default="PAY", max_length=12)
     description: Optional[str] = Field(default="Payment", max_length=32)
     context: Optional[dict[str, Any]] = None
-    # Optional legacy major-unit amount; converted to amount_minor if amount_minor omitted in older clients
+    metadata: Optional[dict[str, Any]] = None
+    status_callback_url: Optional[str] = Field(default=None, max_length=1024)
     amount: Optional[Decimal] = Field(default=None, gt=0)
 
     @model_validator(mode="before")
@@ -28,12 +29,22 @@ class IntentCreate(BaseModel):
             data["amount_minor"] = int(major * 100)
         return data
 
+    @field_validator("status_callback_url")
+    @classmethod
+    def https_only(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return None
+        v = v.strip()
+        if not v.startswith("https://"):
+            raise ValueError("status_callback_url must be HTTPS")
+        return v
+
 
 class IntentCreateResponse(BaseModel):
     id: UUID
     status: str
     amount_minor: int
-    
+    currency: str = "KES"
     provider_checkout_id: Optional[str] = None
     provider_merchant_id: Optional[str] = None
     message: str = "STK push initiated"
@@ -56,5 +67,14 @@ class IntentOut(BaseModel):
     provider_transaction_id: Optional[str] = None
     failure_reason: Optional[str] = None
     idempotency_key: Optional[str] = None
+    status_callback_url: Optional[str] = None
     created_at: Optional[datetime] = None
     model_config = {"from_attributes": True}
+
+
+class IntentDetailOut(IntentOut):
+    """GET by id — includes metadata and redacted STK audit payloads."""
+
+    metadata: Optional[dict[str, Any]] = None
+    stk_request_json: Optional[str] = None
+    stk_response_json: Optional[str] = None

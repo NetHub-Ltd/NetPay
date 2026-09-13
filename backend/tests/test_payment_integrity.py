@@ -354,3 +354,15 @@ async def test_failed_intent_has_no_ledger_credit(client: AsyncClient, p0_env):
     )
     assert led.status_code == 200
     assert led.json() == []
+
+
+
+@pytest.mark.asyncio
+async def test_redact_password_in_payload():
+    from app.services.outbound_audit import redact_provider_payload
+
+    body = {"Password": "secret", "Amount": "1", "nested": {"passkey": "x"}}
+    safe = redact_provider_payload(body)
+    assert safe["Password"] == "***REDACTED***"
+    assert safe["Amount"] == "1"
+    assert safe["nested"]["passkey"] == "***REDACTED***"

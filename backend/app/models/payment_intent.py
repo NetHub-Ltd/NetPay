@@ -43,3 +43,7 @@ class PaymentIntent(BaseMixin, table=True):
     provider_transaction_id: Optional[str] = Field(default=None, index=True, max_length=64)
     failure_reason: Optional[str] = Field(default=None, max_length=512)
     idempotency_key: Optional[str] = Field(default=None, max_length=128, index=True)
+    stk_request_json: Optional[str] = Field(default=None)
+    stk_response_json: Optional[str] = Field(default=None)
+    status_callback_url: Optional[str] = Field(default=None, max_length=1024)
+    metadata_json: Optional[str] = Field(default=None)
