@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NetHub Payment Gateway</title>
+    <title>NetPay — Collect M-Pesa payments</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('nethub_theme')
+          if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t)
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

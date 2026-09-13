@@ -1,7 +1,10 @@
-# Task: Document mpesa-edge ↔ NetPay secure ingest
+# Task: UX-A language, light theme, deletes, login marketing
 
-**Milestone:** process-only / P1 ops
-**Branch:** docs/edge-worker-integration
+**Branch:** feat/ux-a-language-theme-deletes
 
 ## Done
-- docs/edge-worker-integration.md
+- Light theme default + Appearance toggle
+- Nav: Paybills & tills, Payment notifications, Businesses, etc.
+- Soft-delete integration API + Retire in UI
+- Webhook remove confirm (plain language)
+- Marketing login split layout

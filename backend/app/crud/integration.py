@@ -24,6 +24,7 @@ class IntegrationCreateIn(BaseModel):
 
 
 class IntegrationUpdate(BaseModel):
+    deleted_at: Optional[datetime] = None
     shortcode: Optional[str] = None
     type: Optional[str] = None
     environment: Optional[str] = None
@@ -81,6 +82,18 @@ class IntegrationCRUD(BaseCRUD[Integration, IntegrationCreateIn, IntegrationUpda
             return None
         return integ
 
+    async def soft_delete(self, db: AsyncSession, *, id: UUID) -> Optional[Integration]:
+        """Mark integration retired (deleted_at)."""
+        from datetime import datetime, timezone
+        obj = await self.get(db, id)
+        if not obj:
+            return None
+        return await self.update(
+            db,
+            db_obj=obj,
+            obj_in={"deleted_at": datetime.now(timezone.utc)},
+        )
+
 
 class CredentialCRUD(BaseCRUD[Credential, CredentialCreateIn, CredentialUpdate]):
     def __init__(self, model: Type[Credential] = Credential):
@@ -95,3 +108,4 @@ class CredentialCRUD(BaseCRUD[Credential, CredentialCreateIn, CredentialUpdate])
 
 integration_crud = IntegrationCRUD(Integration)
 credential_crud = CredentialCRUD(Credential)
+

@@ -12,6 +12,7 @@ export function Integrations() {
   const [items, setItems] = useState<Integration[]>([])
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState({
@@ -29,25 +30,51 @@ export function Integrations() {
       const integ = await api.get<Integration[]>('/v1/integrations')
       setItems(integ)
       if (isAdmin) {
-        try { setTenants(await api.get<Tenant[]>('/v1/tenants')) } catch { /* ignore */ }
+        try {
+          setTenants(await api.get<Tenant[]>('/v1/tenants'))
+        } catch {
+          /* ignore */
+        }
       }
     } catch (e) {
-      setError(e instanceof ApiError ? e.detail : 'Failed to load')
+      setError(e instanceof ApiError ? e.detail : 'Could not load paybills & tills')
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [])
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
+    setMsg(null)
     try {
       await api.post('/v1/integrations', form)
       setShowForm(false)
+      setMsg('Shortcode saved. You can collect payments with this paybill or till.')
       await load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Create failed')
+      setError(err instanceof ApiError ? err.detail : 'Could not save')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onRetire(id: string, shortcode: string) {
+    const ok = window.confirm(
+      `Retire shortcode ${shortcode}?\n\nIt will no longer appear in your list. Existing payments keep their history. You can add the shortcode again later if needed.`,
+    )
+    if (!ok) return
+    setBusy(true)
+    setError(null)
+    try {
+      await api.delete(`/v1/integrations/${id}`)
+      setMsg(`Shortcode ${shortcode} was retired.`)
+      await load()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Could not retire this shortcode')
     } finally {
       setBusy(false)
     }
@@ -57,76 +84,138 @@ export function Integrations() {
     <div data-testid="integrations-page">
       <div className="page-header">
         <div>
-          <h1>Integrations</h1>
-          <p>Paybill / Till + Daraja credentials (public id gw_…)</p>
+          <h1>Paybills &amp; tills</h1>
+          <p>Your M-Pesa shortcodes — the numbers customers pay to.</p>
         </div>
         <button className="btn primary" type="button" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Cancel' : 'Add integration'}
+          {showForm ? 'Cancel' : 'Add shortcode'}
         </button>
       </div>
       {error && <div className="alert error">{error}</div>}
+      {msg && <div className="alert ok">{msg}</div>}
 
       {showForm && (
         <div className="card">
-          <h2>Sandbox / production credentials</h2>
+          <h2>Add a paybill or till</h2>
+          <p className="muted tiny">
+            Use the shortcode and API details from the Safaricom Daraja portal (sandbox or live).
+          </p>
           <form onSubmit={onCreate}>
             {isAdmin && (
               <>
-                <label>Tenant</label>
-                <select required value={form.tenant_id} onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}>
-                  <option value="">Select tenant</option>
-                  {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                <label>Business</label>
+                <select
+                  required
+                  value={form.tenant_id}
+                  onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}
+                >
+                  <option value="">Select…</option>
+                  {tenants.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
                 </select>
               </>
             )}
-            {!isAdmin && <input type="hidden" value={form.tenant_id} />}
-            <div className="grid-2">
+            <div className="grid-3">
               <div>
                 <label>Shortcode</label>
-                <input required value={form.shortcode} onChange={(e) => setForm({ ...form, shortcode: e.target.value })} placeholder="174379" />
+                <input
+                  required
+                  value={form.shortcode}
+                  onChange={(e) => setForm({ ...form, shortcode: e.target.value })}
+                  placeholder="e.g. 174379"
+                />
               </div>
               <div>
                 <label>Type</label>
                 <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
                   <option value="paybill">Paybill</option>
-                  <option value="till">Till</option>
+                  <option value="till">Till number</option>
                 </select>
               </div>
               <div>
                 <label>Environment</label>
-                <select value={form.environment} onChange={(e) => setForm({ ...form, environment: e.target.value })}>
-                  <option value="sandbox">Sandbox</option>
-                  <option value="production">Production</option>
+                <select
+                  value={form.environment}
+                  onChange={(e) => setForm({ ...form, environment: e.target.value })}
+                >
+                  <option value="sandbox">Test (sandbox)</option>
+                  <option value="production">Live</option>
                 </select>
               </div>
             </div>
             <label>Consumer key</label>
-            <input required value={form.consumer_key} onChange={(e) => setForm({ ...form, consumer_key: e.target.value })} autoComplete="off" />
+            <input
+              required
+              value={form.consumer_key}
+              onChange={(e) => setForm({ ...form, consumer_key: e.target.value })}
+              autoComplete="off"
+            />
             <label>Consumer secret</label>
-            <input required type="password" value={form.consumer_secret} onChange={(e) => setForm({ ...form, consumer_secret: e.target.value })} autoComplete="off" />
-            <label>Passkey</label>
-            <input required type="password" value={form.passkey} onChange={(e) => setForm({ ...form, passkey: e.target.value })} autoComplete="off" />
-            <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save integration'}</button>
+            <input
+              required
+              type="password"
+              value={form.consumer_secret}
+              onChange={(e) => setForm({ ...form, consumer_secret: e.target.value })}
+              autoComplete="off"
+            />
+            <label>Passkey (Lipa Na M-Pesa)</label>
+            <input
+              required
+              type="password"
+              value={form.passkey}
+              onChange={(e) => setForm({ ...form, passkey: e.target.value })}
+              autoComplete="off"
+            />
+            <button className="btn primary" type="submit" disabled={busy}>
+              {busy ? 'Saving…' : 'Save shortcode'}
+            </button>
           </form>
         </div>
       )}
 
       {items.length === 0 ? (
-        <EmptyState title="No integrations" hint="Add sandbox M-Pesa credentials to start STK / C2B." />
+        <EmptyState
+          title="No paybills or tills yet"
+          hint="Add a shortcode to start sending payment requests to customers."
+        />
       ) : (
         <div className="card">
           <table>
             <thead>
-              <tr><th>Public ID</th><th>Shortcode</th><th>Env</th><th>Status</th><th></th></tr>
+              <tr>
+                <th>Shortcode</th>
+                <th>Type</th>
+                <th>Environment</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
             </thead>
             <tbody>
               {items.map((i) => (
                 <tr key={i.id}>
-                  <td className="mono">{i.public_id}</td>
-                  <td>{i.shortcode}</td>
-                  <td><StatusBadge value={i.environment} /></td>
-                  <td><StatusBadge value={i.status} /></td>
-                  <td><Link to={`/integrations/${i.id}`}>Open</Link></td>
+                  <td>
+                    <strong>{i.shortcode}</strong>
+                    <div className="muted tiny mono">{i.public_id}</div>
+                  </td>
+                  <td>{i.type === 'till' ? 'Till' : 'Paybill'}</td>
+                  <td>{i.environment === 'production' ? 'Live' : 'Test'}</td>
+                  <td>
+                    <StatusBadge value={i.status} />
+                  </td>
+                  <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <Link to={`/integrations/${i.id}`}>Open</Link>
+                    <button
+                      type="button"
+                      className="btn danger"
+                      disabled={busy}
+                      onClick={() => onRetire(i.id, i.shortcode)}
+                    >
+                      Retire
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

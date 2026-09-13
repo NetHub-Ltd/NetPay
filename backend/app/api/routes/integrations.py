@@ -123,3 +123,27 @@ async def register_urls(
         message="Daraja C2B URLs registered",
     )
     return {"ok": True, "daraja": result}
+
+
+@router.delete("/{integration_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_integration(
+    integration_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    """Retire a paybill/till setup (soft-delete). Callbacks for old checkouts may still settle."""
+    integ = await integration_crud.get(session, integration_id)
+    if not integ or getattr(integ, "deleted_at", None) is not None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not can_access_tenant(user, integ.tenant_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    await integration_crud.soft_delete(session, id=integration_id)
+    await session.commit()
+    await record_event(
+        session,
+        tenant_id=integ.tenant_id,
+        integration_id=integ.id,
+        category="integration",
+        action="integration.retired",
+        message=f"Retired shortcode {integ.shortcode} ({integ.public_id})",
+    )
