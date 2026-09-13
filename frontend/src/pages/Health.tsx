@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Health as HealthT } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
+import { useLiveStatus } from '../hooks/useWebSocket'
 
 type EdgeConnection = {
   status: string
@@ -26,8 +27,9 @@ export function Health() {
   const [data, setData] = useState<HealthT | null>(null)
   const [edge, setEdge] = useState<EdgeConnection | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { connected, lastMessage } = useLiveStatus()
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setData(await api.get<HealthT>('/health'))
       try {
@@ -38,18 +40,30 @@ export function Health() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not load status')
     }
-  }
+  }, [])
 
   useEffect(() => {
     load()
-  }, [])
+  }, [load])
+
+  // Live updates from NetPay hub only (edge never polled from the browser)
+  useEffect(() => {
+    if (!lastMessage || lastMessage.type !== 'edge.connection') return
+    const p = lastMessage.payload as EdgeConnection | undefined
+    if (p && typeof p.status === 'string') {
+      setEdge(p)
+    }
+  }, [lastMessage])
 
   return (
     <div data-testid="health-page">
       <div className="page-header">
         <div>
           <h1>System status</h1>
-          <p>Service health and the link from M-Pesa edge into NetPay.</p>
+          <p>
+            Service health and the link from M-Pesa edge into NetPay.
+            {connected ? ' Live updates on.' : ' Live channel reconnecting…'}
+          </p>
         </div>
         <button type="button" className="btn" onClick={load}>
           Refresh
@@ -64,7 +78,9 @@ export function Health() {
           <div className="grid-3">
             <div>
               <div className="muted tiny">Status</div>
-              <StatusBadge value={edge.status === 'connected' ? 'ok' : edge.status === 'errors' ? 'failed' : edge.status} />
+              <StatusBadge
+                value={edge.status === 'connected' ? 'ok' : edge.status === 'errors' ? 'failed' : edge.status}
+              />
             </div>
             <div>
               <div className="muted tiny">Last message</div>
@@ -80,8 +96,8 @@ export function Health() {
             </div>
           </div>
           <p className="muted tiny" style={{ marginBottom: 0 }}>
-            Heartbeats come from the edge worker on a schedule. Real payment callbacks also count as “last message”.
-            See <Link to="/docs">Help</Link> for setup.
+            Updates stream from NetPay when the edge delivers events (including heartbeats). This page does not call
+            the edge worker. See <Link to="/docs">Help</Link>.
           </p>
         </div>
       )}

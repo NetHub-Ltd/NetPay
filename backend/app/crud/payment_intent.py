@@ -92,5 +92,27 @@ class PaymentIntentCRUD(BaseCRUD[PaymentIntent, PaymentIntentCreateIn, PaymentIn
         )
         return rows[0] if rows else None
 
+    async def find_open_by_account_reference(
+        self,
+        db: AsyncSession,
+        *,
+        integration_id: UUID,
+        account_reference: str,
+    ) -> Optional[PaymentIntent]:
+        """Most recent non-terminal intent for this integration + account reference."""
+        from sqlmodel import select
+        terminal = ("succeeded", "failed", "expired")
+        stmt = (
+            select(PaymentIntent)
+            .where(PaymentIntent.integration_id == integration_id)
+            .where(PaymentIntent.account_reference == account_reference)
+            .where(col(PaymentIntent.deleted_at).is_(None))
+            .where(~col(PaymentIntent.status).in_(terminal))
+            .order_by(col(PaymentIntent.created_at).desc())
+            .limit(1)
+        )
+        result = await db.exec(stmt)
+        return result.first()
+
 
 payment_intent_crud = PaymentIntentCRUD(PaymentIntent)

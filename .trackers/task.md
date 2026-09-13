@@ -1,8 +1,9 @@
-# Task: UX-B Edge connection visibility
+# Task: C2B gate + live System status
 
-**Branch:** feat/ux-b-edge-connection → **dev**
+**Branch:** feat/c2b-live-system-status → **dev**
 
 ## Done
-- GET /v1/system/edge-connection
-- edge.heartbeat accepted in process_envelope
-- System status UI card
+- WS /ws/events + live_hub; publish edge.connection after ingest
+- System status updates without edge polling
+- C2B validation audit + confirmation mapping + unmatched exceptions
+- Tests (23 passed)

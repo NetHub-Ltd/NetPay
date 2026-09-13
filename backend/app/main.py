@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from app.api.routes import auth, events, health, integrations, internal, payments, reconciliation, system, tenants, webhooks
+from app.api.routes import auth, events, health, integrations, internal, payments, reconciliation, system, tenants, webhooks, ws
 from app.core.config import settings
 from app.core.db import engine
 from app.core.logging import logger, setup_logging
@@ -48,6 +48,7 @@ app.include_router(payments.router)
 app.include_router(reconciliation.router)
 app.include_router(events.router)
 app.include_router(internal.router)
+app.include_router(ws.router)
 
 if STATIC_DIR.is_dir():
     assets = STATIC_DIR / "assets"
@@ -64,7 +65,7 @@ if STATIC_DIR.is_dir():
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str, request: Request):
         # Do not swallow API/docs paths
-        blocked = ("api", "v1", "auth", "oauth", "health", "internal", "docs", "redoc", "openapi.json", "assets")
+        blocked = ("api", "v1", "auth", "oauth", "health", "internal", "ws", "docs", "redoc", "openapi.json", "assets")
         first = full_path.split("/", 1)[0]
         if first in blocked:
             return {"detail": "Not Found"}
