@@ -1,10 +1,20 @@
-# Task: UX setup journey (paybill, Daraja, app notifications)
+# Task: Professional home + Lucide icons + observability
 
-**Branch:** feat/ux-setup-journey → **dev**
+**Branch:** feat/lucide-professional-home → **dev**  
+**Related:** follow-up to merged #46 (home/logging/outbound audit)
 
-## Done
-- Non-admin tenant_id bind; admin business required
-- Setup checklist on list + detail + Help
-- Shortcode detail: M-Pesa→NetPay URLs + copy + Register
-- GET /v1/integrations/{id}; EDGE_PUBLIC_BASE_URL; public-config
-- Webhooks secret copy ack; links between steps
+## Goals
+- [x] Replace emoji nav/header with **lucide-react** icons
+- [x] Professional Home: quiet copy, stats, recent payments, single suggested next step (not shouty checklist)
+- [x] Top bar actions with icons
+- [x] package.json dependency `lucide-react`
+
+## Prior (#46) still in scope context
+- [x] DEBUG logging, no noise filter
+- [x] outbound_requests audit for Daraja
+- [x] register-urls error detail
+- [x] Home as landing; System status at `/status`
+
+## Verify
+- [ ] `npm run build` (tsc + vite) with lucide-react
+- [ ] Visual: sidebar + header + home on light/dark
