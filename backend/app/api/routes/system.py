@@ -31,4 +31,5 @@ async def public_config(
     _ = user
     return {
         "edge_public_base_url": settings.edge_public_base_url.rstrip("/"),
+        "edge_callback_path_prefix": settings.edge_callback_path_prefix.rstrip("/") or "/cb",
     }

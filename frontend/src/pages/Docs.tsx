@@ -17,9 +17,8 @@ export function Docs() {
             <Link to="/integrations">Paybills &amp; tills</Link> — add your shortcode and Daraja credentials.
           </li>
           <li>
-            Open the shortcode → <strong>M-Pesa → NetPay</strong> — copy URLs and{' '}
-            <strong>Register URLs with Safaricom</strong> (needed for paybill/till notices; STK uses the STK URL when
-            you take a payment).
+            Open the shortcode → <strong>Connect this shortcode</strong> (confirm when asked). Links stay on the page if
+            you ever need to copy them. Phone-prompt payments also use these links automatically.
           </li>
           <li>
             <Link to="/webhooks">Payment notifications</Link> — HTTPS URL so <em>your</em> app is told when a payment
@@ -27,8 +26,8 @@ export function Docs() {
           </li>
         </ol>
         <p className="muted tiny">
-          M-Pesa → NetPay (edge URLs) and NetPay → your app (notifications) are different steps. Both matter for a full
-          setup.
+          Connecting the shortcode (so NetPay receives results) is different from Payment notifications (so your own app
+          is told). Both matter for a full setup. Re-open any shortcode anytime from Paybills &amp; tills.
         </p>
       </div>
 

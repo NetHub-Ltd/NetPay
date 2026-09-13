@@ -39,6 +39,12 @@ class Settings(BaseSettings):
         default="https://gateway.nethub.co.ke",
         alias="EDGE_PUBLIC_BASE_URL",
     )
+    # Path under edge host for provider callbacks. Must NOT contain the substring "mpesa"
+    # (Safaricom rejects callback URLs that include that word).
+    edge_callback_path_prefix: str = Field(
+        default="/cb",
+        alias="EDGE_CALLBACK_PATH_PREFIX",
+    )
 
     # NetHub AS (Authorization Server) — placeholders only.
     # User auth/registration is owned by NetHub AS, not NetPay.

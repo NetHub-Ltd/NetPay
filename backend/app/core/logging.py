@@ -1,10 +1,6 @@
-"""
-Nethub Logging System
-Version: v1.3.1
-Changes:
-- Level pill only applies to the level badge (not the message)
-- Softer green matching FastAPI style
-- DEBUG still restricted to app.* only
+"""Application logging — loguru + stdlib intercept.
+
+Must never swallow ERROR/CRITICAL. Request handling must not depend on log sinks.
 """
 from __future__ import annotations
 
@@ -14,53 +10,25 @@ import sys
 
 from loguru import logger as loguru_logger
 
-# ----------------------------
-# CONFIG
-# ----------------------------
-VERSION = "v1.3.1"
+VERSION = os.getenv("APP_VERSION", "dev")
+ENV = os.getenv("ENVIRONMENT", os.getenv("ENV", "development"))
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
-_raw_env = (os.getenv("ENV") or os.getenv("ENVIRONMENT") or "development").lower()
-ENV = "dev" if _raw_env in ("dev", "development") else _raw_env
-LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG" if ENV == "dev" else "INFO").upper()
-
-# ----------------------------
-# LEVEL STYLING (true pill - badge only)
-# ----------------------------
-LEVEL_STYLES = {
-    "DEBUG": "<white><bg #546E7A>",  # Blue-grey
-    "INFO": "<white><bg #2E7D32>",  # Softer FastAPI-like green
-    "WARNING": "<white><bg #F9A825>",  # Amber
-    "ERROR": "<white><bg #C62828>",  # Red
-    "CRITICAL": "<white><bg #6A1B9A>",  # Purple
-}
-for level_name, style in LEVEL_STYLES.items():
-    loguru_logger.level(level_name, color=style)
-
-# ----------------------------
-# NOISE CONTROL
-# ----------------------------
-NOISY_LOGGERS = {
-    "watchfiles",
+# Libraries that spam at INFO; we still keep their WARNING+
+NOISY_INFO_PREFIXES = (
     "uvicorn.access",
-    "uvicorn.reload",
-    "uvicorn.error",
+    "uvicorn.error",  # only quiet at INFO; errors pass (level check below)
+    "uvicorn",
+    "fastapi",
     "asyncio",
-    "passlib",
-    "passlib.utils",
-    "passlib.registry",
-    "passlib.handlers",
-    "sqlalchemy",
-    "sqlalchemy.engine",
-    "sqlalchemy.pool",
-    "sqlalchemy.orm",
-    "alembic",
     "httpcore",
     "httpx",
     "multipart",
     "python_multipart",
     "concurrent",
     "filelock",
-}
+    "alembic",
+)
 
 ALLOWED_DEBUG_PREFIXES = (
     "app.",
@@ -69,46 +37,54 @@ ALLOWED_DEBUG_PREFIXES = (
 
 
 def noise_filter(record: dict) -> bool:
-    name = record["name"]
+    """Filter log records without blocking errors or app logs."""
+    name = str(record.get("name") or "")
     level = record["level"].name
 
-    # DEBUG → only from our application code
+    # Never drop failures
+    if level in ("WARNING", "ERROR", "CRITICAL"):
+        return True
+
+    # DEBUG only from our code
     if level == "DEBUG":
         return any(name.startswith(prefix) for prefix in ALLOWED_DEBUG_PREFIXES)
 
-    # INFO+ → suppress noisy libraries
-    if any(name.startswith(noisy) for noisy in NOISY_LOGGERS):
-        return False
+    # INFO: suppress noisy libraries, keep app + everything else
+    if level == "INFO":
+        for noisy in NOISY_INFO_PREFIXES:
+            if name == noisy or name.startswith(noisy + "."):
+                return False
+        return True
+
     return True
 
 
-# ----------------------------
-# INTERCEPT STANDARD LOGGING
-# ----------------------------
 class InterceptHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         try:
             level = loguru_logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
-        loguru_logger.opt(depth=6, exception=record.exc_info).log(level, record.getMessage())
+        # Non-blocking: enqueue sinks; never raise into request path
+        try:
+            loguru_logger.opt(depth=6, exception=record.exc_info).log(level, record.getMessage())
+        except Exception:
+            pass
 
 
 def setup_intercept() -> None:
     logging.root.handlers = [InterceptHandler()]
-    logging.root.setLevel(logging.DEBUG)
-    for name in logging.root.manager.loggerDict:
+    logging.root.setLevel(logging.INFO)
+    for name in list(logging.root.manager.loggerDict):
         logger_obj = logging.getLogger(name)
         logger_obj.handlers = []
         logger_obj.propagate = True
 
 
-# ----------------------------
-# LOGGER SETUP
-# ----------------------------
 def setup_logger():
     loguru_logger.remove()
 
+    # Console — synchronous-safe enqueue so logging never blocks the event loop long-term
     loguru_logger.add(
         sys.stdout,
         level=LOG_LEVEL,
@@ -116,7 +92,7 @@ def setup_logger():
         filter=noise_filter,
         enqueue=True,
         format=(
-            "<level> {level: <8} </level> "
+            "<level>{level: <8}</level> "
             "<green>{time:HH:mm:ss}</green> "
             "<cyan>{name}</cyan>:<cyan>{line}</cyan> "
             "{message}"
@@ -124,29 +100,31 @@ def setup_logger():
     )
 
     log_dir = os.getenv("LOG_DIR", "logs")
-    os.makedirs(log_dir, exist_ok=True)
-    loguru_logger.add(
-        f"{log_dir}/app_{{time:YYYY-MM-DD}}.log",
-        level="INFO",
-        rotation="10 MB",
-        retention="14 days",
-        compression="zip",
-        serialize=True,
-        enqueue=True,
-        backtrace=True,
-        diagnose=ENV == "dev",
-        filter=noise_filter,
-    )
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        loguru_logger.add(
+            f"{log_dir}/app_{{time:YYYY-MM-DD}}.log",
+            level="INFO",
+            rotation="10 MB",
+            retention="14 days",
+            compression="zip",
+            serialize=True,
+            enqueue=True,
+            backtrace=True,
+            diagnose=ENV in ("dev", "development", "test"),
+            filter=noise_filter,
+        )
+    except OSError:
+        # Disk issues must not prevent the app from starting or handling requests
+        loguru_logger.add(sys.stderr, level="ERROR", format="{message}")
 
     setup_intercept()
     return loguru_logger
 
 
 def setup_logging() -> None:
-    """Idempotent entry used by FastAPI lifespan."""
     setup_logger()
     loguru_logger.info("Logging ready · {} · env={} · level={}", VERSION, ENV, LOG_LEVEL)
 
 
-# Module-level logger (configured on import for scripts; lifespan re-applies setup)
 logger = setup_logger()
