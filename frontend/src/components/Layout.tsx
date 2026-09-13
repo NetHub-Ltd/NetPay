@@ -1,10 +1,27 @@
 import { NavLink, Outlet, Link } from 'react-router-dom'
+import {
+  Activity,
+  AlertTriangle,
+  Bell,
+  Building2,
+  CircleHelp,
+  CreditCard,
+  Home,
+  KeyRound,
+  Landmark,
+  Moon,
+  Plus,
+  Radio,
+  Sun,
+} from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { useLiveStatus } from '../hooks/useWebSocket'
 import { useTheme } from '../theme/ThemeContext'
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `nav-link${isActive ? ' active' : ''}`
+
+const ico = { size: 16, strokeWidth: 1.75, className: 'nav-ico' as const }
 
 export function Layout() {
   const { user, logout, isAdmin } = useAuth()
@@ -16,7 +33,7 @@ export function Layout() {
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark" aria-hidden>
-            ⬡
+            <Landmark size={22} strokeWidth={1.75} />
           </span>
           <div>
             <strong>NetPay</strong>
@@ -26,78 +43,49 @@ export function Layout() {
 
         <nav>
           <NavLink to="/" end className={linkClass}>
-            <span className="nav-ico" aria-hidden>
-              🏠
-            </span>{' '}
-            Home
+            <Home {...ico} /> Home
           </NavLink>
           <NavLink to="/intents" className={linkClass}>
-            <span className="nav-ico" aria-hidden>
-              💳
-            </span>{' '}
-            Payments
+            <CreditCard {...ico} /> Payments
           </NavLink>
           <NavLink to="/integrations" className={linkClass}>
-            <span className="nav-ico" aria-hidden>
-              🏦
-            </span>{' '}
-            Paybills &amp; tills
+            <Landmark {...ico} /> Paybills &amp; tills
           </NavLink>
           <NavLink to="/webhooks" className={linkClass}>
-            <span className="nav-ico" aria-hidden>
-              🔔
-            </span>{' '}
-            Payment notifications
+            <Bell {...ico} /> Payment notifications
           </NavLink>
           <NavLink to="/reconciliation" className={linkClass}>
-            <span className="nav-ico" aria-hidden>
-              ⚠️
-            </span>{' '}
-            Needs attention
+            <AlertTriangle {...ico} /> Needs attention
           </NavLink>
           <NavLink to="/events" className={linkClass}>
-            <span className="nav-ico" aria-hidden>
-              📜
-            </span>{' '}
-            Activity
+            <Activity {...ico} /> Activity
           </NavLink>
           <NavLink to="/docs" className={linkClass}>
-            <span className="nav-ico" aria-hidden>
-              ❓
-            </span>{' '}
-            Help
+            <CircleHelp {...ico} /> Help
           </NavLink>
           {isAdmin && (
             <NavLink to="/tenants" className={linkClass}>
-              <span className="nav-ico" aria-hidden>
-                🏢
-              </span>{' '}
-              Businesses
+              <Building2 {...ico} /> Businesses
             </NavLink>
           )}
           {isAdmin && (
             <NavLink to="/oauth-clients" className={linkClass}>
-              <span className="nav-ico" aria-hidden>
-                🔑
-              </span>{' '}
-              Apps &amp; API access
+              <KeyRound {...ico} /> Apps &amp; API access
             </NavLink>
           )}
           <NavLink to="/status" className={linkClass}>
-            <span className="nav-ico" aria-hidden>
-              📡
-            </span>{' '}
-            System status
+            <Radio {...ico} /> System status
           </NavLink>
         </nav>
 
         <div className="sidebar-footer">
           <button type="button" className="btn ghost full" onClick={toggle}>
-            {theme === 'light' ? '🌙' : '☀️'} Appearance: {theme === 'light' ? 'Light' : 'Dark'}
+            {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}{' '}
+            {theme === 'light' ? 'Dark mode' : 'Light mode'}
           </button>
           <div className="live-row">
             <span className={`live-dot ${connected ? 'on' : 'off'}`} />
-            <span className="tiny">{connected ? 'Live updates on' : 'Live updates off'}</span>
+            <span className="tiny">{connected ? 'Live' : 'Offline'}</span>
           </div>
           <div className="user-chip">
             <div className="tiny muted">{user?.email}</div>
@@ -112,20 +100,22 @@ export function Layout() {
       <div className="main-column">
         <header className="topbar">
           <div className="topbar-left">
-            <span className="muted tiny">NetPay</span>
+            <span className="topbar-title">Dashboard</span>
           </div>
           <div className="topbar-actions">
-            <Link className="btn" to="/integrations">
-              🏦 Shortcodes
+            <Link className="btn" to="/integrations" title="Paybills & tills">
+              <Landmark size={16} strokeWidth={1.75} />
+              <span className="btn-label">Shortcodes</span>
             </Link>
             <Link className="btn primary" to="/intents">
-              ＋ Payment
+              <Plus size={16} strokeWidth={2} />
+              <span className="btn-label">New payment</span>
             </Link>
-            <Link className="btn" to="/webhooks" title="Payment notifications">
-              🔔
+            <Link className="btn icon-only" to="/webhooks" title="Payment notifications">
+              <Bell size={16} strokeWidth={1.75} />
             </Link>
-            <Link className="btn" to="/status" title="System status">
-              📡
+            <Link className="btn icon-only" to="/status" title="System status">
+              <Radio size={16} strokeWidth={1.75} />
             </Link>
           </div>
         </header>
