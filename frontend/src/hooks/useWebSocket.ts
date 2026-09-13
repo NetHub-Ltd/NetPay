@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { getToken } from '../api/client'
 
 export type LiveMessage = {
@@ -6,9 +6,37 @@ export type LiveMessage = {
   payload?: Record<string, unknown>
 }
 
+export type AppNotification = {
+  id: string
+  title: string
+  body: string
+  level?: string
+  href?: string | null
+  ts?: string
+  read?: boolean
+}
+
+const notifListeners = new Set<(n: AppNotification) => void>()
+
+export function subscribeNotifications(fn: (n: AppNotification) => void) {
+  notifListeners.add(fn)
+  return () => {
+    notifListeners.delete(fn)
+  }
+}
+
+function emitNotification(n: AppNotification) {
+  for (const fn of notifListeners) {
+    try {
+      fn(n)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /**
  * Live updates from NetPay only (WebSocket /ws/events).
- * Does not contact the M-Pesa edge worker.
  */
 export function useLiveStatus() {
   const [connected, setConnected] = useState(false)
@@ -45,9 +73,7 @@ export function useLiveStatus() {
           retryRef.current = window.setTimeout(connect, 4000)
         }
       }
-      ws.onerror = () => {
-        /* onclose will fire */
-      }
+      ws.onerror = () => {}
       ws.onmessage = (ev) => {
         if (cancelled) return
         try {
@@ -55,6 +81,18 @@ export function useLiveStatus() {
           setLastMessage(data)
           setLastEvent(new Date().toISOString())
           if (data.type !== 'ping') setConnected(true)
+          if (data.type === 'notification' && data.payload) {
+            const p = data.payload
+            emitNotification({
+              id: String(p.id || `${Date.now()}`),
+              title: String(p.title || 'Update'),
+              body: String(p.body || ''),
+              level: p.level ? String(p.level) : 'info',
+              href: p.href ? String(p.href) : null,
+              ts: p.ts ? String(p.ts) : new Date().toISOString(),
+              read: false,
+            })
+          }
         } catch {
           setLastEvent(String(ev.data).slice(0, 120))
         }
@@ -70,4 +108,30 @@ export function useLiveStatus() {
   }, [])
 
   return { connected, lastEvent, lastMessage }
+}
+
+/** Inbox of in-app notifications from the live WebSocket. */
+export function useNotificationInbox() {
+  const [items, setItems] = useState<AppNotification[]>([])
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    return subscribeNotifications((n) => {
+      setItems((prev) => {
+        if (prev.some((x) => x.id === n.id && x.ts === n.ts)) return prev
+        return [n, ...prev].slice(0, 40)
+      })
+    })
+  }, [])
+
+  const unread = items.filter((i) => !i.read).length
+  const markAllRead = useCallback(() => {
+    setItems((prev) => prev.map((i) => ({ ...i, read: true })))
+  }, [])
+  const markRead = useCallback((id: string) => {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, read: true } : i)))
+  }, [])
+  const clear = useCallback(() => setItems([]), [])
+
+  return { items, open, setOpen, unread, markAllRead, markRead, clear }
 }

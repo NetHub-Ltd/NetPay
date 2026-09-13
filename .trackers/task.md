@@ -1,10 +1,9 @@
-# Task: S3 ops visibility
+# Task: Fixed sidebar + WS notifications
 
-**Branch:** feat/s3-ops-visibility → **dev**
+**Branch:** feat/fixed-sidebar-ws-notifications → **dev**
 
 ## Done
-- [x] System status: Provider calls table (outbound-requests + labels + payment link)
-- [x] payment_intent_id on outbound API response
-- [x] GET /v1/payment-intents/{id}/timeline
-- [x] Payment detail Timeline UI + link to Help/status
-- [x] Help: stuck phone prompt checklist + M2M notes (S2.5)
+- [x] Shell 100vh; sidebar fixed; nav scrolls; main content scrolls independently
+- [x] live_hub tenant-scoped subscribers
+- [x] publish_notification on payment resolve (Paid/Failed/Expired)
+- [x] Header NotificationBell inbox over existing /ws/events
