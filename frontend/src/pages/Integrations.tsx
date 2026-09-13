@@ -27,7 +27,6 @@ export function Integrations() {
     passkey: '',
   })
 
-  const effectiveTenant = isAdmin ? form.tenant_id : user?.tenant_id || ''
 
   async function load() {
     try {
