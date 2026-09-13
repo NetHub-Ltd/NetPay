@@ -108,17 +108,35 @@ async def register_urls(
     if not can_access_tenant(user, integ.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     creds = await load_creds(session, integ.id)
-    token = await get_access_token(
-        creds["consumer_key"], creds["consumer_secret"], integ.environment
-    )  # type: ignore
-    result = await register_c2b_urls(
-        shortcode=integ.shortcode,
-        confirmation_url=body.confirmation_url,
-        validation_url=body.validation_url,
-        response_type=body.response_type,
-        env=integ.environment,
-        token=token,  # type: ignore
-    )
+    if not creds.get("consumer_key") or not creds.get("consumer_secret"):
+        raise HTTPException(
+            status_code=400,
+            detail="Missing Daraja consumer key/secret for this shortcode. Edit credentials and try again.",
+        )
+    try:
+        token = await get_access_token(
+            creds["consumer_key"],
+            creds["consumer_secret"],
+            integ.environment,  # type: ignore[arg-type]
+            session=session,
+            tenant_id=integ.tenant_id,
+            integration_id=integ.id,
+        )
+        result = await register_c2b_urls(
+            shortcode=integ.shortcode,
+            confirmation_url=body.confirmation_url,
+            validation_url=body.validation_url,
+            response_type=body.response_type,
+            env=integ.environment,  # type: ignore[arg-type]
+            token=token,
+            session=session,
+            tenant_id=integ.tenant_id,
+            integration_id=integ.id,
+        )
+    except RuntimeError as exc:
+        from app.core.logging import logger
+        logger.exception("register-urls failed integration={} err={}", integration_id, exc)
+        raise HTTPException(status_code=502, detail=str(exc)[:800]) from exc
     await integration_crud.update(
         session,
         db_obj=integ,

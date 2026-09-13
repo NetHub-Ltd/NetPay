@@ -3,6 +3,7 @@ import { useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Health } from './pages/Health'
+import { Home } from './pages/Home'
 import { Tenants } from './pages/Tenants'
 import { TenantDetail } from './pages/TenantDetail'
 import { Integrations } from './pages/Integrations'
@@ -36,7 +37,8 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<Health />} />
+        <Route index element={<Home />} />
+        <Route path="status" element={<Health />} />
         <Route path="tenants" element={<Tenants />} />
         <Route path="tenants/:id" element={<TenantDetail />} />
         <Route path="integrations" element={<Integrations />} />

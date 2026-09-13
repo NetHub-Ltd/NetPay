@@ -13,7 +13,7 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  if (user) return <Navigate to="/intents" replace />
+  if (user) return <Navigate to="/" replace />
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -21,7 +21,7 @@ export function Login() {
     setError(null)
     try {
       await login(email, password)
-      navigate('/intents', { replace: true })
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : 'Could not sign in')
     } finally {

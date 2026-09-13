@@ -138,7 +138,8 @@ async def create_intent(
 
     creds = await load_creds(session, integ.id)
     token = await get_access_token(
-        creds["consumer_key"], creds["consumer_secret"], integ.environment
+        creds["consumer_key"], creds["consumer_secret"], integ.environment,
+        session=session, tenant_id=integ.tenant_id, integration_id=integ.id,
     )  # type: ignore
     callback_url = integ.stk_callback_url or integration_callback_urls(integ.public_id)["stk"]
     try:
@@ -152,6 +153,9 @@ async def create_intent(
             callback_url=callback_url,
             env=integ.environment,
             token=token,  # type: ignore
+            session=session,
+            tenant_id=integ.tenant_id,
+            integration_id=integ.id,
         )
         checkout_id = stk.get("checkout_request_id")
         try:
