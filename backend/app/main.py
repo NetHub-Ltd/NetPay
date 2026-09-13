@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from app.api.routes import auth, events, health, integrations, internal, payments, reconciliation, tenants, webhooks
+from app.api.routes import auth, events, health, integrations, internal, payments, reconciliation, system, tenants, webhooks
 from app.core.config import settings
 from app.core.db import engine
 from app.core.logging import logger, setup_logging
@@ -39,6 +39,7 @@ app = FastAPI(
 )
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(health.router)
+app.include_router(system.router)
 app.include_router(auth.router)
 app.include_router(tenants.router)
 app.include_router(integrations.router)
