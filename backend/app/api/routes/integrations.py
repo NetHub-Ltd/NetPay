@@ -36,6 +36,20 @@ async def list_integrations(
     )
 
 
+@router.get("/{integration_id}", response_model=IntegrationOut)
+async def get_integration(
+    integration_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> Integration:
+    integ = await integration_crud.get(session, integration_id)
+    if not integ or getattr(integ, "deleted_at", None) is not None:
+        raise HTTPException(status_code=404, detail="Shortcode not found")
+    if not can_access_tenant(user, integ.tenant_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return integ
+
+
 @router.post("", response_model=IntegrationOut, status_code=status.HTTP_201_CREATED)
 async def create_integration(
     body: IntegrationCreate,

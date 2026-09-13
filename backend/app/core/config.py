@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     stk_timeout_seconds: float = Field(default=120.0, alias="STK_TIMEOUT_SECONDS")
     inbound_event_max_attempts: int = Field(default=5, alias="INBOUND_EVENT_MAX_ATTEMPTS")
     max_webhooks_per_tenant: int = 3
+    # Public M-Pesa edge base (no trailing slash). Used for Daraja callback URLs shown in UI.
+    edge_public_base_url: str = Field(
+        default="https://gateway.nethub.co.ke",
+        alias="EDGE_PUBLIC_BASE_URL",
+    )
 
     # NetHub AS (Authorization Server) — placeholders only.
     # User auth/registration is owned by NetHub AS, not NetPay.

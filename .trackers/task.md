@@ -1,9 +1,10 @@
-# Task: C2B gate + live System status
+# Task: UX setup journey (paybill, Daraja, app notifications)
 
-**Branch:** feat/c2b-live-system-status → **dev**
+**Branch:** feat/ux-setup-journey → **dev**
 
 ## Done
-- WS /ws/events + live_hub; publish edge.connection after ingest
-- System status updates without edge polling
-- C2B validation audit + confirmation mapping + unmatched exceptions
-- Tests (23 passed)
+- Non-admin tenant_id bind; admin business required
+- Setup checklist on list + detail + Help
+- Shortcode detail: M-Pesa→NetPay URLs + copy + Register
+- GET /v1/integrations/{id}; EDGE_PUBLIC_BASE_URL; public-config
+- Webhooks secret copy ack; links between steps
