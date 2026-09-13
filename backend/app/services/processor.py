@@ -17,6 +17,43 @@ from app.services.transitions import transition_payment_intent
 from app.services.webhooks import fanout_webhooks
 
 
+
+def _extract_c2b(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+    # Daraja may nest or send flat confirmation body
+    body = payload.get("Body") if isinstance(payload.get("Body"), dict) else payload
+    if isinstance(body, dict) and isinstance(body.get("stkCallback"), dict):
+        return {}
+    return body if isinstance(body, dict) else {}
+
+
+def _c2b_bill_ref(data: dict[str, Any]) -> str | None:
+    for key in ("BillRefNumber", "billRefNumber", "InvoiceNumber", "AccountReference", "account_reference"):
+        val = data.get(key)
+        if val is not None and str(val).strip():
+            return str(val).strip()
+    return None
+
+
+def _c2b_trans_id(data: dict[str, Any]) -> str | None:
+    for key in ("TransID", "transID", "TransactionID", "MpesaReceiptNumber"):
+        val = data.get(key)
+        if val is not None and str(val).strip():
+            return str(val).strip()
+    return None
+
+
+def _c2b_amount_minor(data: dict[str, Any]) -> int | None:
+    raw = data.get("TransAmount") or data.get("Amount") or data.get("amount")
+    if raw is None:
+        return None
+    try:
+        # KES: major units from Daraja → minor
+        return int(round(float(str(raw).replace(",", "")) * 100))
+    except (TypeError, ValueError):
+        return None
+
 def _extract_stk(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
@@ -162,7 +199,117 @@ async def process_envelope(session: AsyncSession, envelope: EnvelopeIn) -> Proce
             ResultDesc=result_desc,
         )
 
+    # --- C2B validation: audit only (Safaricom sync response is edge responsibility) ---
+    if et in {"c2b_validation", "validation"} or ("validation" in et and "c2b" in et):
+        await record_event(
+            session,
+            tenant_id=integ.tenant_id if integ else None,
+            integration_id=integ.id if integ else None,
+            category="callback",
+            action="c2b.validation",
+            message=f"C2B validation audit {envelope.event_id}",
+            is_replayable=False,
+        )
+        return ProcessResult(status="accepted", message="C2B validation recorded")
+
+    # --- C2B confirmation: map to open payment by account reference ---
+    if "confirmation" in et or et in {"c2b_confirmation", "c2b.confirmation"}:
+        if not integ:
+            return ProcessResult(status="not_found", message="Unknown integration for C2B confirmation")
+        data = _extract_c2b(envelope.payload)
+        bill_ref = _c2b_bill_ref(data)
+        trans_id = _c2b_trans_id(data)
+        if not bill_ref:
+            from app.crud.reconciliation import reconciliation_crud
+            await reconciliation_crud.create(
+                session,
+                obj_in={
+                    "tenant_id": integ.tenant_id,
+                    "payment_intent_id": None,
+                    "kind": "unmatched_provider",
+                    "status": "open",
+                    "provider_ref": trans_id,
+                    "message": "C2B confirmation without BillRefNumber/AccountReference",
+                },
+            )
+            await session.commit()
+            return ProcessResult(status="unmatched", message="C2B confirmation missing bill reference")
+
+        intent = await payment_intent_crud.find_open_by_account_reference(
+            session, integration_id=integ.id, account_reference=bill_ref
+        )
+        if not intent:
+            from app.crud.reconciliation import reconciliation_crud
+            await reconciliation_crud.create(
+                session,
+                obj_in={
+                    "tenant_id": integ.tenant_id,
+                    "payment_intent_id": None,
+                    "kind": "unmatched_provider",
+                    "status": "open",
+                    "provider_ref": trans_id or bill_ref,
+                    "message": f"C2B confirmation no open payment for reference {bill_ref}",
+                },
+            )
+            await session.commit()
+            return ProcessResult(status="unmatched", message=f"No open payment for {bill_ref}")
+
+        if is_terminal(intent.status):
+            return ProcessResult(
+                status="duplicate",
+                intent_id=intent.id,
+                message="Already settled",
+            )
+
+        # Optional amount check → exception if mismatch
+        amt = _c2b_amount_minor(data)
+        if amt is not None and intent.amount_minor and abs(amt - intent.amount_minor) > 0:
+            from app.crud.reconciliation import reconciliation_crud
+            await reconciliation_crud.create(
+                session,
+                obj_in={
+                    "tenant_id": intent.tenant_id,
+                    "payment_intent_id": intent.id,
+                    "kind": "amount_mismatch",
+                    "status": "open",
+                    "provider_ref": trans_id,
+                    "message": f"C2B amount {amt} minor vs intent {intent.amount_minor}",
+                },
+            )
+            await session.commit()
+            return ProcessResult(
+                status="amount_mismatch",
+                intent_id=intent.id,
+                message="Amount mismatch — exception opened",
+            )
+
+        # Move through provider_requested if still created
+        if intent.status == "created":
+            intent = await transition_payment_intent(
+                session, intent, to_status="provider_requested"
+            )
+        await apply_payment_result(
+            session, intent, status="succeeded", transaction_id=trans_id
+        )
+        await record_event(
+            session,
+            tenant_id=intent.tenant_id,
+            integration_id=intent.integration_id,
+            payment_intent_id=intent.id,
+            category="callback",
+            action="c2b.succeeded",
+            message=f"C2B paid ref={bill_ref} trans={trans_id}",
+            is_replayable=True,
+        )
+        return ProcessResult(
+            status="succeeded",
+            intent_id=intent.id,
+            ResultCode="0",
+            ResultDesc="C2B confirmation applied",
+        )
+
     logger.info("Envelope event_type={} public_id={} — recorded", envelope.event_type, public_id)
+
     await record_event(
         session,
         tenant_id=integ.tenant_id if integ else None,

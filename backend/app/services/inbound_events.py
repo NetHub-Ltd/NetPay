@@ -11,6 +11,8 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.models.inbound_event import InboundEvent
 from app.schemas.event import EnvelopeIn, ProcessResult
+from app.services.edge_status import get_edge_connection_status
+from app.services.live_hub import publish_edge_connection
 from app.services.processor import process_envelope
 
 
@@ -78,6 +80,11 @@ async def ingest_and_process(session: AsyncSession, envelope: EnvelopeIn) -> Pro
         row.last_error = None
         session.add(row)
         await session.commit()
+        try:
+            snap = await get_edge_connection_status(session)
+            await publish_edge_connection(snap)
+        except Exception:  # noqa: BLE001
+            pass
         return result
     except Exception as exc:  # noqa: BLE001
         logger.exception("Inbound event {} failed: {}", envelope.event_id, exc)

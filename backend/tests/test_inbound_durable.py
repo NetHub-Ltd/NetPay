@@ -173,3 +173,79 @@ async def test_edge_heartbeat_accepted(client: AsyncClient):
     data = st.json()
     assert data.get("last_inbound_at") is not None
     assert data.get("last_heartbeat_at") is not None
+
+
+@pytest.mark.asyncio
+async def test_c2b_confirmation_maps_by_account_reference(client: AsyncClient, p1_env):
+    headers = {
+        "Authorization": f"Bearer {p1_env['token']}",
+        "Idempotency-Key": f"c2b-{uuid4()}",
+    }
+    with patch(
+        "app.api.routes.payments.stk_push",
+        new_callable=AsyncMock,
+        return_value={"checkout_request_id": "ws_c2b_x", "merchant_request_id": "mr"},
+    ), patch(
+        "app.api.routes.payments.get_access_token",
+        new_callable=AsyncMock,
+        return_value="fixture-access-token",
+    ):
+        # Create intent that expects bill ref PAY123
+        created = await client.post(
+            "/v1/payment-intents",
+            headers=headers,
+            json={
+                "integration_public_id": p1_env["public_id"],
+                "phone": "254700111000",
+                "amount_minor": 100,
+                "account_reference": "PAY123",
+            },
+        )
+        assert created.status_code == 201, created.text
+        intent_id = created.json()["id"]
+
+    envelope = {
+        "event_id": f"c2b_conf_{uuid4()}",
+        "provider": "mpesa",
+        "event_type": "c2b_confirmation",
+        "integration": {"public_id": p1_env["public_id"]},
+        "payload": {
+            "TransactionType": "Pay Bill",
+            "TransID": "C2BTX1",
+            "TransAmount": "1.00",
+            "BusinessShortCode": "174379",
+            "BillRefNumber": "PAY123",
+            "MSISDN": "254700111000",
+        },
+    }
+    r = await client.post("/internal/events", json=envelope, headers=internal_headers())
+    assert r.status_code == 200, r.text
+    assert r.json().get("status") == "succeeded"
+
+    got = await client.get(
+        f"/v1/payment-intents/{intent_id}",
+        headers={"Authorization": f"Bearer {p1_env['token']}"},
+    )
+    assert got.json()["status"] == "succeeded"
+
+    # duplicate event_id
+    r2 = await client.post("/internal/events", json=envelope, headers=internal_headers())
+    assert r2.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_c2b_unmatched_opens_exception(client: AsyncClient, p1_env):
+    envelope = {
+        "event_id": f"c2b_unmatch_{uuid4()}",
+        "provider": "mpesa",
+        "event_type": "c2b_confirmation",
+        "integration": {"public_id": p1_env["public_id"]},
+        "payload": {
+            "TransID": "ORPHAN1",
+            "TransAmount": "5.00",
+            "BillRefNumber": "UNKNOWN-REF-XYZ",
+        },
+    }
+    r = await client.post("/internal/events", json=envelope, headers=internal_headers())
+    assert r.status_code == 200
+    assert r.json().get("status") == "unmatched"

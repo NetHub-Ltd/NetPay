@@ -1,52 +1,73 @@
 import { useEffect, useRef, useState } from 'react'
 import { getToken } from '../api/client'
 
-/** Lightweight live indicator. Backend may not expose /ws yet — we poll health as fallback signal. */
-export function useLiveStatus(pollMs = 15000) {
+export type LiveMessage = {
+  type: string
+  payload?: Record<string, unknown>
+}
+
+/**
+ * Live updates from NetPay only (WebSocket /ws/events).
+ * Does not contact the M-Pesa edge worker.
+ */
+export function useLiveStatus() {
   const [connected, setConnected] = useState(false)
   const [lastEvent, setLastEvent] = useState<string | null>(null)
-  const timer = useRef<number | null>(null)
+  const [lastMessage, setLastMessage] = useState<LiveMessage | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const retryRef = useRef<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
-    async function tick() {
+    function connect() {
+      const token = getToken()
+      if (!token) {
+        setConnected(false)
+        return
+      }
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws'
+      const url = `${proto}://${location.host}/ws/events?token=${encodeURIComponent(token)}`
+      let ws: WebSocket
       try {
-        const res = await fetch('/health')
-        if (!cancelled) {
-          setConnected(res.ok)
-          if (res.ok) setLastEvent(new Date().toISOString())
-        }
+        ws = new WebSocket(url)
       } catch {
-        if (!cancelled) setConnected(false)
+        setConnected(false)
+        return
       }
-    }
-
-    tick()
-    timer.current = window.setInterval(tick, pollMs)
-
-    // Optional WS if available
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-    const token = getToken()
-    let ws: WebSocket | null = null
-    try {
-      ws = new WebSocket(`${proto}://${location.host}/ws/events${token ? `?token=${encodeURIComponent(token)}` : ''}`)
-      ws.onopen = () => setConnected(true)
-      ws.onclose = () => setConnected(false)
+      wsRef.current = ws
+      ws.onopen = () => {
+        if (!cancelled) setConnected(true)
+      }
+      ws.onclose = () => {
+        if (!cancelled) {
+          setConnected(false)
+          retryRef.current = window.setTimeout(connect, 4000)
+        }
+      }
+      ws.onerror = () => {
+        /* onclose will fire */
+      }
       ws.onmessage = (ev) => {
-        setLastEvent(ev.data?.slice?.(0, 120) || new Date().toISOString())
-        setConnected(true)
+        if (cancelled) return
+        try {
+          const data = JSON.parse(ev.data) as LiveMessage
+          setLastMessage(data)
+          setLastEvent(new Date().toISOString())
+          if (data.type !== 'ping') setConnected(true)
+        } catch {
+          setLastEvent(String(ev.data).slice(0, 120))
+        }
       }
-    } catch {
-      /* WS optional */
     }
 
+    connect()
     return () => {
       cancelled = true
-      if (timer.current) clearInterval(timer.current)
-      ws?.close()
+      if (retryRef.current) window.clearTimeout(retryRef.current)
+      wsRef.current?.close()
     }
-  }, [pollMs])
+  }, [])
 
-  return { connected, lastEvent }
+  return { connected, lastEvent, lastMessage }
 }
