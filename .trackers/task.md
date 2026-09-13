@@ -1,10 +1,8 @@
-# Task: UX-A language, light theme, deletes, login marketing
+# Task: UX-B Edge connection visibility
 
-**Branch:** feat/ux-a-language-theme-deletes
+**Branch:** feat/ux-b-edge-connection → **dev**
 
 ## Done
-- Light theme default + Appearance toggle
-- Nav: Paybills & tills, Payment notifications, Businesses, etc.
-- Soft-delete integration API + Retire in UI
-- Webhook remove confirm (plain language)
-- Marketing login split layout
+- GET /v1/system/edge-connection
+- edge.heartbeat accepted in process_envelope
+- System status UI card

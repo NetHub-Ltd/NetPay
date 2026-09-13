@@ -147,3 +147,29 @@ async def test_expire_stale_provider_requested(client: AsyncClient, p1_env):
         headers={"Authorization": f"Bearer {p1_env['token']}"},
     )
     assert got2.json()["status"] == "expired"
+
+
+@pytest.mark.asyncio
+async def test_edge_heartbeat_accepted(client: AsyncClient):
+    envelope = {
+        "event_id": f"hb_test_{uuid4()}",
+        "provider": "mpesa",
+        "event_type": "edge.heartbeat",
+        "integration": {"public_id": "gw_heartbeat"},
+        "payload": {"source": "test"},
+    }
+    r = await client.post("/internal/events", json=envelope, headers=internal_headers())
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("status") in ("ok", "succeeded")
+    # Status endpoint requires auth — admin from bootstrap
+    from tests.helpers import login_admin
+    token = await login_admin(client)
+    st = await client.get(
+        "/v1/system/edge-connection",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert st.status_code == 200, st.text
+    data = st.json()
+    assert data.get("last_inbound_at") is not None
+    assert data.get("last_heartbeat_at") is not None

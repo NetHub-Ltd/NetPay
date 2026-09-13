@@ -79,6 +79,13 @@ async def apply_payment_result(
 
 
 async def process_envelope(session: AsyncSession, envelope: EnvelopeIn) -> ProcessResult:
+    et_early = (envelope.event_type or "").lower()
+    if "heartbeat" in et_early or et_early in {"edge.ping", "edge_ping"}:
+        return ProcessResult(
+            status="ok",
+            message="Edge heartbeat accepted",
+        )
+
     public_id = None
     if isinstance(envelope.integration, dict):
         public_id = envelope.integration.get("public_id") or envelope.integration.get("id")
