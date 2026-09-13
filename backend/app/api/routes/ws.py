@@ -32,9 +32,11 @@ async def ws_events(websocket: WebSocket, token: str | None = Query(default=None
         if not user:
             await websocket.close(code=4401)
             return
+        is_admin = user.role == "admin"
+        tenant_id = user.tenant_id
 
     await websocket.accept()
-    q = await subscribe()
+    q = await subscribe(user_id=uid, tenant_id=tenant_id, is_admin=is_admin)
 
     async def _drain_client() -> None:
         try:
@@ -54,7 +56,6 @@ async def ws_events(websocket: WebSocket, token: str | None = Query(default=None
             try:
                 msg = await asyncio.wait_for(q.get(), timeout=30.0)
             except asyncio.TimeoutError:
-                # keepalive ping so proxies don't idle-close
                 try:
                     await websocket.send_json({"type": "ping", "payload": {}})
                 except Exception:

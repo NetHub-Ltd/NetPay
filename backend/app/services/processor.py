@@ -14,6 +14,7 @@ from app.schemas.event import EnvelopeIn, ProcessResult
 from app.services.events import record_event
 from app.services.ledger import post_collection_credit
 from app.services.transitions import transition_payment_intent
+from app.services.live_hub import publish_notification
 from app.services.webhooks import fanout_webhooks
 
 
@@ -123,6 +124,23 @@ async def apply_payment_result(
         },
         intent=intent,
     )
+    # Live SPA notification (WebSocket)
+    label = {"succeeded": "Payment paid", "failed": "Payment failed", "expired": "Payment expired"}.get(
+        intent.status, f"Payment {intent.status}"
+    )
+    level = "success" if intent.status == "succeeded" else "error" if intent.status in ("failed", "expired") else "info"
+    amount_txt = f"{(intent.amount_minor or 0) / 100:.2f} {intent.currency or 'KES'}"
+    try:
+        await publish_notification(
+            title=label,
+            body=f"{amount_txt} · {intent.phone or ''}".strip(" ·"),
+            tenant_id=intent.tenant_id,
+            intent_id=intent.id,
+            level=level,
+            href=f"/intents/{intent.id}",
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return intent
 
 

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { useLiveStatus } from '../hooks/useWebSocket'
+import { NotificationBell } from './NotificationBell'
 import { useTheme } from '../theme/ThemeContext'
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -111,9 +112,7 @@ export function Layout() {
               <Plus size={16} strokeWidth={2} />
               <span className="btn-label">New payment</span>
             </Link>
-            <Link className="btn icon-only" to="/webhooks" title="Payment notifications">
-              <Bell size={16} strokeWidth={1.75} />
-            </Link>
+            <NotificationBell />
             <Link className="btn icon-only" to="/status" title="System status">
               <Radio size={16} strokeWidth={1.75} />
             </Link>
