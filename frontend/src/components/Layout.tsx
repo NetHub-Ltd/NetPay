@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLiveStatus } from '../hooks/useWebSocket'
+import { useTheme } from '../theme/ThemeContext'
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `nav-link${isActive ? ' active' : ''}`
@@ -8,6 +9,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 export function Layout() {
   const { user, logout, isAdmin } = useAuth()
   const { connected } = useLiveStatus()
+  const { theme, toggle } = useTheme()
 
   return (
     <div className="shell">
@@ -15,27 +17,30 @@ export function Layout() {
         <div className="brand">
           <span className="brand-mark">⬡</span>
           <div>
-            <strong>NetHub</strong>
-            <div className="muted tiny">Collect & track payments</div>
+            <strong>NetPay</strong>
+            <div className="muted tiny">Collect M-Pesa payments</div>
           </div>
         </div>
 
         <nav>
-          <NavLink to="/" end className={linkClass}>Health</NavLink>
-          {isAdmin && <NavLink to="/tenants" className={linkClass}>Tenants</NavLink>}
-          <NavLink to="/integrations" className={linkClass}>Integrations</NavLink>
-          <NavLink to="/webhooks" className={linkClass}>Webhooks</NavLink>
           <NavLink to="/intents" className={linkClass}>Payments</NavLink>
+          <NavLink to="/integrations" className={linkClass}>Paybills &amp; tills</NavLink>
+          <NavLink to="/webhooks" className={linkClass}>Payment notifications</NavLink>
           <NavLink to="/reconciliation" className={linkClass}>Needs attention</NavLink>
-          <NavLink to="/docs" className={linkClass}>Help</NavLink>
           <NavLink to="/events" className={linkClass}>Activity</NavLink>
-          {isAdmin && <NavLink to="/oauth-clients" className={linkClass}>OAuth Clients</NavLink>}
+          <NavLink to="/docs" className={linkClass}>Help</NavLink>
+          {isAdmin && <NavLink to="/tenants" className={linkClass}>Businesses</NavLink>}
+          {isAdmin && <NavLink to="/oauth-clients" className={linkClass}>Apps &amp; API access</NavLink>}
+          <NavLink to="/" end className={linkClass}>System status</NavLink>
         </nav>
 
         <div className="sidebar-footer">
+          <button type="button" className="btn ghost full" onClick={toggle}>
+            Appearance: {theme === 'light' ? 'Light' : 'Dark'}
+          </button>
           <div className="live-row">
             <span className={`live-dot ${connected ? 'on' : 'off'}`} />
-            <span className="tiny">{connected ? 'Live' : 'Offline'}</span>
+            <span className="tiny">{connected ? 'Live updates on' : 'Live updates off'}</span>
           </div>
           <div className="user-chip">
             <div className="tiny muted">{user?.email}</div>

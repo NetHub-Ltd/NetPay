@@ -48,7 +48,7 @@ export function Tenants() {
     <div data-testid="tenants-page">
       <div className="page-header">
         <div>
-          <h1>Tenants</h1>
+          <h1>Businesses</h1>
           <p>Client organizations (admin only)</p>
         </div>
       </div>

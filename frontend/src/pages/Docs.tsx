@@ -5,7 +5,7 @@ export function Docs() {
     <div data-testid="docs-page" className="docs-page">
       <div className="page-header">
         <div>
-          <h1>How to use NetPay</h1>
+          <h1>Help</h1>
           <p>Short guides for collecting payments and checking what happened.</p>
         </div>
         <Link className="btn primary" to="/intents">
@@ -80,7 +80,7 @@ export function Docs() {
             <Link to="/integrations">Integrations</Link> — shortcode, environment (sandbox/live), credentials.
           </li>
           <li>
-            <Link to="/webhooks">Webhooks</Link> — HTTPS URL so your app gets payment updates (optional but recommended).
+            <Link to="/webhooks">Payment notifications</Link> — HTTPS URL so your app gets payment updates (optional but recommended).
           </li>
           <li>
             Confirm callback URLs with your NetHub / Worker setup so M-Pesa results reach NetPay.
