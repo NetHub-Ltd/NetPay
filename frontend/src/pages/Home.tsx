@@ -94,7 +94,7 @@ export function Home() {
           <p className="home-eyebrow">Overview</p>
           <h1 className="home-title">{first ? `Hello, ${first}` : 'Hello'}</h1>
           <p className="home-sub muted">
-            A quiet view of recent collections and what needs your attention next.
+            Recent collections and a light nudge for what to do next.
           </p>
         </div>
         <Link className="btn primary" to="/intents">
@@ -117,7 +117,7 @@ export function Home() {
         </div>
         <div className="stat-card">
           <div className="stat-label">
-            <Bell size={14} strokeWidth={1.75} /> Notifications
+            <Bell size={14} strokeWidth={1.75} /> App notifications
           </div>
           <div className="stat-value">{loading ? '—' : hooks}</div>
           <Link to="/webhooks" className="stat-link">
@@ -135,24 +135,45 @@ export function Home() {
         </div>
       </div>
 
-      <div className="home-grid">
-        <section className="card home-panel">
-          <div className="panel-head">
-            <h2>Recent payments</h2>
-            <Link to="/intents" className="tiny">
-              View all
+      <section className="card home-panel home-next home-next-inline">
+        <div className="panel-head">
+          <h2>
+            <Sparkles size={16} strokeWidth={1.75} className="inline-ico" /> Suggested next step
+          </h2>
+        </div>
+        <div className="next-body">
+          <NextIcon size={20} strokeWidth={1.75} className="next-ico" />
+          <div>
+            <div className="next-title">{nextStep.title}</div>
+            <p className="muted tiny" style={{ margin: '0.35rem 0 0.85rem' }}>
+              {nextStep.body}
+            </p>
+            <Link className="btn" to={nextStep.to}>
+              {nextStep.label}
+              <ArrowRight size={14} />
             </Link>
           </div>
-          {loading ? (
-            <p className="muted tiny">Loading…</p>
-          ) : payments.length === 0 ? (
-            <div className="empty-soft">
-              <p className="muted">No payments yet.</p>
-              <Link className="btn" to="/intents">
-                Create one
-              </Link>
-            </div>
-          ) : (
+        </div>
+      </section>
+
+      <section className="card home-panel home-payments-full">
+        <div className="panel-head">
+          <h2>Recent payments</h2>
+          <Link to="/intents" className="tiny">
+            View all
+          </Link>
+        </div>
+        {loading ? (
+          <p className="muted tiny">Loading…</p>
+        ) : payments.length === 0 ? (
+          <div className="empty-soft">
+            <p className="muted">No payments yet.</p>
+            <Link className="btn primary" to="/intents">
+              Create one
+            </Link>
+          </div>
+        ) : (
+          <div className="table-wrap home-table-wrap">
             <table className="home-table">
               <thead>
                 <tr>
@@ -181,30 +202,9 @@ export function Home() {
                 ))}
               </tbody>
             </table>
-          )}
-        </section>
-
-        <section className="card home-panel home-next">
-          <div className="panel-head">
-            <h2>
-              <Sparkles size={16} strokeWidth={1.75} className="inline-ico" /> Suggested next step
-            </h2>
           </div>
-          <div className="next-body">
-<NextIcon size={20} strokeWidth={1.75} className="next-ico" />
-            <div>
-              <div className="next-title">{nextStep.title}</div>
-              <p className="muted tiny" style={{ margin: '0.35rem 0 0.85rem' }}>
-                {nextStep.body}
-              </p>
-              <Link className="btn" to={nextStep.to}>
-                {nextStep.label}
-                <ArrowRight size={14} />
-              </Link>
-            </div>
-          </div>
-        </section>
-      </div>
+        )}
+      </section>
     </div>
   )
 }
