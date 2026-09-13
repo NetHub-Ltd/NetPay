@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.core.config import settings
+from app.services.edge_urls import integration_callback_urls
 import json
 from decimal import Decimal
 from typing import Annotated, Optional
@@ -139,8 +140,7 @@ async def create_intent(
     token = await get_access_token(
         creds["consumer_key"], creds["consumer_secret"], integ.environment
     )  # type: ignore
-    edge = settings.edge_public_base_url.rstrip("/")
-    callback_url = integ.stk_callback_url or f"{edge}/mpesa/cb/{integ.public_id}/stk"
+    callback_url = integ.stk_callback_url or integration_callback_urls(integ.public_id)["stk"]
     try:
         stk = await stk_push(
             shortcode=integ.shortcode,

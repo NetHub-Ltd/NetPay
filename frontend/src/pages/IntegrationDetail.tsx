@@ -3,7 +3,10 @@ import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type Integration } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 
-type PublicConfig = { edge_public_base_url: string }
+type PublicConfig = {
+  edge_public_base_url: string
+  edge_callback_path_prefix?: string
+}
 
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false)
@@ -35,10 +38,11 @@ export function IntegrationDetail() {
   const { id } = useParams()
   const [item, setItem] = useState<Integration | null>(null)
   const [edgeBase, setEdgeBase] = useState('https://gateway.nethub.co.ke')
+  const [pathPrefix, setPathPrefix] = useState('/cb')
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [registeredOnce, setRegisteredOnce] = useState(false)
+  const [connectedOnce, setConnectedOnce] = useState(false)
 
   async function load() {
     if (!id) return
@@ -56,33 +60,54 @@ export function IntegrationDetail() {
     load()
     api
       .get<PublicConfig>('/v1/system/public-config')
-      .then((c) => setEdgeBase(c.edge_public_base_url || edgeBase))
+      .then((c) => {
+        if (c.edge_public_base_url) setEdgeBase(c.edge_public_base_url)
+        if (c.edge_callback_path_prefix) setPathPrefix(c.edge_callback_path_prefix)
+      })
       .catch(() => {})
   }, [id])
 
-  async function registerUrls() {
+  function buildUrls(publicId: string) {
+    const prefix = pathPrefix.startsWith('/') ? pathPrefix : `/${pathPrefix}`
+    const root = `${edgeBase.replace(/\/$/, '')}${prefix.replace(/\/$/, '')}/${publicId}`
+    return {
+      stk: `${root}/stk`,
+      confirmation: `${root}/confirmation`,
+      validation: `${root}/validation`,
+    }
+  }
+
+  async function connectPayments() {
     if (!item) return
+    const ok = window.confirm(
+      `Connect shortcode ${item.shortcode} so payment results can reach NetPay automatically?\n\n` +
+        `You only need to do this once per shortcode. You can still copy the technical links below if your provider portal needs them.`,
+    )
+    if (!ok) return
+
     setBusy(true)
     setError(null)
     setMsg(null)
     try {
-      const base = `${edgeBase.replace(/\/$/, '')}/mpesa/cb/${item.public_id}`
-      const res = await api.post<{ message?: string }>(`/v1/integrations/${item.id}/register-urls`, {
-        confirmation_url: `${base}/confirmation`,
-        validation_url: `${base}/validation`,
-        response_type: 'Completed',
-      })
-      setRegisteredOnce(true)
+      const urls = buildUrls(item.public_id)
+      const res = await api.post<{ message?: string; detail?: string }>(
+        `/v1/integrations/${item.id}/register-urls`,
+        {
+          confirmation_url: urls.confirmation,
+          validation_url: urls.validation,
+          response_type: 'Completed',
+        },
+      )
+      setConnectedOnce(true)
       setMsg(
         res.message ||
-          'Safaricom was told to send paybill/till notices to NetHub. You can still copy the URLs below for the Daraja portal.',
+          `Shortcode ${item.shortcode} is connected. Payment results for this number can reach NetPay. Links below stay available if you need them later.`,
       )
       await load()
     } catch (e) {
+      const detail = e instanceof ApiError ? e.detail : 'Could not connect this shortcode'
       setError(
-        e instanceof ApiError
-          ? e.detail
-          : 'Could not register with Safaricom. You can still copy the URLs and set them in the Daraja portal.',
+        `${detail}. You can still copy the links below and paste them in your provider portal, then try again.`,
       )
     } finally {
       setBusy(false)
@@ -93,35 +118,28 @@ export function IntegrationDetail() {
     return (
       <div data-testid="integration-detail-page">
         <div className="alert error">{error}</div>
-        <Link to="/integrations">← Paybills &amp; tills</Link>
+        <Link to="/integrations">← All paybills &amp; tills</Link>
       </div>
     )
   }
   if (!item) return <div data-testid="integration-detail-page">Loading…</div>
 
-  const base = `${edgeBase.replace(/\/$/, '')}/mpesa/cb/${item.public_id}`
-  const urls = {
-    stk: `${base}/stk`,
-    confirmation: `${base}/confirmation`,
-    validation: `${base}/validation`,
-  }
+  const urls = buildUrls(item.public_id)
 
   return (
     <div data-testid="integration-detail-page">
       <p className="muted tiny">
-        <Link to="/integrations">← Paybills &amp; tills</Link>
+        <Link to="/integrations">← All paybills &amp; tills</Link>
       </p>
       <div className="page-header">
         <div>
-          <h1>
-            Shortcode {item.shortcode}
-          </h1>
+          <h1>Shortcode {item.shortcode}</h1>
           <p>
             {item.type === 'till' ? 'Till' : 'Paybill'} ·{' '}
             {item.environment === 'production' ? 'Live' : 'Test'}
           </p>
         </div>
-        <div className="btn-row" style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
           <StatusBadge value={item.environment} />
           <StatusBadge value={item.status} />
         </div>
@@ -136,8 +154,8 @@ export function IntegrationDetail() {
             <strong>Shortcode saved</strong> — done
           </li>
           <li>
-            <strong>Connect M-Pesa</strong>
-            {registeredOnce ? ' — register attempted' : ' — use the section below'}
+            <strong>Connect payment updates</strong>
+            {connectedOnce ? ' — done' : ' — use the button below'}
           </li>
           <li>
             <strong>Notify your app</strong> — <Link to="/webhooks">Payment notifications</Link>
@@ -146,27 +164,30 @@ export function IntegrationDetail() {
       </div>
 
       <div className="card">
-        <h2>M-Pesa → NetPay</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
-          These are the addresses Safaricom should use so results reach NetPay via the NetHub edge. This is{' '}
-          <em>not</em> the same as notifying your own app (that’s Payment notifications).
+        <h2>Connect payment updates</h2>
+        <p style={{ marginTop: 0 }}>
+          One click tells the network where to send results for this shortcode so NetPay can mark payments Paid or
+          Failed. You’ll be asked to confirm before anything is sent.
         </p>
-        <CopyField label="STK (customer phone prompt results)" value={urls.stk} />
-        <CopyField label="Confirmation (paybill/till payment notice)" value={urls.confirmation} />
-        <CopyField label="Validation (paybill/till check before accept)" value={urls.validation} />
-        <p className="muted tiny">
-          STK payments use the STK URL automatically when you request payment in NetPay. Paybill/till (C2B) usually
-          needs <strong>Register URLs with Safaricom</strong> once per shortcode (or set the same URLs in the Daraja
-          portal).
-        </p>
-        <button className="btn primary" type="button" disabled={busy} onClick={registerUrls}>
-          {busy ? 'Registering…' : 'Register URLs with Safaricom'}
+        <button className="btn primary" type="button" disabled={busy} onClick={connectPayments}>
+          {busy ? 'Connecting…' : 'Connect this shortcode'}
         </button>
       </div>
 
       <div className="card">
+        <h2>Links (if you need them)</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Keep these for your records or if a portal asks you to paste addresses manually. You can return here anytime
+          from <Link to="/integrations">Paybills &amp; tills</Link> → Open.
+        </p>
+        <CopyField label="Phone prompt results" value={urls.stk} />
+        <CopyField label="Paybill / till payment notice" value={urls.confirmation} />
+        <CopyField label="Paybill / till pre-check" value={urls.validation} />
+      </div>
+
+      <div className="card">
         <h2>Advanced</h2>
-        <div className="muted tiny">NetHub routing id (for support)</div>
+        <div className="muted tiny">Routing id (support)</div>
         <code className="mono">{item.public_id}</code>
       </div>
     </div>

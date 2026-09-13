@@ -130,11 +130,11 @@ export function Integrations() {
             {items.length > 0 ? ' — done' : ' — use Add shortcode'}
           </li>
           <li>
-            <strong>Connect M-Pesa</strong> — open a shortcode and register URLs with Safaricom
+            <strong>Connect payment updates</strong> — open a shortcode and connect it
             {items[0] && (
               <>
                 {' '}
-                (<Link to={`/integrations/${items[0].id}`}>open latest</Link>)
+                (<Link to={`/integrations/${items[0].id}`}>continue setup</Link>)
               </>
             )}
           </li>
@@ -266,8 +266,9 @@ export function Integrations() {
                   <td>
                     <StatusBadge value={i.status} />
                   </td>
-                  <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <Link to={`/integrations/${i.id}`}>Open</Link>
+                  <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    <Link to={`/integrations/${i.id}`}>Continue setup</Link>
+                    <Link to={`/integrations/${i.id}`} className="muted tiny">Details</Link>
                     <button
                       type="button"
                       className="btn danger"
