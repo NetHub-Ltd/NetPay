@@ -44,12 +44,12 @@ This file is the working milestone map for **initiating STK, persisting payloads
 
 | ID | Item | Status |
 |----|------|--------|
-| S1.1 | Persist **STK request payload** on the intent (or mandatory FK to outbound row) | NEXT |
-| S1.2 | Persist **STK response payload** on the intent (full Daraja JSON, not only checkout ids) | NEXT |
-| S1.3 | Add `payment_intent_id` to `outbound_requests` for all STK/OAuth calls in that flow | NEXT |
-| S1.4 | On STK provider failure: transition intent → `failed`, set `failure_reason` from Daraja body | NEXT |
-| S1.5 | Correct STK `TransactionType` for **till** vs **paybill** | NEXT |
-| S1.6 | Payment detail UI: show last provider call outcome + callback timeline (inbound) | NEXT |
+| S1.1 | Persist **STK request payload** on the intent (or mandatory FK to outbound row) | DONE |
+| S1.2 | Persist **STK response payload** on the intent (full Daraja JSON, not only checkout ids) | DONE |
+| S1.3 | Add `payment_intent_id` to `outbound_requests` for all STK/OAuth calls in that flow | DONE |
+| S1.4 | On STK provider failure: transition intent → `failed`, set `failure_reason` from Daraja body | DONE |
+| S1.5 | Correct STK `TransactionType` for **till** vs **paybill** | DONE |
+| S1.6 | Payment detail UI: show last provider call outcome + callback timeline (inbound) | DONE (provider call; inbound timeline later) |
 
 **Exit criteria:** For any intent id, support can answer: what we sent, what Daraja returned, whether callback arrived, final state — without guessing.
 
@@ -62,9 +62,9 @@ This file is the working milestone map for **initiating STK, persisting payloads
 | ID | Item | Status |
 |----|------|--------|
 | S2.1 | API accepts **phone** (STK number), **amount** (canonical minor units), **integration/shortcode ref** | DONE (shape) |
-| S2.2 | API accepts **status callback URL** per payment (notify endpoint) | NEXT |
-| S2.3 | API accepts **metadata** as first-class field; returned on read (`IntentOut`) | NEXT |
-| S2.4 | Fanout: prefer per-intent status URL, then tenant webhooks | NEXT |
+| S2.2 | API accepts **status callback URL** per payment (notify endpoint) | DONE |
+| S2.3 | API accepts **metadata** as first-class field; returned on read (`IntentOut`) | DONE (detail) |
+| S2.4 | Fanout: prefer per-intent status URL, then tenant webhooks | DONE |
 | S2.5 | Document M2M: headers (`Idempotency-Key`, auth), body, callback signing, edge dependency | NEXT |
 | S2.6 | OpenAPI / example client for create + status webhook | LATER |
 
@@ -161,3 +161,5 @@ S1 (intent audit + fail integrity)
 | Date | Note |
 |------|------|
 | 2026-09-13 | Initial milestone map from STK E2E audit (NetPay + mpesa-edge) |
+
+| 2026-09-13 | S1 implemented: intent STK audit, redaction, fanout order, till type |

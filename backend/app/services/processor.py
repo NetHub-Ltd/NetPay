@@ -100,6 +100,13 @@ async def apply_payment_result(
         await post_collection_credit(session, intent)
     await session.commit()
     await session.refresh(intent)
+    meta = None
+    if intent.metadata_json:
+        try:
+            import json as _json
+            meta = _json.loads(intent.metadata_json)
+        except Exception:
+            meta = None
     await fanout_webhooks(
         session,
         intent.tenant_id,
@@ -110,7 +117,11 @@ async def apply_payment_result(
             "status": intent.status,
             "provider_transaction_id": transaction_id,
             "failure_reason": failure,
+            "amount_minor": intent.amount_minor,
+            "phone": intent.phone,
+            "metadata": meta,
         },
+        intent=intent,
     )
     return intent
 

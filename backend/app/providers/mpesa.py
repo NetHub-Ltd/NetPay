@@ -10,9 +10,17 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.logging import logger
 from app.core.redis import cache_get, cache_set
-from app.services.outbound_audit import provider_request
+from app.services.outbound_audit import provider_request, redact_provider_payload
 
 MpesaEnv = Literal["sandbox", "production"]
+
+
+class StkPushError(RuntimeError):
+    def __init__(self, message: str, *, request_body=None, raw=None, http_status=None):
+        super().__init__(message)
+        self.request_body = request_body
+        self.raw = raw
+        self.http_status = http_status
 
 
 def daraja_base(env: MpesaEnv) -> str:
@@ -46,6 +54,7 @@ async def get_access_token(
     session: Optional[AsyncSession] = None,
     tenant_id: UUID | None = None,
     integration_id: UUID | None = None,
+    payment_intent_id: UUID | None = None,
 ) -> str:
     cache_key = f"daraja:token:{env}:{consumer_key[:8]}"
     cached = await cache_get(cache_key)
@@ -63,6 +72,7 @@ async def get_access_token(
         timeout=20.0,
         tenant_id=tenant_id,
         integration_id=integration_id,
+        payment_intent_id=payment_intent_id,
     )
     if res.status_code >= 400:
         raise RuntimeError(f"Daraja OAuth failed ({res.status_code}): {res.text[:500]}")
@@ -89,6 +99,7 @@ async def stk_push(
     session: Optional[AsyncSession] = None,
     tenant_id: UUID | None = None,
     integration_id: UUID | None = None,
+    payment_intent_id: UUID | None = None,
 ) -> dict[str, Any]:
     ts = stk_timestamp()
     body = {
@@ -116,17 +127,27 @@ async def stk_push(
         timeout=30.0,
         tenant_id=tenant_id,
         integration_id=integration_id,
+        payment_intent_id=payment_intent_id,
     )
     data = res.json() if res.content else {}
-    if res.status_code >= 400 or str(data.get("ResponseCode", "0")) not in ("0",):
-        raise RuntimeError(f"STK failed status={res.status_code}: {data or res.text[:400]}")
-    return {
+    result = {
         "checkout_request_id": data.get("CheckoutRequestID"),
         "merchant_request_id": data.get("MerchantRequestID"),
         "response_code": data.get("ResponseCode"),
         "customer_message": data.get("CustomerMessage"),
         "raw": data,
+        "request_body": redact_provider_payload(body),
+        "http_status": res.status_code,
+        "response_text": res.text[:2000] if res.content else "",
     }
+    if res.status_code >= 400 or str(data.get("ResponseCode", "0")) not in ("0",):
+        raise StkPushError(
+            f"STK failed status={res.status_code}: {data or res.text[:400]}",
+            request_body=redact_provider_payload(body),
+            raw=data or {"text": res.text[:2000]},
+            http_status=res.status_code,
+        )
+    return result
 
 
 async def register_c2b_urls(
@@ -167,11 +188,8 @@ async def register_c2b_urls(
         integration_id=integration_id,
     )
     data = res.json() if res.content else {}
-    # Daraja often returns 200 with error in body
-    resp_code = str(data.get("ResponseCode") or data.get("requestId") or "")
     if res.status_code >= 400:
         raise RuntimeError(f"C2B register failed HTTP {res.status_code}: {res.text[:500]}")
-    # Common failure fields
     if data.get("errorCode") or data.get("errorMessage"):
         raise RuntimeError(
             f"C2B register rejected: {data.get('errorCode')} {data.get('errorMessage')} raw={data}"

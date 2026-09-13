@@ -96,7 +96,13 @@ export type Tenant = {
   slug: string
   status: string
   created_at: string
+  failure_reason?: string | null
+  status_callback_url?: string | null
+  metadata?: Record<string, unknown> | null
+  stk_request_json?: string | null
+  stk_response_json?: string | null
 }
+
 
 export type Integration = {
   id: string

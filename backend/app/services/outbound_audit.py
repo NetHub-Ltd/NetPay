@@ -12,6 +12,23 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.logging import logger
 from app.models.outbound_request import OutboundRequest
 
+SENSITIVE_KEYS = frozenset({"password", "Password", "passkey", "Passkey", "consumer_secret", "ConsumerSecret"})
+
+
+def redact_provider_payload(obj: Any) -> Any:
+    """Deep-copy structure with sensitive Daraja fields redacted for storage."""
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            if k in SENSITIVE_KEYS or k.lower() in {"password", "passkey", "consumer_secret"}:
+                out[k] = "***REDACTED***"
+            else:
+                out[k] = redact_provider_payload(v)
+        return out
+    if isinstance(obj, list):
+        return [redact_provider_payload(x) for x in obj]
+    return obj
+
 
 def _clip(text: str | None, n: int = 4000) -> str | None:
     if text is None:
@@ -32,10 +49,12 @@ async def record_outbound(
     duration_ms: int | None = None,
     tenant_id: UUID | None = None,
     integration_id: UUID | None = None,
+    payment_intent_id: UUID | None = None,
 ) -> None:
     req_s = None
     if request_body is not None:
-        req_s = _clip(request_body if isinstance(request_body, str) else json.dumps(request_body, default=str))
+        safe = redact_provider_payload(request_body)
+        req_s = _clip(safe if isinstance(safe, str) else json.dumps(safe, default=str))
 
     status = response.status_code if response is not None else None
     body = _clip(response.text if response is not None else None)
@@ -43,17 +62,17 @@ async def record_outbound(
 
     logger.bind(operation=operation, provider=provider).log(
         "INFO" if success else "ERROR",
-        "outbound {} {} {} status={} duration_ms={} err={} body={}",
+        "outbound {} {} {} status={} duration_ms={} intent={} err={} body={}",
         method,
         operation,
         url,
         status,
         duration_ms,
+        payment_intent_id,
         error,
         (body or "")[:500],
     )
 
-    # Always use a side session so audit commits never poison the request transaction
     try:
         from app.core.db import AsyncSessionLocal
 
@@ -61,6 +80,7 @@ async def record_outbound(
             row = OutboundRequest(
                 tenant_id=tenant_id,
                 integration_id=integration_id,
+                payment_intent_id=payment_intent_id,
                 provider=provider,
                 operation=operation,
                 method=method,
@@ -90,8 +110,9 @@ async def provider_request(
     timeout: float = 30.0,
     tenant_id: UUID | None = None,
     integration_id: UUID | None = None,
+    payment_intent_id: UUID | None = None,
 ) -> httpx.Response:
-    """Perform HTTP call; always log; always try to audit-row."""
+    """Perform HTTP call; always log; always try to audit-row (password redacted)."""
     t0 = time.perf_counter()
     response: httpx.Response | None = None
     err: str | None = None
@@ -117,4 +138,5 @@ async def provider_request(
             duration_ms=ms,
             tenant_id=tenant_id,
             integration_id=integration_id,
+            payment_intent_id=payment_intent_id,
         )
