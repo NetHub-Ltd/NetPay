@@ -1,13 +1,10 @@
-# Task: S1 STK intent audit + notify fanout
+# Task: S3 ops visibility
 
-**Branch:** feat/s1-stk-intent-audit → **dev**
+**Branch:** feat/s3-ops-visibility → **dev**
 
 ## Done
-- [x] stk_request_json / stk_response_json on intent (Password redacted)
-- [x] payment_intent_id on outbound_requests
-- [x] STK fail → failed + failure_reason
-- [x] Till → CustomerBuyGoodsOnline; paybill → CustomerPayBillOnline
-- [x] status_callback_url + metadata on create; detail GET
-- [x] Fanout: intent URL → tenant webhooks → none (edge always for provider callbacks)
-- [x] Payment detail: provider call section
-- [x] Migration 007
+- [x] System status: Provider calls table (outbound-requests + labels + payment link)
+- [x] payment_intent_id on outbound API response
+- [x] GET /v1/payment-intents/{id}/timeline
+- [x] Payment detail Timeline UI + link to Help/status
+- [x] Help: stuck phone prompt checklist + M2M notes (S2.5)

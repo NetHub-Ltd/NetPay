@@ -55,11 +55,17 @@ async def list_outbound_requests(
     if user.role != "admin" and user.tenant_id:
         stmt = stmt.where(OutboundRequest.tenant_id == user.tenant_id)
     rows = list((await session.exec(stmt)).all())
+    labels = {
+        "oauth_token": "Network login",
+        "stk_push": "Phone prompt request",
+        "c2b_register_urls": "Connect shortcode",
+    }
     return [
         {
             "id": str(r.id),
             "created_at": r.created_at.isoformat() if r.created_at else None,
             "operation": r.operation,
+            "label": labels.get(r.operation, r.operation),
             "method": r.method,
             "url": r.url,
             "response_status": r.response_status,
@@ -67,6 +73,8 @@ async def list_outbound_requests(
             "error_message": r.error_message,
             "duration_ms": r.duration_ms,
             "response_body": (r.response_body or "")[:400],
+            "payment_intent_id": str(r.payment_intent_id) if r.payment_intent_id else None,
+            "integration_id": str(r.integration_id) if r.integration_id else None,
         }
         for r in rows
     ]

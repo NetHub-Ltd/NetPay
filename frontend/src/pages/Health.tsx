@@ -14,6 +14,18 @@ type EdgeConnection = {
   dead_events_last_24h?: number
 }
 
+type OutboundRow = {
+  id: string
+  created_at?: string | null
+  operation: string
+  label?: string
+  response_status?: number | null
+  success: boolean
+  error_message?: string | null
+  duration_ms?: number | null
+  payment_intent_id?: string | null
+}
+
 function fmt(iso?: string | null) {
   if (!iso) return '—'
   try {
@@ -26,6 +38,7 @@ function fmt(iso?: string | null) {
 export function Health() {
   const [data, setData] = useState<HealthT | null>(null)
   const [edge, setEdge] = useState<EdgeConnection | null>(null)
+  const [outbound, setOutbound] = useState<OutboundRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const { connected, lastMessage } = useLiveStatus()
 
@@ -37,6 +50,11 @@ export function Health() {
       } catch {
         setEdge(null)
       }
+      try {
+        setOutbound(await api.get<OutboundRow[]>('/v1/system/outbound-requests?limit=25'))
+      } catch {
+        setOutbound([])
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not load status')
     }
@@ -46,13 +64,10 @@ export function Health() {
     load()
   }, [load])
 
-  // Live updates from NetPay hub only (edge never polled from the browser)
   useEffect(() => {
     if (!lastMessage || lastMessage.type !== 'edge.connection') return
     const p = lastMessage.payload as EdgeConnection | undefined
-    if (p && typeof p.status === 'string') {
-      setEdge(p)
-    }
+    if (p && typeof p.status === 'string') setEdge(p)
   }, [lastMessage])
 
   return (
@@ -61,7 +76,7 @@ export function Health() {
         <div>
           <h1>System status</h1>
           <p>
-            Service health and the link from M-Pesa edge into NetPay.
+            Service health, edge link, and recent calls to the payment network.
             {connected ? ' Live updates on.' : ' Live channel reconnecting…'}
           </p>
         </div>
@@ -73,7 +88,7 @@ export function Health() {
 
       {edge && (
         <div className="card" style={{ marginBottom: '1rem' }}>
-          <h2>M-Pesa edge connection</h2>
+          <h2>Edge connection</h2>
           <p style={{ marginTop: 0 }}>{edge.label}</p>
           <div className="grid-3">
             <div>
@@ -95,12 +110,57 @@ export function Health() {
               <div className="muted tiny">Failed deliveries (24h): {edge.dead_events_last_24h ?? 0}</div>
             </div>
           </div>
-          <p className="muted tiny" style={{ marginBottom: 0 }}>
-            Updates stream from NetPay when the edge delivers events (including heartbeats). This page does not call
-            the edge worker. See <Link to="/docs">Help</Link>.
-          </p>
         </div>
       )}
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <h2>Provider calls</h2>
+        <p className="muted tiny" style={{ marginTop: 0 }}>
+          Recent requests NetPay made to the payment network (login, phone prompts, connect shortcode).
+        </p>
+        {outbound.length === 0 ? (
+          <p className="muted">No provider calls recorded yet.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>What</th>
+                <th>Result</th>
+                <th>Detail</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {outbound.map((r) => (
+                <tr key={r.id}>
+                  <td className="muted tiny">{fmt(r.created_at)}</td>
+                  <td>{r.label || r.operation}</td>
+                  <td>
+                    <StatusBadge value={r.success ? 'ok' : 'failed'} />
+                    {r.response_status != null && (
+                      <span className="muted tiny"> · HTTP {r.response_status}</span>
+                    )}
+                    {r.duration_ms != null && (
+                      <span className="muted tiny"> · {r.duration_ms}ms</span>
+                    )}
+                  </td>
+                  <td className="muted tiny" style={{ maxWidth: 220 }}>
+                    {(r.error_message || '—').slice(0, 120)}
+                  </td>
+                  <td>
+                    {r.payment_intent_id ? (
+                      <Link to={`/intents/${r.payment_intent_id}`}>Payment</Link>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       {data && (
         <div className="grid-3">
