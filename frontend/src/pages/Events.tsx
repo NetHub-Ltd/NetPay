@@ -7,7 +7,7 @@ export function Events() {
   const [items, setItems] = useState<GatewayEvent[]>([])
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
-  const { connected } = useLiveStatus(8000)
+  const { connected } = useLiveStatus()
 
   async function load() {
     try {
