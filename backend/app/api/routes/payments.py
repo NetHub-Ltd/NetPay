@@ -276,6 +276,115 @@ async def create_intent(
 
 
 
+
+@router.get("/{intent_id}/timeline")
+async def payment_timeline(
+    intent_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> dict:
+    """Quiet timeline: status steps, gateway events, matching inbound callbacks."""
+    from sqlmodel import col, select
+
+    from app.models.event import GatewayEvent
+    from app.models.inbound_event import InboundEvent
+    from app.models.outbound_request import OutboundRequest
+
+    intent = await payment_intent_crud.get(session, intent_id)
+    if not intent:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not can_access_tenant(user, intent.tenant_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Gateway domain events for this intent
+    ge_stmt = (
+        select(GatewayEvent)
+        .where(GatewayEvent.payment_intent_id == intent_id)
+        .order_by(col(GatewayEvent.created_at).asc())
+        .limit(50)
+    )
+    gateway_events = list((await session.exec(ge_stmt)).all())
+
+    # Outbound calls linked to this intent
+    ob_stmt = (
+        select(OutboundRequest)
+        .where(OutboundRequest.payment_intent_id == intent_id)
+        .order_by(col(OutboundRequest.created_at).asc())
+        .limit(20)
+    )
+    outbound = list((await session.exec(ob_stmt)).all())
+
+    # Inbound: match checkout id inside payload when present
+    inbound_rows = []
+    checkout = intent.provider_checkout_id
+    if checkout:
+        # SQLite/Postgres: filter in Python for portability on small sets
+        ib_stmt = (
+            select(InboundEvent)
+            .where(col(InboundEvent.deleted_at).is_(None))
+            .order_by(col(InboundEvent.created_at).desc())
+            .limit(80)
+        )
+        for row in (await session.exec(ib_stmt)).all():
+            blob = row.payload_json or ""
+            if checkout in blob:
+                inbound_rows.append(row)
+            if len(inbound_rows) >= 10:
+                break
+        inbound_rows.reverse()
+
+    def _ts(dt):
+        return dt.isoformat() if dt else None
+
+    steps = []
+    steps.append({"at": _ts(intent.created_at), "kind": "status", "label": "Payment created", "status": "created"})
+    for o in outbound:
+        label = {
+            "oauth_token": "Signed in to the network",
+            "stk_push": "Phone prompt requested",
+            "c2b_register_urls": "Connect shortcode",
+        }.get(o.operation, o.operation)
+        steps.append({
+            "at": _ts(o.created_at),
+            "kind": "outbound",
+            "label": label,
+            "success": o.success,
+            "response_status": o.response_status,
+            "error": o.error_message,
+        })
+    for g in gateway_events:
+        steps.append({
+            "at": _ts(g.created_at),
+            "kind": "event",
+            "label": g.message or g.action,
+            "action": g.action,
+        })
+    for ib in inbound_rows:
+        steps.append({
+            "at": _ts(ib.created_at),
+            "kind": "callback",
+            "label": "Network result received",
+            "event_type": ib.event_type,
+            "status": ib.status,
+        })
+    if intent.status in ("succeeded", "failed", "expired"):
+        steps.append({
+            "at": _ts(intent.updated_at),
+            "kind": "status",
+            "label": {"succeeded": "Paid", "failed": "Failed", "expired": "Expired"}.get(intent.status, intent.status),
+            "status": intent.status,
+            "failure_reason": intent.failure_reason,
+        })
+
+    steps.sort(key=lambda x: x.get("at") or "")
+    return {
+        "intent_id": str(intent.id),
+        "status": intent.status,
+        "provider_checkout_id": intent.provider_checkout_id,
+        "steps": steps,
+    }
+
+
 @router.get("/{intent_id}/ledger", response_model=list[LedgerEntryOut])
 async def list_intent_ledger(
     intent_id: UUID,

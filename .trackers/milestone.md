@@ -65,7 +65,7 @@ This file is the working milestone map for **initiating STK, persisting payloads
 | S2.2 | API accepts **status callback URL** per payment (notify endpoint) | DONE |
 | S2.3 | API accepts **metadata** as first-class field; returned on read (`IntentOut`) | DONE (detail) |
 | S2.4 | Fanout: prefer per-intent status URL, then tenant webhooks | DONE |
-| S2.5 | Document M2M: headers (`Idempotency-Key`, auth), body, callback signing, edge dependency | NEXT |
+| S2.5 | Document M2M: headers (`Idempotency-Key`, auth), body, callback signing, edge dependency | DONE (Help) |
 | S2.6 | OpenAPI / example client for create + status webhook | LATER |
 
 **Minimum create body (target after S2):**
@@ -95,8 +95,8 @@ This file is the working milestone map for **initiating STK, persisting payloads
 | S3.1 | Edge `/cb/{gw_*}/…` (+ legacy `/mpesa/cb/…`) | DONE |
 | S3.2 | Edge → NetPay secure forward + heartbeat | DONE |
 | S3.3 | NetPay System status / last inbound without browser polling edge | DONE |
-| S3.4 | Surface outbound + inbound failures in product UI (ops-friendly) | NEXT |
-| S3.5 | Runbook: STK stuck in waiting — checklist (creds, env, edge secrets, DLQ, checkout match) | NEXT |
+| S3.4 | Surface outbound + inbound failures in product UI (ops-friendly) | DONE |
+| S3.5 | Runbook: STK stuck in waiting — checklist (creds, env, edge secrets, DLQ, checkout match) | DONE |
 | S3.6 | Alerting on outbound STK error rate / missing callbacks | LATER |
 
 **Exit criteria:** Ops can diagnose a stuck STK in &lt; 5 minutes using UI + `outbound_requests` + `inbound_events`.
@@ -163,3 +163,5 @@ S1 (intent audit + fail integrity)
 | 2026-09-13 | Initial milestone map from STK E2E audit (NetPay + mpesa-edge) |
 
 | 2026-09-13 | S1 implemented: intent STK audit, redaction, fanout order, till type |
+
+| 2026-09-13 | S3.4–S3.5 + S2.5 Help: provider calls UI, payment timeline, runbook |

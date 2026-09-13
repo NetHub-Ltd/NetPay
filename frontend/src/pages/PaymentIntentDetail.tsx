@@ -28,6 +28,7 @@ export function PaymentIntentDetail() {
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [timeline, setTimeline] = useState<{ steps: Array<{ at?: string; kind: string; label: string; success?: boolean; failure_reason?: string }> } | null>(null)
 
   async function load() {
     try {
@@ -36,6 +37,11 @@ export function PaymentIntentDetail() {
         setLedger(await api.get<LedgerRow[]>(`/v1/payment-intents/${id}/ledger`))
       } catch {
         setLedger([])
+      }
+      try {
+        setTimeline(await api.get(`/v1/payment-intents/${id}/timeline`))
+      } catch {
+        setTimeline(null)
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Not found')
@@ -85,6 +91,29 @@ export function PaymentIntentDetail() {
         <div className="alert error">Could not complete: {item.failure_reason}</div>
       )}
       {msg && <div className="alert ok">{msg}</div>}
+
+      {timeline && timeline.steps && timeline.steps.length > 0 && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h2>Timeline</h2>
+          <ol className="timeline-list" style={{ margin: 0, paddingLeft: '1.1rem' }}>
+            {timeline.steps.map((s, i) => (
+              <li key={i} style={{ marginBottom: '0.45rem' }}>
+                <span className="muted tiny">{s.at ? new Date(s.at).toLocaleString() : ''}</span>
+                {' · '}
+                <strong>{s.label}</strong>
+                {s.success === false && <span className="muted"> (did not succeed)</span>}
+                {s.failure_reason && <span className="muted tiny"> — {s.failure_reason}</span>}
+              </li>
+            ))}
+          </ol>
+          {(item.status === 'provider_requested' || item.status === 'failed') && (
+            <p className="muted tiny" style={{ marginBottom: 0, marginTop: '0.75rem' }}>
+              Stuck or failed? See <Link to="/docs">Help — phone prompts</Link> and{' '}
+              <Link to="/status">System status</Link> for recent provider calls.
+            </p>
+          )}
+        </div>
+      )}
 
       {(item as { stk_request_json?: string; stk_response_json?: string; status_callback_url?: string }).stk_request_json && (
         <div className="card" style={{ marginBottom: '1rem' }}>
