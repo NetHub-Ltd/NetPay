@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../theme/ThemeContext'
 import { NotificationBell } from './NotificationBell'
+import { LiveProvider } from '../hooks/useWebSocket'
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `nav-link${isActive ? ' active' : ''}`
@@ -30,6 +31,7 @@ export function Layout() {
   const shortName = user?.email?.split('@')[0] || 'Account'
 
   return (
+    <LiveProvider>
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
@@ -118,5 +120,6 @@ export function Layout() {
         </main>
       </div>
     </div>
+    </LiveProvider>
   )
 }

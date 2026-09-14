@@ -138,6 +138,7 @@ async def apply_payment_result(
             intent_id=intent.id,
             level=level,
             href=f"/intents/{intent.id}",
+            status=intent.status,
         )
     except Exception:  # noqa: BLE001
         pass

@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.db import engine
 from app.core.logging import logger, setup_logging
 from app.services.bootstrap import startup_sequence
+from app.services.live_bus import start_live_subscriber, stop_live_subscriber
 
 def _resolve_static_dir() -> Path:
     """SPA build output. Prefer STATIC_DIR env, else backend/static next to app/."""
@@ -27,8 +28,10 @@ async def lifespan(app: FastAPI):
     setup_logging()
     logger.info("Starting {} v{}", settings.app_name, settings.app_version)
     boot = await startup_sequence()
+    await start_live_subscriber()
     logger.info("Startup complete: {}", boot)
     yield
+    await stop_live_subscriber()
     await engine.dispose()
 
 app = FastAPI(

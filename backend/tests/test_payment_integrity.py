@@ -366,3 +366,21 @@ async def test_redact_password_in_payload():
     assert safe["Password"] == "***REDACTED***"
     assert safe["Amount"] == "1"
     assert safe["nested"]["passkey"] == "***REDACTED***"
+
+
+@pytest.mark.asyncio
+async def test_live_hub_deliver_local_tenant_filter():
+    from uuid import uuid4
+    from app.services.live_hub import deliver_local, subscribe, unsubscribe
+
+    tid = uuid4()
+    q = await subscribe(tenant_id=tid, is_admin=False)
+    try:
+        await deliver_local(
+            "payment.update",
+            {"tenant_id": str(tid), "title": "Prompt sent", "status": "provider_requested"},
+        )
+        msg = q.get_nowait()
+        assert "Prompt sent" in msg
+    finally:
+        await unsubscribe(q)

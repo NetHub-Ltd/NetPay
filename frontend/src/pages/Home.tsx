@@ -10,6 +10,7 @@ import {
 import { api, ApiError, type Integration, type PaymentIntent, type Webhook } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth/AuthContext'
+import { subscribeLiveMessages } from '../hooks/useWebSocket'
 
 function money(minor?: number) {
   if (minor == null) return '—'
@@ -31,32 +32,41 @@ export function Home() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      try {
-        const [pay, integ] = await Promise.all([
-          api.get<PaymentIntent[]>('/v1/payment-intents'),
-          api.get<Integration[]>('/v1/integrations'),
-        ])
-        setPayments((pay || []).slice(0, 5))
-        setIntegrations(integ || [])
-        const tid = user?.tenant_id
-        if (tid) {
-          try {
-            const w = await api.get<Webhook[]>(`/v1/webhooks?tenant_id=${tid}`)
-            setHooks(w.length)
-          } catch {
-            setHooks(0)
-          }
+  async function load(quiet = false) {
+    if (!quiet) setLoading(true)
+    try {
+      const [pay, integ] = await Promise.all([
+        api.get<PaymentIntent[]>('/v1/payment-intents'),
+        api.get<Integration[]>('/v1/integrations'),
+      ])
+      setPayments((pay || []).slice(0, 5))
+      setIntegrations(integ || [])
+      const tid = user?.tenant_id
+      if (tid) {
+        try {
+          const w = await api.get<Webhook[]>(`/v1/webhooks?tenant_id=${tid}`)
+          setHooks(w.length)
+        } catch {
+          setHooks(0)
         }
-      } catch (e) {
-        setError(e instanceof ApiError ? e.detail : 'Could not load dashboard')
-      } finally {
-        setLoading(false)
       }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Could not load dashboard')
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     load()
+  }, [user])
+
+  useEffect(() => {
+    return subscribeLiveMessages((m) => {
+      if (m.type === 'payment.update' || m.type === 'notification') {
+        load(true)
+      }
+    })
   }, [user])
 
   const first = greetingName(user)
