@@ -1,20 +1,27 @@
-# NetPay milestones — STK end-to-end & collections reliability
+# NetPay milestones — STK / C2B collections reliability
 
-**Source:** STK flow audit (NetPay + mpesa-edge), September 2026  
+**Source:** STK + C2B audits (NetPay + mpesa-edge), gate evaluation  
 **Integration branch:** `dev`  
-**Related gate:** Production Readiness Architecture Gate v1 (collections / async / testing)
+**Board:** NetPay Production Readiness Gate  
+**Updated:** 2026-09-15
 
-This file is the working milestone map for **initiating STK, persisting payloads, Daraja calls, edge callbacks, and settlement**. Broader P0–P3 financial milestones from the original board remain valid; items below refine the **STK / M2M path**.
+## Board milestone status
 
----
+| Gate milestone | State |
+|----------------|--------|
+| M0 Baseline | **CLOSED** |
+| P0 Financial integrity | **CLOSED** |
+| P1 Collections & async durability | **CLOSED** (incl. #24 C2B) |
+| P2 Security & operations | OPEN — next |
+| P3 Expand rails | OPEN |
 
 ## Status legend
 
 | Tag | Meaning |
 |-----|---------|
-| **DONE** | In `dev` / product path as of last audit |
-| **NEXT** | Ordered implementation work |
-| **LATER** | After NEXT; not blocking first reliable STK |
+| **DONE** | On `dev` / product path |
+| **NEXT** | Ordered work |
+| **LATER** | After NEXT |
 
 ---
 
@@ -49,7 +56,7 @@ This file is the working milestone map for **initiating STK, persisting payloads
 | S1.3 | Add `payment_intent_id` to `outbound_requests` for all STK/OAuth calls in that flow | DONE |
 | S1.4 | On STK provider failure: transition intent → `failed`, set `failure_reason` from Daraja body | DONE |
 | S1.5 | Correct STK `TransactionType` for **till** vs **paybill** | DONE |
-| S1.6 | Payment detail UI: show last provider call outcome + callback timeline (inbound) | DONE (provider call; inbound timeline later) |
+| S1.6 | Payment detail UI: show last provider call outcome + callback timeline (inbound) | DONE |
 
 **Exit criteria:** For any intent id, support can answer: what we sent, what Daraja returned, whether callback arrived, final state — without guessing.
 
@@ -111,7 +118,7 @@ This file is the working milestone map for **initiating STK, persisting payloads
 |----|------|--------|
 | S4.1 | Plain-language shortcode setup + connect confirmation | DONE |
 | S4.2 | Home dashboard + Lucide navigation | DONE |
-| S4.3 | Payment detail: provider/callback evidence (ties to S1.6) | NEXT |
+| S4.3 | Payment detail: provider/callback evidence (ties to S1.6) | DONE |
 | S4.4 | Guided empty states when no shortcode / STK never connected | LATER |
 
 ---
@@ -165,3 +172,20 @@ S1 (intent audit + fail integrity)
 | 2026-09-13 | S1 implemented: intent STK audit, redaction, fanout order, till type |
 
 | 2026-09-13 | S3.4–S3.5 + S2.5 Help: provider calls UI, payment timeline, runbook |
+
+
+---
+
+## Milestone C2B — Paybill/till notifications (#24)
+
+**Goal:** Confirmation → canonical payment (no invented statuses).
+
+| ID | Item | Status |
+|----|------|--------|
+| C2B.1 | Edge event types `c2b_confirmation` / `c2b_validation` | DONE |
+| C2B.2 | Match open intent by BillRef / account_reference | DONE |
+| C2B.3 | TransID dedupe (no double ledger) | DONE |
+| C2B.4 | Unmatched / amount mismatch → reconciliation | DONE |
+| C2B.5 | Tests + Help docs | DONE |
+
+**Exit criteria:** Met on `dev` (PR #57). Issue #24 closed.
