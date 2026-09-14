@@ -8,7 +8,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { api, ApiError, type Integration, type PaymentIntent, type Webhook } from '../api/client'
-import { StatusBadge, formatKes } from '../components/StatusBadge'
+import { StatusBadge } from '../components/StatusBadge'
 import { DataTable } from '../components/DataTable'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'

@@ -12,7 +12,6 @@ export type DataTableColumn<T> = {
 export type DataTableFilter = {
   id: string
   label: string
-  value: string
 }
 
 type Props<T> = {
