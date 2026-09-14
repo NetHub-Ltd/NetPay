@@ -19,6 +19,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../theme/ThemeContext'
 import { NotificationBell } from './NotificationBell'
 import { LiveProvider } from '../hooks/useWebSocket'
+import { ToastHost } from './ToastHost'
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `nav-link${isActive ? ' active' : ''}`
@@ -32,6 +33,7 @@ export function Layout() {
 
   return (
     <LiveProvider>
+    <ToastHost />
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
