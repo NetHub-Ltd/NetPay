@@ -1,9 +1,48 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell } from 'lucide-react'
+import { Bell, X } from 'lucide-react'
 import { useNotificationInbox } from '../hooks/useWebSocket'
 
 export function NotificationBell() {
   const { items, open, setOpen, unread, markAllRead, markRead, clear } = useNotificationInbox()
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+
+    function onPointer(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node | null
+      if (!target) return
+      // Ignore clicks on the bell button (handled by toggle)
+      if ((target as Element).closest?.('.notif-btn')) return
+      if (panelRef.current && !panelRef.current.contains(target)) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', onKey)
+    // Capture phase so we close before other handlers
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('touchstart', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('touchstart', onPointer)
+    }
+  }, [open, setOpen])
+
+  function toggle() {
+    if (open) {
+      setOpen(false)
+      return
+    }
+    setOpen(true)
+    markAllRead()
+  }
 
   return (
     <div className="notif-wrap">
@@ -12,22 +51,50 @@ export function NotificationBell() {
         className="btn icon-only notif-btn"
         title="Notifications"
         aria-label="Notifications"
-        onClick={() => {
-          setOpen((v) => !v)
-          if (!open) markAllRead()
-        }}
+        aria-expanded={open}
+        onClick={toggle}
       >
         <Bell size={16} strokeWidth={1.75} />
         {unread > 0 && <span className="notif-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
-      {open && (
-        <div className="notif-panel" role="menu">
-          <div className="notif-head">
-            <span>Notifications</span>
-            <button type="button" className="btn ghost" style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem' }} onClick={clear}>
-              Clear
+
+      {/* Backdrop + sliding panel — always mounted for CSS transition when open */}
+      <div
+        className={`notif-backdrop${open ? ' is-open' : ''}`}
+        aria-hidden={!open}
+        onClick={() => setOpen(false)}
+      />
+      <aside
+        ref={panelRef}
+        className={`notif-drawer${open ? ' is-open' : ''}`}
+        role="dialog"
+        aria-label="Notifications"
+        aria-hidden={!open}
+      >
+        <div className="notif-head">
+          <span>Notifications</span>
+          <div className="notif-head-actions">
+            {items.length > 0 && (
+              <button
+                type="button"
+                className="btn ghost"
+                style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem' }}
+                onClick={clear}
+              >
+                Clear
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn icon-only"
+              aria-label="Close notifications"
+              onClick={() => setOpen(false)}
+            >
+              <X size={16} strokeWidth={1.75} />
             </button>
           </div>
+        </div>
+        <div className="notif-body">
           {items.length === 0 ? (
             <div className="notif-empty">No notifications yet. Payment results appear here live.</div>
           ) : (
@@ -52,7 +119,7 @@ export function NotificationBell() {
             ))
           )}
         </div>
-      )}
+      </aside>
     </div>
   )
 }
