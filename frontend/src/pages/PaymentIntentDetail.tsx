@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type PaymentIntent } from '../api/client'
 import { StatusBadge, formatKes, statusHint } from '../components/StatusBadge'
@@ -12,14 +12,77 @@ type LedgerRow = {
   created_at?: string
 }
 
-const STEPS = ['created', 'provider_requested', 'succeeded'] as const
-
-function stepIndex(status: string): number {
-  if (status === 'succeeded') return 2
-  if (status === 'provider_requested') return 1
-  if (status === 'failed' || status === 'expired') return 1
-  return 0
+type TimelineStep = {
+  at?: string
+  kind: string
+  label: string
+  success?: boolean
+  failure_reason?: string
+  status?: string
 }
+
+function parseJson(raw?: string | null): Record<string, unknown> | null {
+  if (!raw) return null
+  try {
+    const v = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="detail-field">
+      <div className="detail-field-label">{label}</div>
+      <div className="detail-field-value">{children}</div>
+    </div>
+  )
+}
+
+function KvTable({ data, prefer }: { data: Record<string, unknown>; prefer?: string[] }) {
+  const keys = prefer?.filter((k) => data[k] !== undefined && data[k] !== null && data[k] !== '') || []
+  const rest = Object.keys(data).filter((k) => !keys.includes(k) && data[k] !== undefined && data[k] !== null && data[k] !== '')
+  const ordered = [...keys, ...rest]
+  if (ordered.length === 0) return <p className="muted tiny">No fields</p>
+  return (
+    <dl className="kv-list">
+      {ordered.map((k) => {
+        const v = data[k]
+        const display =
+          typeof v === 'object' ? JSON.stringify(v) : String(v)
+        return (
+          <div className="kv-row" key={k}>
+            <dt>{k}</dt>
+            <dd className={typeof v === 'string' && v.length > 24 ? 'mono tiny' : undefined}>{display}</dd>
+          </div>
+        )
+      })}
+    </dl>
+  )
+}
+
+const REQUEST_PREFER = [
+  'BusinessShortCode',
+  'Amount',
+  'PartyA',
+  'PhoneNumber',
+  'PartyB',
+  'TransactionType',
+  'AccountReference',
+  'TransactionDesc',
+  'CallBackURL',
+  'Timestamp',
+]
+const RESPONSE_PREFER = [
+  'ResponseCode',
+  'ResponseDescription',
+  'CustomerMessage',
+  'CheckoutRequestID',
+  'MerchantRequestID',
+  'ResultCode',
+  'ResultDesc',
+]
 
 export function PaymentIntentDetail() {
   const { id } = useParams()
@@ -28,7 +91,8 @@ export function PaymentIntentDetail() {
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [timeline, setTimeline] = useState<{ steps: Array<{ at?: string; kind: string; label: string; success?: boolean; failure_reason?: string }> } | null>(null)
+  const [timeline, setTimeline] = useState<{ steps: TimelineStep[] } | null>(null)
+  const [showTech, setShowTech] = useState(false)
 
   async function load() {
     try {
@@ -58,7 +122,7 @@ export function PaymentIntentDetail() {
     setMsg(null)
     try {
       await api.post(`/v1/payment-intents/${id}/query-provider`, {})
-      setMsg('Asked the network for the latest result. Status updates only from M-Pesa.')
+      setMsg('Asked the network for the latest result.')
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Network query failed')
@@ -73,7 +137,7 @@ export function PaymentIntentDetail() {
     setMsg(null)
     try {
       await api.post(`/v1/payment-intents/${id}/simulate`, {})
-      setMsg('Simulated success applied — ledger should show a collection credit.')
+      setMsg('Simulated success applied.')
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Simulate failed')
@@ -82,172 +146,197 @@ export function PaymentIntentDetail() {
     }
   }
 
+  const req = useMemo(() => parseJson(item?.stk_request_json), [item?.stk_request_json])
+  const res = useMemo(() => parseJson(item?.stk_response_json), [item?.stk_response_json])
+
   if (error && !item) return <div className="alert error" data-testid="intent-detail-page">{error}</div>
   if (!item) return <div data-testid="intent-detail-page">Loading…</div>
 
-  const idx = stepIndex(item.status)
-  const terminalBad = item.status === 'failed' || item.status === 'expired'
+  const hint = statusHint(item.status, item.failure_reason)
+  const steps = timeline?.steps || []
 
   return (
-    <div data-testid="intent-detail-page">
+    <div data-testid="intent-detail-page" className="payment-detail">
       <div className="page-header">
         <div>
           <p className="muted" style={{ margin: 0 }}>
             <Link to="/intents">← Payments</Link>
           </p>
-          <h1>Payment</h1>
-          <p className="mono muted">{item.id}</p>
+          <h1>
+            {formatKes(item.amount_minor, item.amount, item.currency)}
+            <span className="muted" style={{ fontWeight: 500, fontSize: '1rem', marginLeft: '0.65rem' }}>
+              to {item.phone}
+            </span>
+          </h1>
+          <p className="muted tiny" style={{ margin: '0.25rem 0 0' }}>
+            {item.created_at ? new Date(item.created_at).toLocaleString() : ''}
+            {item.account_reference ? ` · Ref ${item.account_reference}` : ''}
+          </p>
         </div>
         <StatusBadge value={item.status} />
       </div>
 
       {error && <div className="alert error">{error}</div>}
-      {item.failure_reason && (
-        <div className="alert error">Could not complete: {item.failure_reason}</div>
+      {item.failure_reason && item.status !== 'succeeded' && (
+        <div className="alert error">{item.failure_reason}</div>
       )}
       {msg && <div className="alert ok">{msg}</div>}
+      {hint && !item.failure_reason && (
+        <p className="muted" style={{ marginTop: 0 }}>
+          {hint}
+        </p>
+      )}
 
-      {timeline && timeline.steps && timeline.steps.length > 0 && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="detail-grid">
+        <section className="card detail-main">
           <h2>Timeline</h2>
-          <ol className="timeline-list" style={{ margin: 0, paddingLeft: '1.1rem' }}>
-            {timeline.steps.map((s, i) => (
-              <li key={i} style={{ marginBottom: '0.45rem' }}>
-                <span className="muted tiny">{s.at ? new Date(s.at).toLocaleString() : ''}</span>
-                {' · '}
-                <strong>{s.label}</strong>
-                {s.success === false && <span className="muted"> (did not succeed)</span>}
-                {s.failure_reason && <span className="muted tiny"> — {s.failure_reason}</span>}
-              </li>
-            ))}
-          </ol>
-          {(item.status === 'provider_requested' || item.status === 'failed') && (
-            <p className="muted tiny" style={{ marginBottom: 0, marginTop: '0.75rem' }}>
-              Stuck or failed? See <Link to="/docs">Help — phone prompts</Link> and{' '}
-              <Link to="/status">System status</Link> for recent provider calls.
-            </p>
+          {steps.length === 0 ? (
+            <p className="muted tiny">No timeline events yet.</p>
+          ) : (
+            <ol className="detail-timeline">
+              {steps.map((s, i) => (
+                <li key={i} className={s.success === false ? 'is-bad' : s.kind === 'status' && (s.label === 'Paid' || s.status === 'succeeded') ? 'is-good' : ''}>
+                  <div className="detail-timeline-dot" aria-hidden />
+                  <div className="detail-timeline-body">
+                    <div className="detail-timeline-label">{s.label}</div>
+                    <div className="muted tiny">
+                      {s.at ? new Date(s.at).toLocaleString() : ''}
+                      {s.failure_reason ? ` · ${s.failure_reason}` : ''}
+                      {s.success === false ? ' · did not succeed' : ''}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ol>
           )}
-        </div>
-      )}
+        </section>
 
-      {(item as { stk_request_json?: string; stk_response_json?: string; status_callback_url?: string }).stk_request_json && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <h2>Provider call</h2>
+        <aside className="detail-side">
+          <section className="card">
+            <h2>Summary</h2>
+            <Field label="Amount">{formatKes(item.amount_minor, item.amount, item.currency)}</Field>
+            <Field label="Phone">
+              <span className="mono">{item.phone}</span>
+            </Field>
+            <Field label="Reference">{item.account_reference || '—'}</Field>
+            <Field label="Description">{item.description || '—'}</Field>
+            {item.status_callback_url && (
+              <Field label="Status callback">
+                <span className="mono tiny">{item.status_callback_url}</span>
+              </Field>
+            )}
+          </section>
+
+          <section className="card">
+            <h2>Network</h2>
+            <Field label="Checkout ID">
+              <span className="mono tiny">{item.provider_checkout_id || '—'}</span>
+            </Field>
+            <Field label="Receipt / txn">
+              <span className="mono tiny">{item.provider_transaction_id || '—'}</span>
+            </Field>
+            <div className="detail-actions">
+              {(item.status === 'created' || item.status === 'provider_requested') && item.provider_checkout_id && (
+                <button className="btn" type="button" disabled={busy} onClick={queryNetwork}>
+                  {busy ? 'Checking…' : 'Check with network'}
+                </button>
+              )}
+              {(item.status === 'created' || item.status === 'provider_requested') && (
+                <button className="btn" type="button" disabled={busy} onClick={simulate}>
+                  {busy ? 'Working…' : 'Simulate success (dev)'}
+                </button>
+              )}
+              {(item.status === 'failed' || item.status === 'expired') && (
+                <Link className="btn primary" to="/intents">
+                  Start a new payment
+                </Link>
+              )}
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      {(req || res) && (
+        <section className="card" style={{ marginTop: '1rem' }}>
+          <h2>Phone prompt exchange</h2>
           <p className="muted tiny" style={{ marginTop: 0 }}>
-            What we sent to the network and what came back (secrets redacted).
+            What we sent to the network and what came back. Secrets are redacted.
           </p>
-          <div className="muted tiny">Request</div>
-          <pre className="mono tiny" style={{ whiteSpace: 'pre-wrap', maxHeight: 180, overflow: 'auto' }}>
-            {(item as { stk_request_json?: string }).stk_request_json}
-          </pre>
-          <div className="muted tiny">Response</div>
-          <pre className="mono tiny" style={{ whiteSpace: 'pre-wrap', maxHeight: 180, overflow: 'auto' }}>
-            {(item as { stk_response_json?: string }).stk_response_json || '—'}
-          </pre>
-        </div>
+          <div className="detail-exchange">
+            {req && (
+              <div>
+                <h3 className="detail-subhead">Request</h3>
+                <KvTable data={req} prefer={REQUEST_PREFER} />
+              </div>
+            )}
+            {res && (
+              <div>
+                <h3 className="detail-subhead">Response</h3>
+                <KvTable data={res} prefer={RESPONSE_PREFER} />
+              </div>
+            )}
+          </div>
+          <button type="button" className="btn ghost" style={{ marginTop: '0.75rem' }} onClick={() => setShowTech((v) => !v)}>
+            {showTech ? 'Hide raw JSON' : 'Show raw JSON'}
+          </button>
+          {showTech && (
+            <div className="detail-raw">
+              {item.stk_request_json && (
+                <>
+                  <div className="muted tiny">Request</div>
+                  <pre className="mono tiny">{item.stk_request_json}</pre>
+                </>
+              )}
+              {item.stk_response_json && (
+                <>
+                  <div className="muted tiny">Response</div>
+                  <pre className="mono tiny">{item.stk_response_json}</pre>
+                </>
+              )}
+            </div>
+          )}
+        </section>
       )}
 
-
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <p style={{ marginTop: 0 }}>{statusHint(item.status, item.failure_reason)}</p>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          {STEPS.map((s, i) => (
-            <span
-              key={s}
-              className={`badge ${i <= idx && !terminalBad ? 'status-ok' : terminalBad && i <= idx ? 'status-err' : 'status-neutral'}`}
-            >
-              {s === 'provider_requested' ? 'Waiting' : s === 'succeeded' ? 'Paid' : 'Created'}
-            </span>
-          ))}
-          {terminalBad && <StatusBadge value={item.status} />}
-        </div>
-      </div>
-
-      <div className="grid-2">
-        <div className="card">
-          <h2>Summary</h2>
-          <p>
-            <span className="muted">Amount</span>
-            <br />
-            <strong>{formatKes(item.amount_minor, item.amount, item.currency)}</strong>
-          </p>
-          <p>
-            <span className="muted">Phone</span>
-            <br />
-            <span className="mono">{item.phone}</span>
-          </p>
-          <p>
-            <span className="muted">Reference</span>
-            <br />
-            {item.account_reference || '—'}
-          </p>
-          {item.failure_reason && (
-            <p>
-              <span className="muted">Reason</span>
-              <br />
-              {item.failure_reason}
-            </p>
-          )}
-        </div>
-        <div className="card">
-          <h2>Provider</h2>
-          <p>
-            <span className="muted">Checkout ID</span>
-            <br />
-            <span className="mono">{item.provider_checkout_id || '—'}</span>
-          </p>
-          <p>
-            <span className="muted">Receipt / txn</span>
-            <br />
-            <span className="mono">{item.provider_transaction_id || '—'}</span>
-          </p>
-          {(item.status === 'created' || item.status === 'provider_requested') && item.provider_checkout_id && (
-            <button className="btn" type="button" disabled={busy} onClick={queryNetwork}>
-              {busy ? 'Checking…' : 'Check with network'}
-            </button>
-          )}
-          {(item.status === 'created' || item.status === 'provider_requested') && (
-            <button className="btn" type="button" disabled={busy} onClick={simulate}>
-              {busy ? 'Working…' : 'Simulate success (dev)'}
-            </button>
-          )}
-          {(item.status === 'failed' || item.status === 'expired') && (
-            <p>
-              <Link className="btn primary" to="/intents">
-                Start a new payment
-              </Link>
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: '1rem' }}>
+      <section className="card" style={{ marginTop: '1rem' }}>
         <h2>Ledger</h2>
         {ledger.length === 0 ? (
-          <p className="muted">No ledger entries yet. A collection credit appears when status becomes Paid.</p>
+          <p className="muted">No ledger entries yet. A credit appears when the payment is successful.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Provider ref</th>
-                <th>When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ledger.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.entry_type}</td>
-                  <td>{formatKes(row.amount_minor, null, row.currency)}</td>
-                  <td className="mono">{row.provider_ref || '—'}</td>
-                  <td className="muted">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Provider ref</th>
+                  <th>When</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {ledger.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.entry_type === 'collection_credit' ? 'Collection credit' : row.entry_type}</td>
+                    <td>{formatKes(row.amount_minor, null, row.currency)}</td>
+                    <td className="mono tiny">{row.provider_ref || '—'}</td>
+                    <td className="muted tiny">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </section>
+
+      <p className="muted tiny" style={{ marginTop: '1rem' }}>
+        Payment id <span className="mono">{item.id}</span>
+        {(item.status === 'provider_requested' || item.status === 'failed') && (
+          <>
+            {' '}
+            · See <Link to="/docs">Help</Link> and <Link to="/status">System status</Link>
+          </>
+        )}
+      </p>
     </div>
   )
 }

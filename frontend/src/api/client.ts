@@ -96,11 +96,6 @@ export type Tenant = {
   slug: string
   status: string
   created_at: string
-  failure_reason?: string | null
-  status_callback_url?: string | null
-  metadata?: Record<string, unknown> | null
-  stk_request_json?: string | null
-  stk_response_json?: string | null
 }
 
 
@@ -142,7 +137,12 @@ export type PaymentIntent = {
   provider_merchant_id?: string | null
   provider_transaction_id?: string | null
   failure_reason?: string | null
+  status_callback_url?: string | null
+  stk_request_json?: string | null
+  stk_response_json?: string | null
+  metadata_json?: string | null
   created_at: string
+  updated_at?: string
 }
 
 export type GatewayEvent = {
