@@ -586,3 +586,103 @@ input:focus, select:focus, textarea:focus {
   border: none;
   box-shadow: none;
 }
+
+
+/* —— Live toasts (payment updates) —— */
+.toast-host {
+  position: fixed;
+  top: 4.5rem;
+  right: 1rem;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(360px, calc(100vw - 1.5rem));
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  animation: toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.toast-leaving {
+  animation: toast-out 0.2s ease forwards;
+}
+.toast-success {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.toast-error, .toast-danger {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+.toast-icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--accent);
+}
+.toast-error .toast-icon, .toast-danger .toast-icon {
+  color: var(--danger);
+}
+.toast-success .toast-icon {
+  color: var(--accent-2, var(--accent));
+}
+.toast-body {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.toast-title {
+  font-weight: 650;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+}
+.toast-text {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.toast-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0.15rem;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.toast-close:hover {
+  color: var(--text);
+  background: var(--panel-2);
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+  to { opacity: 0; transform: translateX(12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast, .toast-leaving { animation: none; }
+}
+@media (max-width: 640px) {
+  .toast-host {
+    top: auto;
+    bottom: 1rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+  }
+}
