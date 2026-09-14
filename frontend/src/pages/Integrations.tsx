@@ -1,16 +1,18 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { api, ApiError, type Integration, type Tenant } from '../api/client'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { api, ApiError, type Integration, type Tenant, type Webhook } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { StatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth/AuthContext'
 
 export function Integrations() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, user } = useAuth()
+  const navigate = useNavigate()
   const [params] = useSearchParams()
-  const presetTenant = params.get('tenant_id') || ''
+  const presetTenant = params.get('tenant_id') || user?.tenant_id || ''
   const [items, setItems] = useState<Integration[]>([])
   const [tenants, setTenants] = useState<Tenant[]>([])
+  const [webhookCount, setWebhookCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -25,6 +27,7 @@ export function Integrations() {
     passkey: '',
   })
 
+
   async function load() {
     try {
       const integ = await api.get<Integration[]>('/v1/integrations')
@@ -34,6 +37,15 @@ export function Integrations() {
           setTenants(await api.get<Tenant[]>('/v1/tenants'))
         } catch {
           /* ignore */
+        }
+      }
+      const tid = user?.tenant_id || form.tenant_id
+      if (tid) {
+        try {
+          const hooks = await api.get<Webhook[]>(`/v1/webhooks?tenant_id=${tid}`)
+          setWebhookCount(hooks.length)
+        } catch {
+          setWebhookCount(0)
         }
       }
     } catch (e) {
@@ -50,11 +62,24 @@ export function Integrations() {
     setBusy(true)
     setError(null)
     setMsg(null)
+    const tenant_id = isAdmin ? form.tenant_id : user?.tenant_id || ''
+    if (!tenant_id) {
+      setError(
+        isAdmin
+          ? 'Choose a business before saving.'
+          : 'Your account isn’t linked to a business. Ask an admin to link you, then try again.',
+      )
+      setBusy(false)
+      return
+    }
     try {
-      await api.post('/v1/integrations', form)
+      const created = await api.post<Integration>('/v1/integrations', { ...form, tenant_id })
       setShowForm(false)
-      setMsg('Shortcode saved. You can collect payments with this paybill or till.')
+      setMsg('Shortcode saved. Next: connect M-Pesa so Safaricom can send results to NetPay.')
       await load()
+      if (created?.id) {
+        navigate(`/integrations/${created.id}`)
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : 'Could not save')
     } finally {
@@ -94,6 +119,33 @@ export function Integrations() {
       {error && <div className="alert error">{error}</div>}
       {msg && <div className="alert ok">{msg}</div>}
 
+      <div className="card">
+        <h2>Setup checklist</h2>
+        <p className="muted tiny" style={{ marginTop: 0 }}>
+          Complete these so payments can settle and your app can be notified.
+        </p>
+        <ol style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+          <li>
+            <strong>Add a shortcode</strong>
+            {items.length > 0 ? ' — done' : ' — use Add shortcode'}
+          </li>
+          <li>
+            <strong>Connect payment updates</strong> — open a shortcode and connect it
+            {items[0] && (
+              <>
+                {' '}
+                (<Link to={`/integrations/${items[0].id}`}>continue setup</Link>)
+              </>
+            )}
+          </li>
+          <li>
+            <strong>Notify your app</strong> —{' '}
+            <Link to="/webhooks">App endpoints</Link>
+            {webhookCount > 0 ? ' — at least one URL saved' : ' — add an HTTPS URL'}
+          </li>
+        </ol>
+      </div>
+
       {showForm && (
         <div className="card">
           <h2>Add a paybill or till</h2>
@@ -117,6 +169,11 @@ export function Integrations() {
                   ))}
                 </select>
               </>
+            )}
+            {!isAdmin && !user?.tenant_id && (
+              <div className="alert error">
+                Your account isn’t linked to a business. Ask an admin to link you before adding a shortcode.
+              </div>
             )}
             <div className="grid-3">
               <div>
@@ -169,7 +226,11 @@ export function Integrations() {
               onChange={(e) => setForm({ ...form, passkey: e.target.value })}
               autoComplete="off"
             />
-            <button className="btn primary" type="submit" disabled={busy}>
+            <button
+              className="btn primary"
+              type="submit"
+              disabled={busy || (!isAdmin && !user?.tenant_id) || (isAdmin && !form.tenant_id)}
+            >
               {busy ? 'Saving…' : 'Save shortcode'}
             </button>
           </form>
@@ -205,8 +266,9 @@ export function Integrations() {
                   <td>
                     <StatusBadge value={i.status} />
                   </td>
-                  <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <Link to={`/integrations/${i.id}`}>Open</Link>
+                  <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    <Link to={`/integrations/${i.id}`}>Continue setup</Link>
+                    <Link to={`/integrations/${i.id}`} className="muted tiny">Details</Link>
                     <button
                       type="button"
                       className="btn danger"

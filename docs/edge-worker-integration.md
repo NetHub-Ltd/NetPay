@@ -62,3 +62,11 @@ Edge sends the normalized envelope (see mpesa-edge README). NetPay maps:
 
 - NetPay: `app/api/routes/internal.py`, `app/services/inbound_events.py`
 - Edge: `src/netpay_forward.py`, `src/entry.py` `queue` handler
+
+## Live System status
+
+SPA connects to NetPay `WS /ws/events?token=…` only. After each successful `/internal/events` ingest (including `edge.heartbeat`), NetPay publishes `edge.connection` snapshot. The browser never polls `gateway.nethub.co.ke`.
+
+## C2B
+
+Confirmation envelopes (`c2b_confirmation`) match open payments by `BillRefNumber` / account reference for the integration. Unmatched or amount mismatch → reconciliation exception.

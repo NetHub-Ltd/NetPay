@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api, ApiError, type Tenant, type Webhook } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { useAuth } from '../auth/AuthContext'
@@ -12,13 +13,17 @@ export function Webhooks() {
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [secretOnce, setSecretOnce] = useState<string | null>(null)
+  const [secretAck, setSecretAck] = useState(false)
   const [busy, setBusy] = useState(false)
 
   async function load() {
     if (!tenantId && !isAdmin) return
+    if (!tenantId) {
+      setItems([])
+      return
+    }
     try {
-      const q = tenantId ? `?tenant_id=${tenantId}` : ''
-      setItems(await api.get<Webhook[]>(`/v1/webhooks${q}`))
+      setItems(await api.get<Webhook[]>(`/v1/webhooks?tenant_id=${tenantId}`))
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Could not load notification URLs')
     }
@@ -42,6 +47,7 @@ export function Webhooks() {
     setError(null)
     setMsg(null)
     setSecretOnce(null)
+    setSecretAck(false)
     try {
       const res = await api.post<{ id: string; secret?: string }>('/v1/webhooks', {
         tenant_id: tenantId,
@@ -52,7 +58,11 @@ export function Webhooks() {
       setMsg('Notification URL saved. We will POST payment updates to this address.')
       await load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Could not save (check HTTPS and that the URL responds)')
+      setError(
+        err instanceof ApiError
+          ? err.detail
+          : 'Could not save (check HTTPS and that the URL responds)',
+      )
     } finally {
       setBusy(false)
     }
@@ -72,22 +82,42 @@ export function Webhooks() {
     }
   }
 
+  function copySecret() {
+    if (!secretOnce) return
+    navigator.clipboard.writeText(secretOnce).catch(() => {})
+  }
+
   return (
     <div data-testid="webhooks-page">
       <div className="page-header">
         <div>
-          <h1>Payment notifications</h1>
+          <h1>App endpoints</h1>
           <p>
-            Tell your system when a payment is Paid or Failed. We only call HTTPS addresses (up to 3 per business).
+            Tell <em>your</em> system when a payment is Paid or Failed. This is separate from M-Pesa → NetPay URLs on
+            each shortcode.
           </p>
         </div>
       </div>
+      <p className="muted tiny">
+        <Link to="/integrations">← Paybills &amp; tills</Link>
+        {' · '}
+        <Link to="/intents">Take a payment</Link>
+      </p>
       {error && <div className="alert error">{error}</div>}
       {msg && <div className="alert ok">{msg}</div>}
       {secretOnce && (
         <div className="alert info">
-          Signing secret (copy now — shown once):
+          <strong>Copy this signing secret now — it won’t be shown again.</strong>
           <div className="secret-once">{secretOnce}</div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" className="btn primary" onClick={copySecret}>
+              Copy secret
+            </button>
+            <button type="button" className="btn" onClick={() => setSecretAck(true)}>
+              I’ve copied it
+            </button>
+          </div>
+          {secretAck && <p className="muted tiny">You can leave this page. Store the secret in your app config.</p>}
         </div>
       )}
 
@@ -104,6 +134,9 @@ export function Webhooks() {
                 </option>
               ))}
             </select>
+            {!tenantId && tenants.length === 0 && (
+              <p className="muted tiny">No businesses yet. Create one under Businesses first.</p>
+            )}
           </>
         )}
         <form onSubmit={onCreate}>

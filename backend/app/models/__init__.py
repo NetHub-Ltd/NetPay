@@ -13,3 +13,5 @@ __all__ = [
     "User", "Tenant", "Integration", "Credential", "OAuthClient",
     "Webhook", "WebhookDelivery", "PaymentIntent", "GatewayEvent", "LedgerEntry", "InboundEvent", "ReconciliationException",
 ]
+
+from app.models.outbound_request import OutboundRequest  # noqa: F401

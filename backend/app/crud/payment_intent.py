@@ -92,5 +92,43 @@ class PaymentIntentCRUD(BaseCRUD[PaymentIntent, PaymentIntentCreateIn, PaymentIn
         )
         return rows[0] if rows else None
 
+    async def find_open_by_account_reference(
+        self,
+        db: AsyncSession,
+        *,
+        integration_id: UUID,
+        account_reference: str,
+    ) -> Optional[PaymentIntent]:
+        """Most recent non-terminal intent for this integration + account reference."""
+        from sqlmodel import select
+        terminal = ("succeeded", "failed", "expired")
+        stmt = (
+            select(PaymentIntent)
+            .where(PaymentIntent.integration_id == integration_id)
+            .where(PaymentIntent.account_reference == account_reference)
+            .where(col(PaymentIntent.deleted_at).is_(None))
+            .where(~col(PaymentIntent.status).in_(terminal))
+            .order_by(col(PaymentIntent.created_at).desc())
+            .limit(1)
+        )
+        result = await db.exec(stmt)
+        return result.first()
+
+    async def get_by_provider_transaction_id(
+        self,
+        db: AsyncSession,
+        provider_transaction_id: str,
+    ) -> Optional[PaymentIntent]:
+        """Any intent already settled with this M-Pesa TransID (idempotency)."""
+        from sqlmodel import select
+        stmt = (
+            select(PaymentIntent)
+            .where(PaymentIntent.provider_transaction_id == provider_transaction_id)
+            .where(col(PaymentIntent.deleted_at).is_(None))
+            .limit(1)
+        )
+        result = await db.exec(stmt)
+        return result.first()
+
 
 payment_intent_crud = PaymentIntentCRUD(PaymentIntent)

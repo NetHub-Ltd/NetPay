@@ -354,3 +354,223 @@ async def test_failed_intent_has_no_ledger_credit(client: AsyncClient, p0_env):
     )
     assert led.status_code == 200
     assert led.json() == []
+
+
+
+@pytest.mark.asyncio
+async def test_redact_password_in_payload():
+    from app.services.outbound_audit import redact_provider_payload
+
+    body = {"Password": "secret", "Amount": "1", "nested": {"passkey": "x"}}
+    safe = redact_provider_payload(body)
+    assert safe["Password"] == "***REDACTED***"
+    assert safe["Amount"] == "1"
+    assert safe["nested"]["passkey"] == "***REDACTED***"
+
+
+@pytest.mark.asyncio
+async def test_live_hub_deliver_local_tenant_filter():
+    from uuid import uuid4
+    from app.services.live_hub import deliver_local, subscribe, unsubscribe
+
+    tid = uuid4()
+    q = await subscribe(tenant_id=tid, is_admin=False)
+    try:
+        await deliver_local(
+            "payment.update",
+            {"tenant_id": str(tid), "title": "Prompt sent", "status": "provider_requested"},
+        )
+        msg = q.get_nowait()
+        assert "Prompt sent" in msg
+    finally:
+        await unsubscribe(q)
+
+
+@pytest.mark.asyncio
+async def test_callback_resultcode_string_zero_succeeds(client: AsyncClient, p0_env):
+    headers = {
+        "Authorization": f"Bearer {p0_env['token']}",
+        "Idempotency-Key": f"idem-str0-{uuid4()}",
+    }
+    with patch(
+        "app.api.routes.payments.stk_push",
+        new_callable=AsyncMock,
+        return_value={"checkout_request_id": "ws_str0", "merchant_request_id": "mr_s0"},
+    ), patch(
+        "app.api.routes.payments.get_access_token",
+        new_callable=AsyncMock,
+        return_value="fixture-access-token",
+    ):
+        created = await client.post(
+            "/v1/payment-intents",
+            headers=headers,
+            json={
+                "integration_public_id": p0_env["public_id"],
+                "phone": "254711111111",
+                "amount_minor": 100,
+            },
+        )
+        assert created.status_code == 201, created.text
+        intent_id = created.json()["id"]
+
+    envelope = {
+        "event_id": f"evt_str0_{uuid4()}",
+        "provider": "mpesa",
+        "event_type": "stk.callback",
+        "integration": {"public_id": p0_env["public_id"]},
+        "payload": {
+            "Body": {
+                "stkCallback": {
+                    "CheckoutRequestID": "ws_str0",
+                    "ResultCode": "0",
+                    "ResultDesc": "The service request is processed successfully.",
+                }
+            }
+        },
+    }
+    r = await client.post("/internal/events", json=envelope, headers=internal_headers())
+    assert r.status_code == 200
+    assert r.json().get("status") == "succeeded"
+    got = await client.get(
+        f"/v1/payment-intents/{intent_id}",
+        headers={"Authorization": f"Bearer {p0_env['token']}"},
+    )
+    assert got.json()["status"] == "succeeded"
+
+
+@pytest.mark.asyncio
+async def test_callback_failure_stores_resultdesc(client: AsyncClient, p0_env):
+    headers = {
+        "Authorization": f"Bearer {p0_env['token']}",
+        "Idempotency-Key": f"idem-desc-{uuid4()}",
+    }
+    with patch(
+        "app.api.routes.payments.stk_push",
+        new_callable=AsyncMock,
+        return_value={"checkout_request_id": "ws_desc", "merchant_request_id": "mr_d"},
+    ), patch(
+        "app.api.routes.payments.get_access_token",
+        new_callable=AsyncMock,
+        return_value="fixture-access-token",
+    ):
+        created = await client.post(
+            "/v1/payment-intents",
+            headers=headers,
+            json={
+                "integration_public_id": p0_env["public_id"],
+                "phone": "254722222222",
+                "amount_minor": 200,
+            },
+        )
+        assert created.status_code == 201
+        intent_id = created.json()["id"]
+
+    envelope = {
+        "event_id": f"evt_desc_{uuid4()}",
+        "provider": "mpesa",
+        "event_type": "stk.callback",
+        "integration": {"public_id": p0_env["public_id"]},
+        "payload": {
+            "Body": {
+                "stkCallback": {
+                    "CheckoutRequestID": "ws_desc",
+                    "ResultCode": 1032,
+                    "ResultDesc": "Request cancelled by user",
+                }
+            }
+        },
+    }
+    r = await client.post("/internal/events", json=envelope, headers=internal_headers())
+    assert r.status_code == 200
+    assert r.json().get("status") == "failed"
+    got = await client.get(
+        f"/v1/payment-intents/{intent_id}",
+        headers={"Authorization": f"Bearer {p0_env['token']}"},
+    )
+    body = got.json()
+    assert body["status"] == "failed"
+    assert "cancelled by user" in (body.get("failure_reason") or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_unknown_checkout_not_found(client: AsyncClient, p0_env):
+    envelope = {
+        "event_id": f"evt_unk_{uuid4()}",
+        "provider": "mpesa",
+        "event_type": "stk.callback",
+        "integration": {"public_id": p0_env["public_id"]},
+        "payload": {
+            "Body": {
+                "stkCallback": {
+                    "CheckoutRequestID": "ws_does_not_exist",
+                    "ResultCode": 0,
+                    "ResultDesc": "Success",
+                }
+            }
+        },
+    }
+    r = await client.post("/internal/events", json=envelope, headers=internal_headers())
+    assert r.status_code == 200
+    assert r.json().get("status") == "not_found"
+
+
+@pytest.mark.asyncio
+async def test_stk_query_applies_mpesa_result(client: AsyncClient, p0_env):
+    headers = {
+        "Authorization": f"Bearer {p0_env['token']}",
+        "Idempotency-Key": f"idem-q-{uuid4()}",
+    }
+    with patch(
+        "app.api.routes.payments.stk_push",
+        new_callable=AsyncMock,
+        return_value={"checkout_request_id": "ws_query1", "merchant_request_id": "mr_q"},
+    ), patch(
+        "app.api.routes.payments.get_access_token",
+        new_callable=AsyncMock,
+        return_value="fixture-access-token",
+    ):
+        created = await client.post(
+            "/v1/payment-intents",
+            headers=headers,
+            json={
+                "integration_public_id": p0_env["public_id"],
+                "phone": "254733333333",
+                "amount_minor": 150,
+            },
+        )
+        assert created.status_code == 201
+        intent_id = created.json()["id"]
+
+    with patch(
+        "app.api.routes.payments.stk_query",
+        new_callable=AsyncMock,
+        return_value={
+            "result_code": 1032,
+            "result_desc": "Request cancelled by user",
+            "raw": {"ResultCode": 1032, "ResultDesc": "Request cancelled by user"},
+            "http_status": 200,
+        },
+    ), patch(
+        "app.api.routes.payments.get_access_token",
+        new_callable=AsyncMock,
+        return_value="fixture-access-token",
+    ):
+        q = await client.post(
+            f"/v1/payment-intents/{intent_id}/query-provider",
+            headers={"Authorization": f"Bearer {p0_env['token']}"},
+        )
+    assert q.status_code == 200, q.text
+    assert q.json()["status"] == "failed"
+    assert "cancelled" in (q.json().get("failure_reason") or "").lower()
+
+
+def test_stk_result_code_helpers():
+    from app.services.processor import is_stk_success_code, normalize_stk_result_code, stk_failure_reason
+
+    assert is_stk_success_code(0)
+    assert is_stk_success_code("0")
+    assert is_stk_success_code("00")
+    assert not is_stk_success_code(1032)
+    assert normalize_stk_result_code(1032) == "1032"
+    assert "cancelled" in stk_failure_reason(1032, "Request cancelled by user").lower()
+    assert "1032" in stk_failure_reason(1032, "")
