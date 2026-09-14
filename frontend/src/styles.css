@@ -430,3 +430,112 @@ input:focus, select:focus, textarea:focus {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
   box-shadow: var(--shadow-sm);
 }
+
+
+/* —— DataTable —— */
+.data-table {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.data-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.data-table-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.data-table-search {
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+.data-table-select {
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.data-table-scroll {
+  overflow: auto;
+}
+.data-table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.data-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel-2);
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.data-table-scroll tbody td {
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.data-table-scroll tbody tr:last-child td {
+  border-bottom: none;
+}
+.data-table-row-click {
+  cursor: pointer;
+}
+.data-table-row-click:hover td {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.data-table-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+.data-table-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.data-table-empty {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+.data-table-empty-title {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+.home-table-wrap .data-table {
+  border: none;
+  box-shadow: none;
+}

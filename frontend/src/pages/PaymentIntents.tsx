@@ -1,20 +1,18 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { type FormEvent, useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { subscribeLiveMessages } from '../hooks/useWebSocket'
 import { api, ApiError, type Integration, type PaymentIntent } from '../api/client'
-import { EmptyState } from '../components/EmptyState'
-import { StatusBadge, formatKes, statusHint } from '../components/StatusBadge'
-
-type Filter = 'all' | 'provider_requested' | 'succeeded' | 'failed' | 'expired'
+import { DataTable } from '../components/DataTable'
+import { StatusBadge, formatKes, statusHint, paymentLifecycleBucket } from '../components/StatusBadge'
 
 export function PaymentIntents() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<PaymentIntent[]>([])
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [filter, setFilter] = useState<Filter>('all')
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null)
   const [form, setForm] = useState({
     integration_public_id: '',
@@ -47,11 +45,6 @@ export function PaymentIntents() {
       if (m.type === 'payment.update' || m.type === 'notification') load()
     })
   }, [])
-
-  const filtered = useMemo(() => {
-    if (filter === 'all') return items
-    return items.filter((p) => p.status === filter)
-  }, [items, filter])
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()
@@ -192,65 +185,73 @@ export function PaymentIntents() {
         </form>
       )}
 
-      <div className="toolbar" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-        {(
-          [
-            ['all', 'All'],
-            ['provider_requested', 'Waiting'],
-            ['succeeded', 'Paid'],
-            ['failed', 'Failed'],
-            ['expired', 'Expired'],
-          ] as const
-        ).map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            className={`btn ${filter === k ? 'primary' : ''}`}
-            onClick={() => setFilter(k)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {filtered.length === 0 ? (
-        <EmptyState
-          title="No payments yet"
-          hint="Use “Take a payment” to send an M-Pesa STK prompt to a customer."
-        />
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Amount</th>
-                <th>Phone</th>
-                <th>When</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    <StatusBadge value={p.status} />
-                    <div className="muted" style={{ fontSize: '0.8rem' }}>
-                      {statusHint(p.status)}
-                    </div>
-                  </td>
-                  <td>{formatKes(p.amount_minor, p.amount, p.currency)}</td>
-                  <td className="mono">{p.phone}</td>
-                  <td className="muted">{p.created_at ? new Date(p.created_at).toLocaleString() : '—'}</td>
-                  <td>
-                    <Link to={`/intents/${p.id}`}>Open</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        rows={items}
+        getRowId={(p) => p.id}
+        searchPlaceholder="Search phone, amount…"
+        defaultPageSize={10}
+        maxHeight="min(440px, 55vh)"
+        emptyTitle="No payments yet"
+        emptyHint="Use “Take a payment” to send a prompt to a customer’s phone."
+        filters={[
+          { id: 'processing', label: 'Processing' },
+          { id: 'successful', label: 'Successful' },
+          { id: 'failed', label: 'Failed' },
+        ]}
+        filterFn={(p, id) => paymentLifecycleBucket(p.status) === id}
+        onRowClick={(p) => navigate(`/intents/${p.id}`)}
+        columns={[
+          {
+            id: 'status',
+            header: 'Status',
+            searchValue: (p) => `${p.status} ${p.failure_reason || ''}`,
+            cell: (p) => (
+              <>
+                <StatusBadge value={p.status} />
+                {p.failure_reason && (
+                  <div className="muted tiny" style={{ maxWidth: 220 }}>
+                    {p.failure_reason}
+                  </div>
+                )}
+                {!p.failure_reason && p.status === 'provider_requested' && (
+                  <div className="muted tiny">{statusHint(p.status)}</div>
+                )}
+              </>
+            ),
+          },
+          {
+            id: 'amount',
+            header: 'Amount',
+            searchValue: (p) => formatKes(p.amount_minor, p.amount, p.currency),
+            cell: (p) => formatKes(p.amount_minor, p.amount, p.currency),
+          },
+          {
+            id: 'phone',
+            header: 'Phone',
+            searchValue: (p) => p.phone || '',
+            cell: (p) => <span className="mono">{p.phone}</span>,
+          },
+          {
+            id: 'when',
+            header: 'When',
+            searchValue: (p) => p.created_at || '',
+            cell: (p) => (
+              <span className="muted">
+                {p.created_at ? new Date(p.created_at).toLocaleString() : '—'}
+              </span>
+            ),
+          },
+          {
+            id: 'open',
+            header: '',
+            cell: (p) => (
+              <Link to={`/intents/${p.id}`} onClick={(e) => e.stopPropagation()}>
+                Open
+              </Link>
+            ),
+          },
+        ]}
+      />
     </div>
   )
 }
