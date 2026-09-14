@@ -38,7 +38,7 @@ export function Layout() {
           </span>
           <div>
             <strong>NetPay</strong>
-            <div className="muted tiny">Collect payments</div>
+            <div className="muted tiny">Payments you can trust</div>
           </div>
         </div>
 
@@ -50,10 +50,10 @@ export function Layout() {
             <CreditCard {...ico} /> Payments
           </NavLink>
           <NavLink to="/integrations" className={linkClass}>
-            <Landmark {...ico} /> Paybills &amp; tills
+            <Landmark {...ico} /> Shortcodes
           </NavLink>
           <NavLink to="/webhooks" className={linkClass}>
-            <Bell {...ico} /> Payment notifications
+            <Bell {...ico} /> App endpoints
           </NavLink>
           <NavLink to="/reconciliation" className={linkClass}>
             <AlertTriangle {...ico} /> Needs attention

@@ -140,7 +140,7 @@ export function Integrations() {
           </li>
           <li>
             <strong>Notify your app</strong> —{' '}
-            <Link to="/webhooks">Payment notifications</Link>
+            <Link to="/webhooks">App endpoints</Link>
             {webhookCount > 0 ? ' — at least one URL saved' : ' — add an HTTPS URL'}
           </li>
         </ol>
