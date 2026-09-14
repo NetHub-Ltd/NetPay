@@ -52,6 +52,21 @@ export function PaymentIntentDetail() {
     load()
   }, [id])
 
+  async function queryNetwork() {
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    try {
+      await api.post(`/v1/payment-intents/${id}/query-provider`, {})
+      setMsg('Asked the network for the latest result. Status updates only from M-Pesa.')
+      await load()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Network query failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function simulate() {
     setBusy(true)
     setError(null)
@@ -134,7 +149,7 @@ export function PaymentIntentDetail() {
 
 
       <div className="card" style={{ marginBottom: '1rem' }}>
-        <p style={{ marginTop: 0 }}>{statusHint(item.status)}</p>
+        <p style={{ marginTop: 0 }}>{statusHint(item.status, item.failure_reason)}</p>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           {STEPS.map((s, i) => (
             <span
@@ -186,6 +201,11 @@ export function PaymentIntentDetail() {
             <br />
             <span className="mono">{item.provider_transaction_id || '—'}</span>
           </p>
+          {(item.status === 'created' || item.status === 'provider_requested') && item.provider_checkout_id && (
+            <button className="btn" type="button" disabled={busy} onClick={queryNetwork}>
+              {busy ? 'Checking…' : 'Check with network'}
+            </button>
+          )}
           {(item.status === 'created' || item.status === 'provider_requested') && (
             <button className="btn" type="button" disabled={busy} onClick={simulate}>
               {busy ? 'Working…' : 'Simulate success (dev)'}

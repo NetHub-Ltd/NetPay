@@ -17,7 +17,7 @@ from app.crud.payment_intent import payment_intent_crud
 from app.domain.payment_status import IllegalTransitionError, major_units_from_minor
 from app.models.payment_intent import PaymentIntent
 from app.models.user import User
-from app.providers.mpesa import StkPushError, get_access_token, normalize_msisdn, stk_push
+from app.providers.mpesa import StkPushError, get_access_token, normalize_msisdn, stk_push, stk_query
 from app.crud.ledger import ledger_entry_crud
 from app.schemas.ledger import LedgerEntryOut
 from app.schemas.payment import IntentCreate, IntentCreateResponse, IntentDetailOut, IntentOut
@@ -28,6 +28,19 @@ from app.services.live_hub import publish_notification
 from app.services.transitions import transition_payment_intent
 
 router = APIRouter(prefix="/v1/payment-intents", tags=["payments"])
+
+
+def _daraja_error_message(exc: Exception) -> str:
+    """Prefer structured Daraja fields over raw exception text."""
+    raw = getattr(exc, "raw", None)
+    if isinstance(raw, dict):
+        for key in ("ResultDesc", "ResponseDescription", "errorMessage", "error_description", "CustomerMessage"):
+            val = raw.get(key)
+            if val:
+                return str(val)[:512]
+        if raw.get("ResponseCode") not in (None, "0", 0):
+            return f"Network response code {raw.get('ResponseCode')}"[:512]
+    return str(exc)[:512]
 
 
 @router.get("", response_model=list[IntentOut])
@@ -256,13 +269,13 @@ async def create_intent(
                 session,
                 intent,
                 to_status="failed",
-                failure_reason=str(exc)[:512],
+                failure_reason=_daraja_error_message(exc),
             )
             await session.commit()
             try:
                 await publish_notification(
                     title="Could not send prompt",
-                    body=str(exc)[:180],
+                    body=_daraja_error_message(exc)[:180],
                     tenant_id=intent.tenant_id,
                     intent_id=intent.id,
                     level="error",
@@ -281,12 +294,12 @@ async def create_intent(
                 session,
                 intent,
                 to_status="failed",
-                failure_reason=str(exc)[:512],
+                failure_reason=_daraja_error_message(exc),
             )
             await session.commit()
         except IllegalTransitionError:
             await session.rollback()
-        raise HTTPException(status_code=502, detail=f"Daraja STK error: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Daraja STK error: {_daraja_error_message(exc)}") from exc
 
     return IntentCreateResponse(
         id=intent.id,
@@ -407,6 +420,90 @@ async def payment_timeline(
         "provider_checkout_id": intent.provider_checkout_id,
         "steps": steps,
     }
+
+
+
+@router.post("/{intent_id}/query-provider", response_model=IntentDetailOut)
+async def query_provider_status(
+    intent_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> IntentDetailOut:
+    """
+    Ask M-Pesa for the current STK result (Daraja STK Query).
+    Applies succeeded/failed only from network ResultCode — no invented statuses.
+    """
+    from app.services.processor import apply_payment_result, is_stk_success_code, stk_failure_reason
+
+    intent = await payment_intent_crud.get(session, intent_id)
+    if not intent:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not can_access_tenant(user, intent.tenant_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if not intent.provider_checkout_id:
+        raise HTTPException(status_code=400, detail="No network checkout id to query")
+    if intent.status in ("succeeded", "failed", "expired"):
+        # Already terminal — return current detail without calling Daraja
+        return await get_intent(intent_id, session, user)
+
+    integ = await integration_crud.get(session, intent.integration_id)
+    if not integ:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    creds = await load_creds(session, integ.id)
+    try:
+        token = await get_access_token(
+            creds["consumer_key"],
+            creds["consumer_secret"],
+            integ.environment,  # type: ignore[arg-type]
+            session=session,
+            tenant_id=integ.tenant_id,
+            integration_id=integ.id,
+            payment_intent_id=intent.id,
+        )
+        queried = await stk_query(
+            shortcode=integ.shortcode,
+            passkey=creds["passkey"],
+            checkout_request_id=intent.provider_checkout_id,
+            env=integ.environment,  # type: ignore[arg-type]
+            token=token,
+            session=session,
+            tenant_id=integ.tenant_id,
+            integration_id=integ.id,
+            payment_intent_id=intent.id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Network query failed: {exc}") from exc
+
+    raw = queried.get("raw") or {}
+    # Persist latest network answer on intent
+    intent.stk_response_json = json.dumps(raw)
+    session.add(intent)
+
+    result_code = queried.get("result_code")
+    result_desc = queried.get("result_desc")
+    # Daraja sometimes uses ResponseCode for "request accepted" while ResultCode is the STK outcome
+    if result_code is None and raw.get("ResultCode") is not None:
+        result_code = raw.get("ResultCode")
+    if not result_desc:
+        result_desc = raw.get("ResultDesc") or raw.get("ResponseDescription")
+
+    # Still pending at network (no terminal ResultCode / pending codes)
+    code_s = str(result_code).strip() if result_code is not None else ""
+    pending_markers = {"", "4999", "1037"}  # common "still processing" style codes vary; empty = unknown
+    if code_s == "" and str(raw.get("ResponseCode", "0")) in ("0", "00"):
+        await session.commit()
+        return await get_intent(intent_id, session, user)
+
+    if is_stk_success_code(result_code):
+        await apply_payment_result(session, intent, status="succeeded")
+    elif code_s and not is_stk_success_code(result_code):
+        # Only fail when M-Pesa returns a non-success ResultCode
+        reason = stk_failure_reason(result_code, result_desc)
+        await apply_payment_result(session, intent, status="failed", failure=reason)
+    else:
+        await session.commit()
+
+    return await get_intent(intent_id, session, user)
 
 
 @router.get("/{intent_id}/ledger", response_model=list[LedgerEntryOut])

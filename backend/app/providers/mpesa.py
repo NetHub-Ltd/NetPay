@@ -150,6 +150,56 @@ async def stk_push(
     return result
 
 
+
+async def stk_query(
+    *,
+    shortcode: str,
+    passkey: str,
+    checkout_request_id: str,
+    env: MpesaEnv,
+    token: str,
+    session: Optional[AsyncSession] = None,
+    tenant_id: UUID | None = None,
+    integration_id: UUID | None = None,
+    payment_intent_id: UUID | None = None,
+) -> dict[str, Any]:
+    """Ask Daraja for the current STK status (M-Pesa is source of truth)."""
+    ts = stk_timestamp()
+    body = {
+        "BusinessShortCode": shortcode,
+        "Password": stk_password(shortcode, passkey, ts),
+        "Timestamp": ts,
+        "CheckoutRequestID": checkout_request_id,
+    }
+    url = f"{daraja_base(env)}/mpesa/stkpushquery/v1/query"
+    logger.info("STK query checkout={}", checkout_request_id)
+    res = await provider_request(
+        session,
+        method="POST",
+        url=url,
+        operation="stk_query",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json_body=body,
+        timeout=30.0,
+        tenant_id=tenant_id,
+        integration_id=integration_id,
+        payment_intent_id=payment_intent_id,
+    )
+    data = res.json() if res.content else {}
+    result = {
+        "raw": data,
+        "http_status": res.status_code,
+        "result_code": data.get("ResultCode"),
+        "result_desc": data.get("ResultDesc") or data.get("ResponseDescription"),
+        "response_code": data.get("ResponseCode"),
+        "checkout_request_id": data.get("CheckoutRequestID") or checkout_request_id,
+        "request_body": redact_provider_payload(body),
+    }
+    if res.status_code >= 400:
+        raise RuntimeError(f"STK query HTTP {res.status_code}: {res.text[:400]}")
+    return result
+
+
 async def register_c2b_urls(
     *,
     shortcode: str,

@@ -1,11 +1,10 @@
-# Task: Redis live notifications
+# Task: STK harden (M-Pesa-driven)
 
-**Branch:** feat/redis-live-notifications → **dev**
+**Branch:** feat/stk-harden-mpesa-driven → **dev**
 
 ## Done
-- [x] Redis channel `netpay:live` pub/sub (`live_bus.py`)
-- [x] Lifespan subscriber start/stop
-- [x] publish_notification / publish → bus (cross-instance)
-- [x] Prompt sent + STK fail notify on create intent
-- [x] Layout LiveProvider always opens WS
-- [x] Home + Payments refetch on payment.update
+- [x] ResultCode normalize; ResultDesc → failure_reason
+- [x] Initiate errors prefer Daraja fields
+- [x] POST .../query-provider (STK Query) applies only network codes
+- [x] Tests: string 0, 1032+desc, unknown checkout, query fail path
+- [x] Detail: Check with network + failure reason

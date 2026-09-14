@@ -55,6 +55,28 @@ def _c2b_amount_minor(data: dict[str, Any]) -> int | None:
     except (TypeError, ValueError):
         return None
 
+def normalize_stk_result_code(value: Any) -> str:
+    """Daraja may send int or str; normalize for comparison."""
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def is_stk_success_code(value: Any) -> bool:
+    return normalize_stk_result_code(value) in ("0", "00")
+
+
+def stk_failure_reason(result_code: Any, result_desc: Any) -> str:
+    """Prefer M-Pesa ResultDesc; never invent business outcomes."""
+    desc = (str(result_desc).strip() if result_desc is not None else "") or ""
+    code = normalize_stk_result_code(result_code)
+    if desc:
+        return desc[:512]
+    if code:
+        return f"Network result code {code}"[:512]
+    return "Payment did not complete (no description from network)"
+
+
 def _extract_stk(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
@@ -183,7 +205,7 @@ async def process_envelope(session: AsyncSession, envelope: EnvelopeIn) -> Proce
                 intent_id=intent.id,
                 message="Already settled",
             )
-        ok = str(result_code) in ("0", "00")
+        ok = is_stk_success_code(result_code)
         tx_id = None
         items = (
             cb.get("CallbackMetadata", {}).get("Item", [])
@@ -211,7 +233,8 @@ async def process_envelope(session: AsyncSession, envelope: EnvelopeIn) -> Proce
                 ResultCode="0",
                 ResultDesc=result_desc,
             )
-        await apply_payment_result(session, intent, status="failed", failure=result_desc)
+        reason = stk_failure_reason(result_code, result_desc)
+        await apply_payment_result(session, intent, status="failed", failure=reason)
         await record_event(
             session,
             tenant_id=intent.tenant_id,
@@ -219,14 +242,14 @@ async def process_envelope(session: AsyncSession, envelope: EnvelopeIn) -> Proce
             payment_intent_id=intent.id,
             category="callback",
             action="stk.failed",
-            message=result_desc or "STK failed",
+            message=reason,
             is_replayable=True,
         )
         return ProcessResult(
             status="failed",
             intent_id=intent.id,
             ResultCode=str(result_code),
-            ResultDesc=result_desc,
+            ResultDesc=reason,
         )
 
     # --- C2B validation: audit only (Safaricom sync response is edge responsibility) ---
