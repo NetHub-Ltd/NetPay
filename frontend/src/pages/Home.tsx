@@ -61,27 +61,28 @@ export function Home() {
 
   const first = greetingName(user)
   const hasShortcode = integrations.length > 0
+  const waitingCount = payments.filter((p) => p.status === 'provider_requested' || p.status === 'created').length
   const nextStep = !hasShortcode
     ? {
         title: 'Add a shortcode',
-        body: 'Connect a paybill or till to start requesting payments.',
+        body: 'Connect a paybill or till so you can request payments from customers.',
         to: '/integrations',
-        label: 'Paybills & tills',
+        label: 'Add shortcode',
         Icon: Landmark,
       }
-    : hooks === 0
+    : waitingCount > 0
       ? {
-          title: 'Optional: app notifications',
-          body: 'Forward payment status to your own systems when you’re ready.',
-          to: '/webhooks',
-          label: 'Notifications',
-          Icon: Bell,
+          title: 'Payments waiting on the customer',
+          body: 'A phone prompt is open. It usually settles within a minute — open a payment for details.',
+          to: '/intents',
+          label: 'View payments',
+          Icon: CreditCard,
         }
       : {
           title: 'Request a payment',
           body: 'Send a prompt to a customer’s phone and track the result here.',
           to: '/intents',
-          label: 'Payments',
+          label: 'New payment',
           Icon: CreditCard,
         }
 
@@ -94,7 +95,7 @@ export function Home() {
           <p className="home-eyebrow">Overview</p>
           <h1 className="home-title">{first ? `Hello, ${first}` : 'Hello'}</h1>
           <p className="home-sub muted">
-            Recent collections and a light nudge for what to do next.
+            A calm view of recent collections and what needs attention next.
           </p>
         </div>
         <Link className="btn primary" to="/intents">
@@ -117,7 +118,7 @@ export function Home() {
         </div>
         <div className="stat-card">
           <div className="stat-label">
-            <Bell size={14} strokeWidth={1.75} /> App notifications
+            <Bell size={14} strokeWidth={1.75} /> App endpoints
           </div>
           <div className="stat-value">{loading ? '—' : hooks}</div>
           <Link to="/webhooks" className="stat-link">

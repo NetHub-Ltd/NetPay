@@ -91,7 +91,7 @@ export function Webhooks() {
     <div data-testid="webhooks-page">
       <div className="page-header">
         <div>
-          <h1>Payment notifications</h1>
+          <h1>App endpoints</h1>
           <p>
             Tell <em>your</em> system when a payment is Paid or Failed. This is separate from M-Pesa → NetPay URLs on
             each shortcode.

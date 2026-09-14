@@ -18,7 +18,7 @@ const MAP: Record<string, string> = {
 
 const LABEL: Record<string, string> = {
   created: 'Created',
-  provider_requested: 'Waiting on M-Pesa',
+  provider_requested: 'Waiting for customer',
   succeeded: 'Paid',
   failed: 'Failed',
   expired: 'Expired',
@@ -34,15 +34,15 @@ export function StatusBadge({ value }: { value: string }) {
 export function statusHint(status: string): string {
   switch (status) {
     case 'created':
-      return 'Payment recorded. Waiting to reach M-Pesa.'
+      return 'Payment saved. We’re sending the phone prompt next.'
     case 'provider_requested':
-      return 'STK push sent. Ask the customer to enter their M-Pesa PIN on the phone.'
+      return 'Prompt sent. Ask the customer to enter their PIN on the phone. This usually updates within a minute.'
     case 'succeeded':
-      return 'Payment completed. Ledger credit recorded.'
+      return 'Payment completed. A ledger credit is recorded for this amount.'
     case 'failed':
-      return 'Payment did not complete. You can start a new attempt with a new amount/phone.'
+      return 'Payment did not complete. Start a new payment if they still want to pay.'
     case 'expired':
-      return 'No callback in time. Start a new payment if the customer still wants to pay.'
+      return 'No response in time. Start a new payment if needed — we don’t revive expired ones.'
     default:
       return ''
   }

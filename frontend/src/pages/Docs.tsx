@@ -21,12 +21,12 @@ export function Docs() {
             you need them later. Phone-prompt results use these links automatically.
           </li>
           <li>
-            <Link to="/webhooks">Payment notifications</Link> — optional HTTPS URL so <em>your</em> app is told when a
+            <Link to="/webhooks">App endpoints</Link> — optional HTTPS URL so <em>your</em> app is told when a
             payment is Paid or Failed.
           </li>
         </ol>
         <p className="muted tiny">
-          Connecting the shortcode (so NetPay receives network results) is different from Payment notifications (so your
+          Connecting the shortcode (so NetPay receives network results) is different from App endpoints (so your
           own app is told). Re-open any shortcode anytime from Paybills &amp; tills.
         </p>
       </div>
@@ -46,7 +46,7 @@ export function Docs() {
             <strong>Created</strong> — saved, not yet sent to the network.
           </li>
           <li>
-            <strong>Waiting</strong> — prompt sent; customer should enter PIN.
+            <strong>Waiting for customer</strong> — prompt sent; customer should enter PIN.
           </li>
           <li>
             <strong>Paid</strong> — success. A ledger line is recorded for the amount.
@@ -98,7 +98,7 @@ export function Docs() {
             is resolved; <code>metadata</code> — your own fields (e.g. order id).
           </li>
           <li>
-            If there is no status URL, we use <Link to="/webhooks">Payment notifications</Link> for the business. If
+            If there is no status URL, we use <Link to="/webhooks">App endpoints</Link> for the business. If
             neither is set, we do not notify your system (network results still go to NetPay via the edge).
           </li>
           <li>
