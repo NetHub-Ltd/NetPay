@@ -8,7 +8,9 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { api, ApiError, type Integration, type PaymentIntent, type Webhook } from '../api/client'
-import { StatusBadge } from '../components/StatusBadge'
+import { StatusBadge, formatKes } from '../components/StatusBadge'
+import { DataTable } from '../components/DataTable'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { subscribeLiveMessages } from '../hooks/useWebSocket'
 
@@ -26,6 +28,7 @@ function greetingName(user: { display_name?: string | null; email?: string } | n
 
 export function Home() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [payments, setPayments] = useState<PaymentIntent[]>([])
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [hooks, setHooks] = useState(0)
@@ -176,44 +179,47 @@ export function Home() {
         </div>
         {loading ? (
           <p className="muted tiny">Loading…</p>
-        ) : payments.length === 0 ? (
-          <div className="empty-soft">
-            <p className="muted">No payments yet.</p>
-            <Link className="btn primary" to="/intents">
-              Create one
-            </Link>
-          </div>
         ) : (
-          <div className="table-wrap home-table-wrap">
-            <table className="home-table">
-              <thead>
-                <tr>
-                  <th>Amount</th>
-                  <th>Phone</th>
-                  <th>Status</th>
-                  <th>When</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((p) => (
-                  <tr key={p.id}>
-                    <td className="mono">{money(p.amount_minor)}</td>
-                    <td className="mono tiny">{p.phone}</td>
-                    <td>
-                      <StatusBadge value={p.status} />
-                    </td>
-                    <td className="muted tiny">
-                      {p.created_at ? new Date(p.created_at).toLocaleString() : '—'}
-                    </td>
-                    <td>
-                      <Link to={`/intents/${p.id}`}>Open</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rows={payments}
+            getRowId={(p) => p.id}
+            searchPlaceholder="Search…"
+            defaultPageSize={5}
+            pageSizeOptions={[5, 10]}
+            maxHeight="320px"
+            emptyTitle="No payments yet"
+            emptyHint="Create a payment to see it here."
+            onRowClick={(p) => navigate(`/intents/${p.id}`)}
+            columns={[
+              {
+                id: 'amount',
+                header: 'Amount',
+                searchValue: (p) => money(p.amount_minor),
+                cell: (p) => <span className="mono">{money(p.amount_minor)}</span>,
+              },
+              {
+                id: 'phone',
+                header: 'Phone',
+                searchValue: (p) => p.phone || '',
+                cell: (p) => <span className="mono tiny">{p.phone}</span>,
+              },
+              {
+                id: 'status',
+                header: 'Status',
+                searchValue: (p) => p.status,
+                cell: (p) => <StatusBadge value={p.status} />,
+              },
+              {
+                id: 'when',
+                header: 'When',
+                cell: (p) => (
+                  <span className="muted tiny">
+                    {p.created_at ? new Date(p.created_at).toLocaleString() : '—'}
+                  </span>
+                ),
+              },
+            ]}
+          />
         )}
       </section>
     </div>

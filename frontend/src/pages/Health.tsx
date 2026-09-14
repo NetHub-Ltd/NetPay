@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Health as HealthT } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
+import { DataTable } from '../components/DataTable'
 import { useLiveStatus } from '../hooks/useWebSocket'
 
 type EdgeConnection = {
@@ -118,48 +119,59 @@ export function Health() {
         <p className="muted tiny" style={{ marginTop: 0 }}>
           Recent requests NetPay made to the payment network (login, phone prompts, connect shortcode).
         </p>
-        {outbound.length === 0 ? (
-          <p className="muted">No provider calls recorded yet.</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>What</th>
-                <th>Result</th>
-                <th>Detail</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {outbound.map((r) => (
-                <tr key={r.id}>
-                  <td className="muted tiny">{fmt(r.created_at)}</td>
-                  <td>{r.label || r.operation}</td>
-                  <td>
-                    <StatusBadge value={r.success ? 'ok' : 'failed'} />
-                    {r.response_status != null && (
-                      <span className="muted tiny"> · HTTP {r.response_status}</span>
-                    )}
-                    {r.duration_ms != null && (
-                      <span className="muted tiny"> · {r.duration_ms}ms</span>
-                    )}
-                  </td>
-                  <td className="muted tiny" style={{ maxWidth: 220 }}>
-                    {(r.error_message || '—').slice(0, 120)}
-                  </td>
-                  <td>
-                    {r.payment_intent_id ? (
-                      <Link to={`/intents/${r.payment_intent_id}`}>Payment</Link>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          rows={outbound}
+          getRowId={(r) => r.id}
+          searchPlaceholder="Search operations…"
+          defaultPageSize={10}
+          maxHeight="min(360px, 45vh)"
+          emptyTitle="No provider calls yet"
+          emptyHint="Phone prompts and network login appear here after you use them."
+          columns={[
+            {
+              id: 'when',
+              header: 'When',
+              searchValue: (r) => r.created_at || '',
+              cell: (r) => <span className="muted tiny">{fmt(r.created_at)}</span>,
+            },
+            {
+              id: 'what',
+              header: 'What',
+              searchValue: (r) => r.label || r.operation,
+              cell: (r) => r.label || r.operation,
+            },
+            {
+              id: 'result',
+              header: 'Result',
+              cell: (r) => (
+                <>
+                  <StatusBadge value={r.success ? 'ok' : 'failed'} />
+                  {r.response_status != null && (
+                    <span className="muted tiny"> · HTTP {r.response_status}</span>
+                  )}
+                </>
+              ),
+            },
+            {
+              id: 'detail',
+              header: 'Detail',
+              searchValue: (r) => r.error_message || '',
+              cell: (r) => (
+                <span className="muted tiny">{(r.error_message || '—').slice(0, 120)}</span>
+              ),
+            },
+            {
+              id: 'link',
+              header: '',
+              cell: (r) =>
+                r.payment_intent_id ? (
+                  <Link to={`/intents/${r.payment_intent_id}`}>Payment</Link>
+                ) : (
+                  '—'
+                ),
+            },
+          ]}
+        />
       </div>
 
       {data && (
