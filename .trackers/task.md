@@ -1,9 +1,11 @@
-# Task: Fixed sidebar + WS notifications
+# Task: Redis live notifications
 
-**Branch:** feat/fixed-sidebar-ws-notifications → **dev**
+**Branch:** feat/redis-live-notifications → **dev**
 
 ## Done
-- [x] Shell 100vh; sidebar fixed; nav scrolls; main content scrolls independently
-- [x] live_hub tenant-scoped subscribers
-- [x] publish_notification on payment resolve (Paid/Failed/Expired)
-- [x] Header NotificationBell inbox over existing /ws/events
+- [x] Redis channel `netpay:live` pub/sub (`live_bus.py`)
+- [x] Lifespan subscriber start/stop
+- [x] publish_notification / publish → bus (cross-instance)
+- [x] Prompt sent + STK fail notify on create intent
+- [x] Layout LiveProvider always opens WS
+- [x] Home + Payments refetch on payment.update

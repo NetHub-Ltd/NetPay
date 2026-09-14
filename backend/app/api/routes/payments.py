@@ -24,6 +24,7 @@ from app.schemas.payment import IntentCreate, IntentCreateResponse, IntentDetail
 from app.services.events import record_event
 from app.services.processor import apply_payment_result
 from app.services.outbound_audit import redact_provider_payload
+from app.services.live_hub import publish_notification
 from app.services.transitions import transition_payment_intent
 
 router = APIRouter(prefix="/v1/payment-intents", tags=["payments"])
@@ -231,6 +232,18 @@ async def create_intent(
             action="stk.requested",
             message=f"Checkout {intent.provider_checkout_id}",
         )
+        try:
+            amt = f"{(intent.amount_minor or 0) / 100:.2f} {intent.currency or 'KES'}"
+            await publish_notification(
+                title="Prompt sent",
+                body=f"{amt} · {intent.phone or ''} — waiting for customer".strip(" ·"),
+                tenant_id=intent.tenant_id,
+                intent_id=intent.id,
+                level="info",
+                status="provider_requested",
+            )
+        except Exception:  # noqa: BLE001
+            pass
     except HTTPException:
         raise
     except StkPushError as exc:
@@ -246,6 +259,17 @@ async def create_intent(
                 failure_reason=str(exc)[:512],
             )
             await session.commit()
+            try:
+                await publish_notification(
+                    title="Could not send prompt",
+                    body=str(exc)[:180],
+                    tenant_id=intent.tenant_id,
+                    intent_id=intent.id,
+                    level="error",
+                    status="failed",
+                )
+            except Exception:  # noqa: BLE001
+                pass
         except IllegalTransitionError:
             await session.rollback()
         raise HTTPException(status_code=502, detail=f"Daraja STK error: {exc}") from exc

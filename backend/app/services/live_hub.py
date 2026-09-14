@@ -1,9 +1,9 @@
-"""In-process live event hub for authenticated SPA clients (no edge polling)."""
+"""In-process WebSocket fanout (per API process). Cross-process via live_bus + Redis."""
 from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
@@ -45,15 +45,16 @@ def _visible_to(sub: Subscriber, payload: dict[str, Any]) -> bool:
         return True
     tid = payload.get("tenant_id")
     if tid is None:
-        return True  # global (e.g. edge connection for all logged-in)
+        return True
     if sub.tenant_id is None:
         return False
     return str(sub.tenant_id) == str(tid)
 
 
-async def publish(event_type: str, payload: dict[str, Any] | None = None) -> None:
+async def deliver_local(event_type: str, payload: dict[str, Any] | None = None) -> None:
+    """Fan out to WebSocket queues on this process only."""
     body = payload or {}
-    message = json.dumps({"type": event_type, "payload": body})
+    message = json.dumps({"type": event_type, "payload": body}, default=str)
     async with _lock:
         targets = list(_subscribers)
     dead: list[asyncio.Queue[str]] = []
@@ -65,11 +66,18 @@ async def publish(event_type: str, payload: dict[str, Any] | None = None) -> Non
         except asyncio.QueueFull:
             dead.append(sub.queue)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("live_hub publish skip: {}", exc)
+            logger.warning("live_hub deliver skip: {}", exc)
             dead.append(sub.queue)
     if dead:
         async with _lock:
             _subscribers[:] = [s for s in _subscribers if s.queue not in dead]
+
+
+async def publish(event_type: str, payload: dict[str, Any] | None = None) -> None:
+    """Preferred entry: Redis bus + local (via live_bus)."""
+    from app.services.live_bus import publish_live
+
+    await publish_live(event_type, payload)
 
 
 async def publish_edge_connection(snapshot: dict[str, Any]) -> None:
@@ -84,18 +92,22 @@ async def publish_notification(
     intent_id: UUID | None = None,
     level: str = "info",
     href: str | None = None,
+    status: str | None = None,
 ) -> None:
-    """User-facing toast/inbox style event over the same WebSocket."""
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
     await publish(
-        "notification",
+        "payment.update",
         {
-            "id": f"n_{intent_id or 'sys'}_{__import__('uuid').uuid4().hex[:10]}",
+            "id": f"n_{intent_id or 'sys'}_{uuid4().hex[:10]}",
             "title": title,
             "body": body,
             "level": level,
             "tenant_id": str(tenant_id) if tenant_id else None,
             "intent_id": str(intent_id) if intent_id else None,
             "href": href or (f"/intents/{intent_id}" if intent_id else None),
-            "ts": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+            "status": status,
+            "ts": datetime.now(timezone.utc).isoformat(),
         },
     )

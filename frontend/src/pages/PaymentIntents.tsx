@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { subscribeLiveMessages } from '../hooks/useWebSocket'
 import { api, ApiError, type Integration, type PaymentIntent } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { StatusBadge, formatKes, statusHint } from '../components/StatusBadge'
@@ -39,6 +40,12 @@ export function PaymentIntents() {
 
   useEffect(() => {
     load()
+  }, [])
+
+  useEffect(() => {
+    return subscribeLiveMessages((m) => {
+      if (m.type === 'payment.update' || m.type === 'notification') load()
+    })
   }, [])
 
   const filtered = useMemo(() => {
