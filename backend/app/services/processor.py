@@ -271,6 +271,8 @@ async def process_envelope(session: AsyncSession, envelope: EnvelopeIn) -> Proce
             return ProcessResult(status="not_found", message="Unknown integration for C2B confirmation")
         data = _extract_c2b(envelope.payload)
         bill_ref = _c2b_bill_ref(data)
+        if bill_ref:
+            bill_ref = bill_ref[:12]
         trans_id = _c2b_trans_id(data)
         if not bill_ref:
             from app.crud.reconciliation import reconciliation_crud
@@ -287,6 +289,18 @@ async def process_envelope(session: AsyncSession, envelope: EnvelopeIn) -> Proce
             )
             await session.commit()
             return ProcessResult(status="unmatched", message="C2B confirmation missing bill reference")
+
+        # Same M-Pesa TransID already applied → no second ledger (even if BillRef no longer open)
+        if trans_id:
+            existing = await payment_intent_crud.get_by_provider_transaction_id(
+                session, trans_id
+            )
+            if existing is not None:
+                return ProcessResult(
+                    status="duplicate",
+                    intent_id=existing.id,
+                    message=f"TransID {trans_id} already applied",
+                )
 
         intent = await payment_intent_crud.find_open_by_account_reference(
             session, integration_id=integ.id, account_reference=bill_ref
