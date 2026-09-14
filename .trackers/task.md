@@ -1,10 +1,12 @@
-# Task: STK harden (M-Pesa-driven)
+# Task: #24 C2B notification handling
 
-**Branch:** feat/stk-harden-mpesa-driven → **dev**
+**Branch:** feat/p1-c2b-notification-handling → **dev**
 
 ## Done
-- [x] ResultCode normalize; ResultDesc → failure_reason
-- [x] Initiate errors prefer Daraja fields
-- [x] POST .../query-provider (STK Query) applies only network codes
-- [x] Tests: string 0, 1032+desc, unknown checkout, query fail path
-- [x] Detail: Check with network + failure reason
+- [x] Confirmation → open intent by BillRef / account_reference
+- [x] TransID dedupe (no double ledger)
+- [x] Unmatched / missing BillRef → reconciliation exception
+- [x] Amount mismatch → exception, no silent succeed
+- [x] Validation audit accepted
+- [x] Tests for success, dup TransID, unmatched, mismatch, validation
+- [x] Help docs for paybill/till C2B

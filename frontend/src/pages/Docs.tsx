@@ -40,6 +40,24 @@ export function Docs() {
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
+        <h2>2b. Paybill &amp; till (C2B)</h2>
+        <p>
+          Customers can also pay your paybill or till without a phone prompt. Safaricom sends a confirmation to NetHub
+          edge; we match it using the <strong>account reference</strong> (bill reference) on an open payment.
+        </p>
+        <ul>
+          <li>Connect the shortcode so confirmation URLs stay on NetHub edge.</li>
+          <li>Create a payment with the same account reference the customer will use.</li>
+          <li>On confirmation we mark it successful, record ledger, and notify your app endpoints.</li>
+          <li>
+            Unknown reference or amount mismatch goes to <Link to="/reconciliation">Needs attention</Link> — we do not
+            invent a success.
+          </li>
+          <li>The same M-Pesa transaction id is never credited twice.</li>
+        </ul>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
         <h2>3. What each status means</h2>
         <ul>
           <li>

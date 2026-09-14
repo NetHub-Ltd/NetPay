@@ -114,5 +114,21 @@ class PaymentIntentCRUD(BaseCRUD[PaymentIntent, PaymentIntentCreateIn, PaymentIn
         result = await db.exec(stmt)
         return result.first()
 
+    async def get_by_provider_transaction_id(
+        self,
+        db: AsyncSession,
+        provider_transaction_id: str,
+    ) -> Optional[PaymentIntent]:
+        """Any intent already settled with this M-Pesa TransID (idempotency)."""
+        from sqlmodel import select
+        stmt = (
+            select(PaymentIntent)
+            .where(PaymentIntent.provider_transaction_id == provider_transaction_id)
+            .where(col(PaymentIntent.deleted_at).is_(None))
+            .limit(1)
+        )
+        result = await db.exec(stmt)
+        return result.first()
+
 
 payment_intent_crud = PaymentIntentCRUD(PaymentIntent)
