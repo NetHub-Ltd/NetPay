@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, getToken, setToken, type TokenResponse, type User } from '../api/client'
+import { api, getToken, setToken, type User } from '../api/client'
 
 type AuthState = {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  /** Accept a Keycloak (or test) access token and load /auth/me */
+  loginWithToken: (accessToken: string) => Promise<void>
   logout: () => void
   isAdmin: boolean
 }
@@ -37,9 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadMe()
   }, [loadMe])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<TokenResponse>('/auth/login', { email, password })
-    setToken(res.access_token)
+  const loginWithToken = useCallback(async (accessToken: string) => {
+    setToken(accessToken)
     const me = await api.get<User>('/auth/me')
     setUser(me)
   }, [])
@@ -53,11 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
-      login,
+      loginWithToken,
       logout,
       isAdmin: user?.role === 'admin',
     }),
-    [user, loading, login, logout],
+    [user, loading, loginWithToken, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

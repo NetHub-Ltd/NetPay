@@ -20,9 +20,13 @@ class Settings(BaseSettings):
     app_name: str = "NetHub Payment Gateway"
     environment: Literal["development", "test", "production"] = "development"
     secret_key: str = "dev-secret-change-me"
-    app_version: str = "1.1.0"
+    app_version: str = "1.2.1"
     admin_email: str = "admin@nethub.test"
     admin_password: str = "ChangeMeAdmin123!"
+    admin_keycloak_id: str = Field(
+        default="00000000-0000-4000-8000-000000000001",
+        alias="ADMIN_KEYCLOAK_ID",
+    )
     internal_api_key: str = "change-me-internal-worker-secret"
     database_url: str = Field(default="sqlite+aiosqlite:///./data/gateway.db", alias="DATABASE_URL")
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
@@ -34,27 +38,26 @@ class Settings(BaseSettings):
     stk_timeout_seconds: float = Field(default=120.0, alias="STK_TIMEOUT_SECONDS")
     inbound_event_max_attempts: int = Field(default=5, alias="INBOUND_EVENT_MAX_ATTEMPTS")
     max_webhooks_per_tenant: int = 3
-    # Public M-Pesa edge base (no trailing slash). Used for Daraja callback URLs shown in UI.
     edge_public_base_url: str = Field(
         default="https://gateway.nethub.co.ke",
         alias="EDGE_PUBLIC_BASE_URL",
     )
-    # Path under edge host for provider callbacks. Must NOT contain the substring "mpesa"
-    # (Safaricom rejects callback URLs that include that word).
     edge_callback_path_prefix: str = Field(
         default="/cb",
         alias="EDGE_CALLBACK_PATH_PREFIX",
     )
 
-    # NetHub AS (Authorization Server) — placeholders only.
-    # User auth/registration is owned by NetHub AS, not NetPay.
-    # When nethub_as_enabled is true AND validation is implemented, NetPay will
-    # validate Bearer tokens from the AS. Default false keeps local HS256 JWT.
-    # See docs/auth-model.md.
-    nethub_as_enabled: bool = Field(default=False, alias="NETHUB_AS_ENABLED")
+    # NetHub API — sole authorization + user-context authority for NetPay.
+    # NetPay forwards the client Bearer token; it does not call Keycloak JWKS.
+    nethub_api_base_url: str = Field(default="", alias="NETHUB_API_BASE_URL")
+    # Short-lived context cache (seconds). 0 disables cache.
+    nethub_context_cache_ttl_sec: int = Field(default=60, alias="NETHUB_CONTEXT_CACHE_TTL_SEC")
+
+    # Legacy placeholders kept so existing env files do not break; unused at runtime.
+    nethub_as_enabled: bool = Field(default=True, alias="NETHUB_AS_ENABLED")
     nethub_as_issuer: str = Field(default="", alias="NETHUB_AS_ISSUER")
     nethub_as_jwks_url: str = Field(default="", alias="NETHUB_AS_JWKS_URL")
-    nethub_as_audience: str = Field(default="", alias="NETHUB_AS_AUDIENCE")
+    nethub_as_audience: str = Field(default="nethub-backend", alias="NETHUB_AS_AUDIENCE")
 
     @property
     def async_database_url(self) -> str:
@@ -69,6 +72,10 @@ class Settings(BaseSettings):
         if self.cors_origins.strip() == "*":
             return ["*"]
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def is_test(self) -> bool:
+        return self.environment == "test"
 
 @lru_cache
 def get_settings() -> Settings:

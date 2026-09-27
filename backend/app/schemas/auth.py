@@ -3,10 +3,6 @@ from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -20,6 +16,7 @@ class UserOut(BaseModel):
     role: str
     tenant_id: Optional[UUID] = None
     is_active: bool
+    keycloak_id: Optional[UUID] = None
     model_config = {"from_attributes": True}
 
 class OAuthTokenRequest(BaseModel):

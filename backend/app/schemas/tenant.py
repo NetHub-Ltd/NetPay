@@ -15,6 +15,7 @@ class TenantOut(BaseModel):
 
 class AssignUserRequest(BaseModel):
     email: str
-    password: str
+    keycloak_id: UUID
     tenant_id: UUID
     display_name: str | None = None
+    role: str = "user"

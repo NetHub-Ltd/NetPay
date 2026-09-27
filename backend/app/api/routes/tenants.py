@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import get_session, require_admin
-from app.core.security import hash_password
 from app.crud.tenant import tenant_crud
 from app.crud.user import user_crud
 from app.models.tenant import Tenant
@@ -55,14 +54,15 @@ async def assign_user(
         await user_crud.update(
             session,
             db_obj=user,
-            obj_in={"tenant_id": body.tenant_id, "role": "user"},
+            obj_in={"tenant_id": body.tenant_id, "role": body.role or "user", "keycloak_id": body.keycloak_id},
         )
     else:
         await user_crud.create(
             session,
             obj_in={
                 "email": body.email.lower(),
-                "hashed_password": hash_password(body.password),
+                "hashed_password": None,
+                "keycloak_id": body.keycloak_id,
                 "display_name": body.display_name,
                 "role": "user",
                 "tenant_id": body.tenant_id,

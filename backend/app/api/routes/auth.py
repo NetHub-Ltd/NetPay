@@ -6,13 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import get_current_user, get_session, require_admin
-from app.core.security import create_access_token, hash_password, verify_password
 from app.core.logging import logger
+from app.core.security import create_test_access_token, hash_password, verify_password
 from app.crud.oauth_client import oauth_client_crud
-from app.crud.user import user_crud
 from app.models.user import User
 from app.schemas.auth import (
-    LoginRequest,
     OAuthClientCreate,
     OAuthClientOut,
     OAuthTokenRequest,
@@ -24,24 +22,17 @@ from app.services.ids import new_client_id, new_client_secret
 router = APIRouter(tags=["auth"])
 
 
-@router.post("/auth/login", response_model=TokenResponse)
-async def login(
-    body: LoginRequest,
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> TokenResponse:
-    user = await user_crud.get_by_email(session, body.email.lower())
-    if not user or not verify_password(body.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
-    logger.info("Login ok email={} role={}", user.email, user.role)
-    token = create_access_token(str(user.id), extra={"role": user.role, "email": user.email})
-    return TokenResponse(
-        access_token=token,
-        role=user.role,
-        email=user.email,
-        tenant_id=user.tenant_id,
-    )  # type: ignore
+@router.post("/auth/login", include_in_schema=False)
+async def login_removed() -> None:
+    """Password login removed (P2 #25). Use Keycloak / NetHub SSO."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail=(
+            "Password login has been removed. "
+            "Authenticate with Keycloak and call NetPay with the access token "
+            "(audience=nethub-backend)."
+        ),
+    )
 
 
 @router.get("/auth/me", response_model=UserOut)
@@ -54,18 +45,23 @@ async def oauth_token(
     body: OAuthTokenRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> TokenResponse:
+    """
+    Local client_credentials (M2M). Prefer Keycloak client credentials long-term.
+    Issues an HS256 token that get_current_user recognises via the m2m claim.
+    """
     if body.grant_type != "client_credentials":
         raise HTTPException(status_code=400, detail="unsupported_grant_type")
     client = await oauth_client_crud.get_active_by_client_id(session, body.client_id)
     if not client or not verify_password(body.client_secret, client.client_secret_hash):
         raise HTTPException(status_code=401, detail="invalid_client")
-    token = create_access_token(
+    token = create_test_access_token(
         str(client.id),
         extra={
             "role": "user",
             "tenant_id": str(client.tenant_id),
             "client_id": client.client_id,
             "m2m": True,
+            "email": f"{client.client_id}@m2m.local",
         },
     )
     return TokenResponse(

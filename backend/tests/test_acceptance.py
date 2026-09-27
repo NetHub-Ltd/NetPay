@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-from tests.helpers import ADMIN_EMAIL, ADMIN_PASSWORD, internal_headers
+from tests.helpers import ADMIN_EMAIL, internal_headers, login_admin
 
 
 @pytest.mark.asyncio
@@ -17,10 +17,13 @@ async def test_health_reports_db_and_admin(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_admin_login_from_env_bootstrap(client: AsyncClient):
-    res = await client.post("/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
+async def test_admin_sso_token_from_env_bootstrap(client: AsyncClient):
+    token = await login_admin(client)
+    res = await client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 200, res.text
-    assert "access_token" in res.json()
+    body = res.json()
+    assert body.get("email") == ADMIN_EMAIL
+    assert body.get("role") == "admin"
 
 
 @pytest.mark.asyncio
