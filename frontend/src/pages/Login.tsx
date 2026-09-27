@@ -1,33 +1,20 @@
-import { useState, type FormEvent } from 'react'
-import { useAuth } from '../auth/AuthContext'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { beginLogin } from '../auth/oidc'
 import { useTheme } from '../theme/ThemeContext'
 
-/**
- * Password login removed (P2 #25).
- * Production path: obtain a Keycloak access token (aud=nethub-backend) via NetHub SSO,
- * then store it. For local/dev we accept a pasted Bearer token.
- */
 export default function Login() {
-  const { loginWithToken } = useAuth()
   const { theme, toggle } = useTheme()
-  const [token, setToken] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
+  async function onSignIn() {
     setError(null)
     setBusy(true)
     try {
-      const cleaned = token.replace(/^Bearer\s+/i, '').trim()
-      if (!cleaned) {
-        setError('Paste a Keycloak access token (audience nethub-backend).')
-        return
-      }
-      await loginWithToken(cleaned)
+      await beginLogin('/home')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed')
-    } finally {
+      setError(err instanceof Error ? err.message : 'Could not start sign-in')
       setBusy(false)
     }
   }
@@ -39,35 +26,27 @@ export default function Login() {
           <div className="tiny" style={{ opacity: 0.85, marginBottom: '0.5rem' }}>
             NetHub · NetPay
           </div>
-          <h1>Accept M-Pesa payments without the headache</h1>
+          <h1>Collect M-Pesa payments with clarity</h1>
           <p>
-            Send a payment request to your customer’s phone, track whether they paid, and keep a clear record —
-            built for Kenyan paybills and tills.
+            STK Push, status tracking, and a ledger trail — secured by NetHub sign-in. No separate
+            NetPay password.
           </p>
         </div>
         <ul>
-          <li>STK Push to any Safaricom number</li>
-          <li>See Paid, Waiting, Failed, or Expired in plain language</li>
-          <li>Ledger trail for every successful collection</li>
-          <li>Secure edge callbacks from M-Pesa into your account</li>
+          <li>Sign in once with your NetHub account</li>
+          <li>Paybill and till collections</li>
+          <li>Live status and reconciliation</li>
         </ul>
-        <div className="feature-pills">
-          <span>Paybill</span>
-          <span>Till</span>
-          <span>Shortcode</span>
-          <span>Real-time status</span>
-        </div>
       </section>
 
       <section className="login-panel">
         <div className="login-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h2>Sign in with NetHub</h2>
+              <h2>Sign in</h2>
               <p className="muted tiny" style={{ margin: '0 0 1rem' }}>
-                Password login has been removed. Authenticate via Keycloak / NetHub SSO
-                (audience <code>nethub-backend</code>), then paste the access token below for local use.
-                Production will redirect to NetHub SSO automatically.
+                You will be redirected to NetHub authentication (Keycloak). After success you return
+                here to the dashboard.
               </p>
             </div>
             <button type="button" className="btn ghost" onClick={toggle} title="Toggle appearance">
@@ -75,23 +54,12 @@ export default function Login() {
             </button>
           </div>
           {error && <div className="alert error">{error}</div>}
-          <form onSubmit={onSubmit}>
-            <label htmlFor="token">Access token</label>
-            <textarea
-              id="token"
-              rows={4}
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-              required
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.85rem' }}
-            />
-            <div style={{ marginTop: '1rem' }}>
-              <button className="btn primary full" type="submit" disabled={busy}>
-                {busy ? 'Signing in…' : 'Continue'}
-              </button>
-            </div>
-          </form>
+          <button className="btn primary full" type="button" disabled={busy} onClick={onSignIn}>
+            {busy ? 'Redirecting…' : 'Sign in with NetHub'}
+          </button>
+          <p className="muted tiny" style={{ marginTop: '1rem', textAlign: 'center' }}>
+            <Link to="/">Back to home</Link>
+          </p>
         </div>
       </section>
     </div>

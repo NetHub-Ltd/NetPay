@@ -47,7 +47,7 @@ export function Layout() {
         </div>
 
         <nav className="sidebar-nav" aria-label="Main">
-          <NavLink to="/" end className={linkClass}>
+          <NavLink to="/home" end className={linkClass}>
             <Home {...ico} /> Home
           </NavLink>
           <NavLink to="/intents" className={linkClass}>

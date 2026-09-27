@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /home
+Disallow: /intents
+Disallow: /tenants
+Disallow: /integrations
+Disallow: /webhooks
+Disallow: /reconciliation
+Disallow: /events
+Disallow: /oauth-clients
+Disallow: /auth/
+
+Sitemap: https://pay.nethub.co.ke/sitemap.xml

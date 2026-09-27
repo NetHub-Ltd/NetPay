@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, getToken, setToken, type User } from '../api/client'
+import { logoutAtKeycloak, setRefreshToken } from './oidc'
 
 type AuthState = {
   user: User | null
   loading: boolean
-  /** Accept a Keycloak (or test) access token and load /auth/me */
   loginWithToken: (accessToken: string) => Promise<void>
   logout: () => void
   isAdmin: boolean
@@ -24,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     try {
+      // NetPay GET /auth/me → forwards token to NetHub (sync on first use)
       const me = await api.get<User>('/auth/me')
       setUser(me)
     } catch {
@@ -45,8 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(() => {
+    const idToken = sessionStorage.getItem('nethub_id_token')
     setToken(null)
+    setRefreshToken(null)
+    sessionStorage.removeItem('nethub_id_token')
     setUser(null)
+    logoutAtKeycloak(idToken)
   }, [])
 
   const value = useMemo(
