@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
+import Landing from './pages/Landing'
 import Login from './pages/Login'
+import AuthCallback from './pages/AuthCallback'
 import { Health } from './pages/Health'
 import { Home } from './pages/Home'
 import { Tenants } from './pages/Tenants'
@@ -28,16 +30,17 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
-        path="/"
         element={
           <RequireAuth>
             <Layout />
           </RequireAuth>
         }
       >
-        <Route index element={<Home />} />
+        <Route path="home" element={<Home />} />
         <Route path="status" element={<Health />} />
         <Route path="tenants" element={<Tenants />} />
         <Route path="tenants/:id" element={<TenantDetail />} />
