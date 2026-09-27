@@ -20,9 +20,8 @@ class Settings(BaseSettings):
     app_name: str = "NetHub Payment Gateway"
     environment: Literal["development", "test", "production"] = "development"
     secret_key: str = "dev-secret-change-me"
-    app_version: str = "1.2.0"
+    app_version: str = "1.2.1"
     admin_email: str = "admin@nethub.test"
-    # Break-glass bootstrap only — not used for interactive login after SSO hard cut.
     admin_password: str = "ChangeMeAdmin123!"
     admin_keycloak_id: str = Field(
         default="00000000-0000-4000-8000-000000000001",
@@ -48,16 +47,17 @@ class Settings(BaseSettings):
         alias="EDGE_CALLBACK_PATH_PREFIX",
     )
 
-    # Keycloak = Authentication only. NetPay validates JWTs as a resource server.
-    # Audience MUST be nethub-backend (NetHub API rejects other audiences).
-    # Default enabled — local password login has been removed (P2 #25 hard cut).
+    # NetHub API — sole authorization + user-context authority for NetPay.
+    # NetPay forwards the client Bearer token; it does not call Keycloak JWKS.
+    nethub_api_base_url: str = Field(default="", alias="NETHUB_API_BASE_URL")
+    # Short-lived context cache (seconds). 0 disables cache.
+    nethub_context_cache_ttl_sec: int = Field(default=60, alias="NETHUB_CONTEXT_CACHE_TTL_SEC")
+
+    # Legacy placeholders kept so existing env files do not break; unused at runtime.
     nethub_as_enabled: bool = Field(default=True, alias="NETHUB_AS_ENABLED")
     nethub_as_issuer: str = Field(default="", alias="NETHUB_AS_ISSUER")
     nethub_as_jwks_url: str = Field(default="", alias="NETHUB_AS_JWKS_URL")
     nethub_as_audience: str = Field(default="nethub-backend", alias="NETHUB_AS_AUDIENCE")
-
-    # NetHub API — authorization + user context. Same Keycloak token is forwarded.
-    nethub_api_base_url: str = Field(default="", alias="NETHUB_API_BASE_URL")
 
     @property
     def async_database_url(self) -> str:

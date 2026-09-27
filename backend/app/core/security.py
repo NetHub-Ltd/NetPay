@@ -1,10 +1,12 @@
-"""Token validation and client-secret hashing.
+"""Secrets hashing and test-only token helpers.
 
-End-user authentication is owned by Keycloak. NetPay validates access tokens
-and never issues interactive login JWTs for humans.
+NetPay does **not** validate Keycloak JWTs via JWKS.
+Authentication is Keycloak; authorization + identity context come from
+NetHub API when NetPay forwards the Bearer token.
 
-In ENVIRONMENT=test (or when JWKS is not configured), HS256 tokens signed with
-SECRET_KEY are accepted so unit tests do not need a live Keycloak.
+Production path: no JWT crypto in NetPay.
+Test path: HS256 tokens signed with SECRET_KEY exist only so unit tests
+can run without a live NetHub/Keycloak.
 """
 from __future__ import annotations
 
@@ -18,7 +20,6 @@ from jose import jwt as jose_jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
-from app.core.logging import logger
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM_HS = "HS256"
@@ -39,102 +40,45 @@ def create_test_access_token(
     extra: Optional[dict[str, Any]] = None,
     minutes: Optional[int] = None,
 ) -> str:
-    """Mint an HS256 token for tests / local fallback when JWKS is unset."""
+    """Mint an HS256 token for unit tests only (ENVIRONMENT=test)."""
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=minutes or settings.access_token_expire_minutes
     )
     payload: dict[str, Any] = {
         "sub": subject,
         "exp": expire,
-        "iss": settings.nethub_as_issuer or "https://test-keycloak/realms/nethub",
-        "aud": settings.nethub_as_audience or "nethub-backend",
+        "aud": "nethub-backend",
     }
     if extra:
         payload.update(extra)
     return jose_jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM_HS)
 
 
-def _decode_hs256(token: str) -> dict[str, Any]:
-    return jose_jwt.decode(
-        token,
-        settings.secret_key,
-        algorithms=[ALGORITHM_HS],
-        audience=settings.nethub_as_audience or "nethub-backend",
-        options={"verify_aud": bool(settings.nethub_as_audience)},
-    )
-
-
-def _decode_keycloak_rs256(token: str) -> dict[str, Any]:
-    """Validate against Keycloak JWKS (production path)."""
-    if not settings.nethub_as_jwks_url or not settings.nethub_as_issuer:
+def decode_test_token(token: str) -> dict[str, Any]:
+    """Decode HS256 test tokens. Production must not rely on this."""
+    if not settings.is_test:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Keycloak JWKS/issuer not configured",
+            detail="Local token decode is test-only; configure NETHUB_API_BASE_URL",
         )
     try:
-        import jwt as pyjwt
-        from jwt import PyJWKClient
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="PyJWT required for Keycloak validation",
-        ) from exc
-
-    try:
-        jwks_client = PyJWKClient(
-            uri=settings.nethub_as_jwks_url,
-            cache_jwk_set=True,
-            lifespan=300,
-        )
-        signing_key = jwks_client.get_signing_key_from_jwt(token)
-        return pyjwt.decode(
+        return jose_jwt.decode(
             token,
-            signing_key.key,
-            algorithms=["RS256"],
-            audience=settings.nethub_as_audience or "nethub-backend",
-            issuer=settings.nethub_as_issuer,
-            options={"verify_aud": True, "verify_iss": True},
-            leeway=10,
+            settings.secret_key,
+            algorithms=[ALGORITHM_HS],
+            options={"verify_aud": False},
         )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Keycloak token validation failed: {}", exc)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-        ) from exc
-
-
-def decode_access_token(token: str) -> dict[str, Any]:
-    """
-    Validate a Bearer access token.
-
-    - Production / configured JWKS: RS256 via Keycloak
-    - Test or missing JWKS: HS256 signed with SECRET_KEY (test tokens only)
-    """
-    use_keycloak = (
-        settings.nethub_as_enabled
-        and bool(settings.nethub_as_jwks_url)
-        and bool(settings.nethub_as_issuer)
-        and not settings.is_test
-    )
-    if use_keycloak:
-        return _decode_keycloak_rs256(token)
-
-    try:
-        return _decode_hs256(token)
     except JWTError as exc:
-        logger.warning("HS256 token validation failed: {}", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         ) from exc
 
 
-def subject_as_uuid(payload: dict[str, Any]) -> UUID:
-    raw = payload.get("sub")
+def subject_as_uuid(raw: Any) -> UUID:
     if raw is None:
-        raise HTTPException(status_code=401, detail="Token missing sub")
+        raise HTTPException(status_code=401, detail="Missing subject")
     try:
         return UUID(str(raw))
     except ValueError as exc:
-        raise HTTPException(status_code=401, detail="Token sub is not a UUID") from exc
+        raise HTTPException(status_code=401, detail="Subject is not a UUID") from exc
