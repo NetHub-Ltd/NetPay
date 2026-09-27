@@ -6,7 +6,6 @@ from app.core.logging import logger
 from sqlalchemy import create_engine, text
 from sqlmodel import Session, select
 from app.core.config import settings
-from app.core.security import hash_password
 from app.models.user import User
 
 def run_alembic_upgrade() -> None:
@@ -40,15 +39,24 @@ def ensure_admin() -> None:
     with Session(engine) as session:
         existing = session.exec(select(User).where(User.email == settings.admin_email.lower())).first()
         if existing:
+            changed = False
             if existing.role != "admin":
                 existing.role = "admin"
+                changed = True
+            if existing.keycloak_id is None:
+                from uuid import UUID
+                existing.keycloak_id = UUID(settings.admin_keycloak_id)
+                changed = True
+            if changed:
                 session.add(existing)
                 session.commit()
             logger.info("Admin present: {}", settings.admin_email)
             return
+        from uuid import UUID
         session.add(User(
             email=settings.admin_email.lower(),
-            hashed_password=hash_password(settings.admin_password),
+            hashed_password=None,
+            keycloak_id=UUID(settings.admin_keycloak_id),
             display_name="Admin",
             role="admin",
             is_active=True,

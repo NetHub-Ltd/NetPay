@@ -1,36 +1,39 @@
-import { type FormEvent, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { ApiError } from '../api/client'
 import { useTheme } from '../theme/ThemeContext'
 
-export function Login() {
-  const { user, login } = useAuth()
-  const navigate = useNavigate()
+/**
+ * Password login removed (P2 #25).
+ * Production path: obtain a Keycloak access token (aud=nethub-backend) via NetHub SSO,
+ * then store it. For local/dev we accept a pasted Bearer token.
+ */
+export default function Login() {
+  const { loginWithToken } = useAuth()
   const { theme, toggle } = useTheme()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  if (user) return <Navigate to="/" replace />
-
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    setBusy(true)
     setError(null)
+    setBusy(true)
     try {
-      await login(email, password)
-      navigate('/', { replace: true })
+      const cleaned = token.replace(/^Bearer\s+/i, '').trim()
+      if (!cleaned) {
+        setError('Paste a Keycloak access token (audience nethub-backend).')
+        return
+      }
+      await loginWithToken(cleaned)
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Could not sign in')
+      setError(err instanceof Error ? err.message : 'Sign-in failed')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="login-shell" data-testid="login-page">
+    <div className="login-layout">
       <section className="login-hero" aria-label="About NetPay">
         <div>
           <div className="tiny" style={{ opacity: 0.85, marginBottom: '0.5rem' }}>
@@ -60,9 +63,11 @@ export function Login() {
         <div className="login-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h2>Sign in</h2>
+              <h2>Sign in with NetHub</h2>
               <p className="muted tiny" style={{ margin: '0 0 1rem' }}>
-                Use your NetPay account to manage payments.
+                Password login has been removed. Authenticate via Keycloak / NetHub SSO
+                (audience <code>nethub-backend</code>), then paste the access token below for local use.
+                Production will redirect to NetHub SSO automatically.
               </p>
             </div>
             <button type="button" className="btn ghost" onClick={toggle} title="Toggle appearance">
@@ -71,27 +76,19 @@ export function Login() {
           </div>
           {error && <div className="alert error">{error}</div>}
           <form onSubmit={onSubmit}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+            <label htmlFor="token">Access token</label>
+            <textarea
+              id="token"
+              rows={4}
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
               required
-            />
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.85rem' }}
             />
             <div style={{ marginTop: '1rem' }}>
               <button className="btn primary full" type="submit" disabled={busy}>
-                {busy ? 'Signing in…' : 'Sign in'}
+                {busy ? 'Signing in…' : 'Continue'}
               </button>
             </div>
           </form>

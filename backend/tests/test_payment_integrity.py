@@ -11,11 +11,9 @@ from sqlalchemy import create_engine
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.security import hash_password
 from app.models.tenant import Tenant
 from app.models.user import User
 from tests.helpers import (
-    FIXTURE_USER_PASSWORD,
     internal_headers,
     login,
     seed_tenant_user_integration,
@@ -37,7 +35,8 @@ def _seed_other_tenant() -> None:
             session.add(
                 User(
                     email="p0other@nethub.test",
-                    hashed_password=hash_password(FIXTURE_USER_PASSWORD),
+                    hashed_password=None,
+                    keycloak_id=__import__("uuid").uuid4(),
                     role="user",
                     tenant_id=other.id,
                     is_active=True,
@@ -55,7 +54,7 @@ async def p0_env(client: AsyncClient):
         public_id="gw_p0_test",
     )
     _seed_other_tenant()
-    token = await login(client, meta["email"], FIXTURE_USER_PASSWORD)
+    token = await login(client, meta["email"])
     return {**meta, "token": token}
 
 
@@ -234,7 +233,7 @@ async def test_tenant_isolation_forbidden(client: AsyncClient, p0_env):
         assert created.status_code == 201, created.text
         intent_id = created.json()["id"]
 
-    other_token = await login(client, "p0other@nethub.test", FIXTURE_USER_PASSWORD)
+    other_token = await login(client, "p0other@nethub.test")
     res = await client.get(
         f"/v1/payment-intents/{intent_id}",
         headers={"Authorization": f"Bearer {other_token}"},

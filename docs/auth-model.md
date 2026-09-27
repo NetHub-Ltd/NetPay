@@ -1,76 +1,67 @@
 # Auth model — NetPay
 
-**Status:** Target architecture (2026-09-12)  
+**Status:** Implemented (P2 #25 hard cut — 2026-09-27)  
 **Authority:** Product decision — NetPay does not own end-user registration or login.
 
 ## Principle
 
 | Concern | System |
 |---------|--------|
-| User registration, login, password, MFA, session UX | **NetHub AS** (Authorization Server) |
-| Token issuance for humans and (preferably) machines | **NetHub AS** |
-| Bearer token validation and claim → tenant/role mapping | **NetPay** |
-| Tenants, integrations, payment intents, webhooks, events | **NetPay** |
-| Daraja credentials and STK/C2B orchestration | **NetPay** |
+| Authentication (who are you?) | **Keycloak** |
+| Authorization + user context | **NetHub API** |
+| Token validation + tenant enforcement | **NetPay** |
+| Payment domain | **NetPay** |
 
-Clients obtain a token from NetHub AS and call NetPay APIs with `Authorization: Bearer <token>`. NetPay must not become a second identity provider.
-
-## Target request path
+## Request path
 
 ```text
-User / service
-    → authenticates with NetHub AS
-    → receives access token
-    → calls NetPay with Bearer token
-    → NetPay validates token (issuer, signature, audience, expiry)
-    → NetPay reads claims (subject, tenant binding, role/scopes)
-    → enforces can_access_tenant / admin rules
+User
+  → authenticates with Keycloak
+  → receives access token (aud = nethub-backend)
+  → calls NetPay with Authorization: Bearer <token>
+  → NetPay validates JWT (issuer, signature, exp, audience)
+  → NetPay calls NetHub API GET /api/v1/users/me with the same token
+  → NetHub returns user + tenant context
+  → NetPay maps keycloak sub → local user binding and enforces can_access_tenant
 ```
 
-## Expected claims (to be confirmed with AS owners)
+## Audience
 
-Exact names are **not finalized**. The following are the semantic requirements:
+All access tokens **must** carry `aud=nethub-backend`. NetHub API rejects other audiences; NetPay enforces the same.
 
-- **Subject** — stable user or client identifier.
-- **Tenant binding** — which NetPay tenant the caller may access (unless platform admin).
-- **Role or scopes** — at least distinguish platform admin vs tenant-scoped operator.
-- **Audience** — value NetPay will enforce so tokens for other services are rejected.
-- **Expiry** — standard `exp`.
+## Configuration
 
-Until the AS contract is agreed, validation code must not switch production traffic.
+| Env | Purpose |
+|-----|---------|
+| `NETHUB_AS_ENABLED` | Default `true`. When JWKS+issuer set and not test, use Keycloak RS256. |
+| `NETHUB_AS_ISSUER` | Keycloak realm issuer URL |
+| `NETHUB_AS_JWKS_URL` | Keycloak JWKS URL |
+| `NETHUB_AS_AUDIENCE` | Default `nethub-backend` |
+| `NETHUB_API_BASE_URL` | NetHub API base (no trailing slash) for `/api/v1/users/me` |
+| `ADMIN_KEYCLOAK_ID` | Bootstrap admin Keycloak sub (tests / first boot) |
 
-## Transitional (legacy) paths still present in code
+## Removed (hard cut)
 
-These remain for local development and until the AS validation PR is approved and shipped:
+| Path | Fate |
+|------|------|
+| `POST /auth/login` | **410 Gone** — password login removed |
+| End-user `hashed_password` | Nullable; no longer used for interactive auth |
+| Frontend password form | Replaced with SSO / token entry |
 
-| Path | Purpose | Target fate |
-|------|---------|-------------|
-| `POST /auth/login` | Local email/password → NetPay-issued JWT | Remove or disable in production after AS cutover |
-| Admin bootstrap from `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Seed first admin in empty DB | Keep as break-glass/bootstrap only, or replace with AS-provisioned admin mapping |
-| `POST /v1/tenants/assign-user` (password) | Create/bind local user with password | Replace with AS identity binding (no password stored in NetPay) |
-| `POST /oauth/token` + `oauth_clients` table | Local client_credentials M2M | Prefer NetHub AS clients; decide keep/remove in follow-up |
-| `X-Internal-Api-Key` on `/internal/events` | Worker envelope ingest | **Keep** as service-to-service secret (not end-user auth) |
+## Kept
 
-## Configuration placeholders
+| Path | Purpose |
+|------|---------|
+| `GET /auth/me` | Current user from validated token |
+| `POST /oauth/token` (client_credentials) | Local M2M — prefer Keycloak clients long-term |
+| `X-Internal-Api-Key` on `/internal/*` | Edge → NetPay worker envelope (not end-user auth) |
 
-See `backend/app/core/config.py`:
+## Test mode
 
-- `NETHUB_AS_ISSUER`
-- `NETHUB_AS_JWKS_URL`
-- `NETHUB_AS_AUDIENCE`
-- `NETHUB_AS_ENABLED` (default `false` — local JWT validation remains active)
+When `ENVIRONMENT=test` (or JWKS unset), NetPay accepts HS256 tokens signed with `SECRET_KEY` so unit tests do not need a live Keycloak. Helpers mint these via `create_test_access_token`.
 
-When `NETHUB_AS_ENABLED=true` and validation is implemented, NetPay will prefer AS tokens. Until then, placeholders are inert.
+## Explicit non-goals
 
-## Explicit non-goals for NetPay
-
-- User self-registration or invite flows.
-- Password reset or credential storage for humans (beyond transitional local users).
-- Hosted login UI as the long-term entry point (dashboard should ultimately use NetHub AS).
-
-## Related code (current)
-
-- `backend/app/core/security.py` — HS256 JWT create/decode with `SECRET_KEY`.
-- `backend/app/api/deps.py` — `get_current_user`, `require_admin`, `can_access_tenant`.
-- `backend/app/api/routes/auth.py` — login, me, local OAuth token, create OAuth client.
-- `backend/app/services/bootstrap.py` — admin ensure on startup.
+- User self-registration or password reset in NetPay
+- NetHub-issued secondary session tokens for general SSO
+- Hosting Keycloak login UI inside NetPay long-term (production should redirect to NetHub SSO)

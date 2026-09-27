@@ -8,7 +8,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.core.db import AsyncSessionLocal
 from app.core.logging import logger
-from app.core.security import decode_token
+from app.core.security import decode_access_token
 from app.crud.user import user_crud
 from app.services.live_hub import subscribe, unsubscribe
 
@@ -21,7 +21,7 @@ async def ws_events(websocket: WebSocket, token: str | None = Query(default=None
         await websocket.close(code=4401)
         return
     try:
-        payload = decode_token(token)
+        payload = decode_access_token(token)
         uid = UUID(payload["sub"])
     except Exception:  # noqa: BLE001
         await websocket.close(code=4401)
