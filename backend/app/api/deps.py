@@ -9,6 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
 from app.core.db import get_session
+from app.crud.tenant import tenant_crud
 from app.crud.user import user_crud
 from app.schemas.principal import Principal
 from app.services.nethub_auth import NetHubAuthError, fetch_principal
@@ -32,7 +33,7 @@ async def get_current_user(
 ) -> Principal:
     """
     Resolve via NetHub GET /users/me. If NetHub has no tenant_id, use NetPay
-    local user mapping (free-tier self-registered business).
+    local user mapping (primary business).
     """
     if not creds or not creds.credentials:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -61,7 +62,26 @@ async def require_admin(
     return user
 
 
+async def user_can_access_tenant(
+    session: AsyncSession,
+    user: Principal,
+    tenant_id: UUID,
+) -> bool:
+    if user.is_admin:
+        return True
+    if user.tenant_id is not None and user.tenant_id == tenant_id:
+        return True
+    t = await tenant_crud.get(session, tenant_id)
+    if t is None or getattr(t, "deleted_at", None) is not None:
+        return False
+    return t.created_by == user.id
+
+
 def can_access_tenant(user: Principal, tenant_id: UUID) -> bool:
+    """Sync check without DB — NetHub tenant_id or admin only.
+
+    Prefer user_can_access_tenant when ownership via created_by must be allowed.
+    """
     if user.is_admin:
         return True
     return user.tenant_id is not None and user.tenant_id == tenant_id

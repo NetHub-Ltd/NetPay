@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import can_access_tenant, get_current_user, get_session
+from app.api.deps import get_current_user, get_session, user_can_access_tenant
 from app.core.config import settings
 from app.crud.webhook import webhook_crud
 from app.schemas.principal import Principal
@@ -26,7 +26,7 @@ async def list_webhooks(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> list[Webhook]:
-    if not can_access_tenant(user, tenant_id):
+    if not await user_can_access_tenant(session, user, tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     return list(await webhook_crud.list_by_tenant(session, tenant_id))
 
@@ -37,7 +37,7 @@ async def create_webhook(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> Webhook:
-    if not can_access_tenant(user, body.tenant_id):
+    if not await user_can_access_tenant(session, user, body.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     count = await webhook_crud.count_by_tenant(session, body.tenant_id)
     if count >= settings.max_webhooks_per_tenant:
@@ -80,7 +80,7 @@ async def delete_webhook(
     hook = await webhook_crud.get(session, webhook_id)
     if not hook:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, hook.tenant_id):
+    if not await user_can_access_tenant(session, user, hook.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     await webhook_crud.remove(session, id=webhook_id)
     await session.commit()

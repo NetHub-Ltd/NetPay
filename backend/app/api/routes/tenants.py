@@ -5,10 +5,10 @@ from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import col, select
+from sqlmodel import col, or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import can_access_tenant, get_current_user, get_session, require_admin
+from app.api.deps import get_current_user, get_session, user_can_access_tenant
 from app.crud.tenant import tenant_crud
 from app.crud.user import user_crud
 from app.models.tenant import Tenant
@@ -27,14 +27,27 @@ def _slugify(name: str) -> str:
 @router.get("", response_model=list[TenantOut])
 async def list_tenants(
     session: Annotated[AsyncSession, Depends(get_session)],
-    _: Annotated[Principal, Depends(require_admin)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> list[Tenant]:
-    stmt = (
-        select(Tenant)
-        .where(col(Tenant.deleted_at).is_(None))
-        .order_by(col(Tenant.created_at).desc())
-        .limit(200)
-    )
+    """Admins see all; others see businesses they own or are linked to."""
+    if user.is_admin:
+        stmt = (
+            select(Tenant)
+            .where(col(Tenant.deleted_at).is_(None))
+            .order_by(col(Tenant.created_at).desc())
+            .limit(200)
+        )
+    else:
+        clauses = [col(Tenant.created_by) == user.id]
+        if user.tenant_id is not None:
+            clauses.append(col(Tenant.id) == user.tenant_id)
+        stmt = (
+            select(Tenant)
+            .where(col(Tenant.deleted_at).is_(None))
+            .where(or_(*clauses))
+            .order_by(col(Tenant.created_at).desc())
+            .limit(200)
+        )
     return list((await session.exec(stmt)).all())
 
 
@@ -47,7 +60,7 @@ async def get_tenant(
     t = await tenant_crud.get(session, tenant_id)
     if not t or getattr(t, "deleted_at", None) is not None:
         raise HTTPException(status_code=404, detail="Business not found")
-    if not can_access_tenant(user, t.id):
+    if not await user_can_access_tenant(session, user, t.id):
         raise HTTPException(status_code=403, detail="Forbidden")
     return t
 
@@ -56,60 +69,18 @@ async def get_tenant(
 async def create_tenant(
     body: TenantCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
-    admin: Annotated[Principal, Depends(require_admin)],
-) -> Tenant:
-    if not body.slug:
-        raise HTTPException(status_code=400, detail="Slug is required")
-    existing = await tenant_crud.get_by_slug(session, body.slug)
-    if existing:
-        raise HTTPException(status_code=400, detail="Slug already exists")
-    if body.id is not None:
-        by_id = await tenant_crud.get(session, body.id)
-        if by_id:
-            raise HTTPException(status_code=400, detail="Tenant id already exists")
-    t = await tenant_crud.create_tenant(
-        session,
-        name=body.name,
-        slug=body.slug,
-        created_by=admin.id,
-        id=body.id,
-    )
-    await session.commit()
-    await session.refresh(t)
-    return t
-
-
-@router.post("/self", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
-async def self_register_business(
-    body: TenantCreate,
-    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> Tenant:
-    """Free tier: non-admin with no business may create exactly one."""
-    if user.is_admin:
-        raise HTTPException(
-            status_code=400,
-            detail="Admins should use the standard business create endpoint.",
-        )
-    if user.tenant_id is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="Your account is already linked to a business.",
-        )
-
-    local = await user_crud.get_active_by_id(session, user.id)
-    if local is None:
-        local = await user_crud.get_by_email(session, user.email)
-    if local and local.tenant_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Your account is already linked to a business.",
-        )
-
+    """Any signed-in user may create a business (multiple allowed)."""
     slug = (body.slug or _slugify(body.name)).lower()
     existing = await tenant_crud.get_by_slug(session, slug)
     if existing:
         slug = f"{slug}-{str(uuid4())[:8]}"
+
+    if body.id is not None:
+        by_id = await tenant_crud.get(session, body.id)
+        if by_id:
+            raise HTTPException(status_code=400, detail="Tenant id already exists")
 
     t = await tenant_crud.create_tenant(
         session,
@@ -119,13 +90,11 @@ async def self_register_business(
         id=body.id,
     )
 
-    if local:
-        await user_crud.update(
-            session,
-            db_obj=local,
-            obj_in={"tenant_id": t.id, "display_name": user.full_name or local.display_name},
-        )
-    else:
+    # Ensure a local user row exists for mapping; set primary tenant if unset.
+    local = await user_crud.get_active_by_id(session, user.id)
+    if local is None:
+        local = await user_crud.get_by_email(session, user.email)
+    if local is None:
         await user_crud.create(
             session,
             obj_in={
@@ -138,7 +107,19 @@ async def self_register_business(
                 "is_active": True,
             },
         )
+    elif local.tenant_id is None:
+        await user_crud.update(session, db_obj=local, obj_in={"tenant_id": t.id})
 
     await session.commit()
     await session.refresh(t)
     return t
+
+
+@router.post("/self", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
+async def self_register_business(
+    body: TenantCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[Principal, Depends(get_current_user)],
+) -> Tenant:
+    """Alias of POST /v1/tenants — kept for existing clients."""
+    return await create_tenant(body, session, user)

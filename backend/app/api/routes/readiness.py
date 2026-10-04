@@ -11,6 +11,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import get_current_user, get_session
 from app.crud.integration import integration_crud
+from app.models.tenant import Tenant
 from app.models.webhook import Webhook
 from app.schemas.principal import Principal
 
@@ -49,17 +50,29 @@ async def get_readiness(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> ReadinessOut:
-    has_business = user.tenant_id is not None or user.is_admin
     tenant_id = user.tenant_id
+    if tenant_id is None and not user.is_admin:
+        # Primary or any owned business
+        stmt = (
+            select(Tenant)
+            .where(col(Tenant.deleted_at).is_(None))
+            .where(col(Tenant.created_by) == user.id)
+            .order_by(col(Tenant.created_at).desc())
+            .limit(1)
+        )
+        owned = (await session.exec(stmt)).first()
+        if owned:
+            tenant_id = owned.id
+
+    has_business = tenant_id is not None or user.is_admin
 
     integrations = list(
         await integration_crud.list_active(
             session,
             tenant_id=tenant_id,
-            is_admin=user.is_admin,
+            is_admin=user.is_admin and tenant_id is None,
         )
     )
-    # Admin without filter sees all — for readiness use their tenant only if set
     if user.is_admin and tenant_id:
         integrations = [i for i in integrations if i.tenant_id == tenant_id]
 
