@@ -3,14 +3,14 @@ import { Link } from 'react-router-dom'
 export function Docs() {
   return (
     <div data-testid="docs-page">
-      <div className="page-header">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1>Help</h1>
           <p>How to collect payments with NetPay.</p>
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
         <h2>1. First-time setup</h2>
         <ol>
           <li>
@@ -25,13 +25,13 @@ export function Docs() {
             payment is Paid or Failed.
           </li>
         </ol>
-        <p className="muted tiny">
+        <p className="text-[var(--muted)] text-xs">
           Connecting the shortcode (so NetPay receives network results) is different from App endpoints (so your
           own app is told). Re-open any shortcode anytime from Paybills &amp; tills.
         </p>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
         <h2>2. Take a payment</h2>
         <p>
           Open <Link to="/intents">Payments</Link>, choose the shortcode, enter the customer’s phone and amount, then
@@ -39,7 +39,7 @@ export function Docs() {
         </p>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
         <h2>2b. Paybill &amp; till (C2B)</h2>
         <p>
           Customers can also pay your paybill or till without a phone prompt. Safaricom sends a confirmation to NetHub
@@ -57,7 +57,7 @@ export function Docs() {
         </ul>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
         <h2>3. What each status means</h2>
         <ul>
           <li>
@@ -78,7 +78,7 @@ export function Docs() {
         </ul>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
         <h2>4. Phone prompt stuck or failed?</h2>
         <ol>
           <li>
@@ -101,9 +101,9 @@ export function Docs() {
         </ol>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
         <h2>5. For other systems (API)</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
+        <p className="text-[var(--muted)]" style={{ marginTop: 0 }}>
           Create a payment with <code>POST /v1/payment-intents</code> and header <code>Idempotency-Key</code> (required).
         </p>
         <ul>
@@ -126,7 +126,7 @@ export function Docs() {
         </ul>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
         <h2>6. Ledger &amp; exceptions</h2>
         <p>
           On a payment’s detail page, the <strong>Ledger</strong> section shows financial lines. A successful collection
