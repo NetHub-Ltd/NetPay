@@ -5,7 +5,7 @@ import { useLiveStatus } from '../hooks/useWebSocket'
 
 export function Events() {
   const [items, setItems] = useState<GatewayEvent[]>([])
-  const [border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)], setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const { connected } = useLiveStatus()
 
@@ -42,9 +42,11 @@ export function Events() {
           <h1>Event log</h1>
           <p>Replayable gateway events · {connected ? 'live polling on' : 'offline'}</p>
         </div>
-        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={load}>Refresh</button>
+        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" type="button" onClick={() => load()}>
+          Refresh
+        </button>
       </div>
-      {border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]}</div>}
+      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
       {msg && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]">{msg}</div>}
 
       {items.length === 0 ? (
@@ -64,7 +66,9 @@ export function Events() {
                   <td>{ev.message}</td>
                   <td>
                     {ev.is_replayable ? (
-                      <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 border-transparent bg-transparent text-[var(--muted)]" onClick={() => replay(ev.id)}>Replay</button>
+                      <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" onClick={() => replay(ev.id)}>
+                        Replay
+                      </button>
                     ) : (
                       <span className="text-[var(--muted)] text-xs">—</span>
                     )}

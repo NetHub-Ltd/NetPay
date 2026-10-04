@@ -13,7 +13,7 @@ export function Integrations() {
   const [items, setItems] = useState<Integration[]>([])
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [webhookCount, setWebhookCount] = useState(0)
-  const [border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)], setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -26,7 +26,6 @@ export function Integrations() {
     consumer_secret: '',
     passkey: '',
   })
-
 
   async function load() {
     try {
@@ -67,7 +66,7 @@ export function Integrations() {
       setError(
         isAdmin
           ? 'Choose a business before saving.'
-          : 'Your account isn’t linked to a business. Ask an admin to link you, then try again.',
+          : 'Your account isn't linked to a business. Ask an admin to link you, then try again.',
       )
       setBusy(false)
       return
@@ -88,10 +87,10 @@ export function Integrations() {
   }
 
   async function onRetire(id: string, shortcode: string) {
-    const border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)] = window.confirm(
+    const confirmed = window.confirm(
       `Retire shortcode ${shortcode}?\n\nIt will no longer appear in your list. Existing payments keep their history. You can add the shortcode again later if needed.`,
     )
-    if (!border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]) return
+    if (!confirmed) return
     setBusy(true)
     setError(null)
     try {
@@ -112,11 +111,11 @@ export function Integrations() {
           <h1>Paybills &amp; tills</h1>
           <p>Your M-Pesa shortcodes — the numbers customers pay to.</p>
         </div>
-        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 border-[var(--accent)] bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]" type="button" onClick={() => setShowForm((v) => !v)}>
+        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" type="button" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Cancel' : 'Add shortcode'}
         </button>
       </div>
-      {border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]}</div>}
+      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
       {msg && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]">{msg}</div>}
 
       <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
@@ -139,7 +138,7 @@ export function Integrations() {
             )}
           </li>
           <li>
-            <strong>Notify your app</strong> —{' '}
+            <strong>Notify your app</strong> — {' '}
             <Link to="/webhooks">App endpoints</Link>
             {webhookCount > 0 ? ' — at least one URL saved' : ' — add an HTTPS URL'}
           </li>
@@ -172,7 +171,7 @@ export function Integrations() {
             )}
             {!isAdmin && !user?.tenant_id && (
               <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">
-                Your account isn’t linked to a business. Ask an admin to link you before adding a shortcode.
+                Your account isn't linked to a business. Ask an admin to link you before adding a shortcode.
               </div>
             )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -227,7 +226,7 @@ export function Integrations() {
               autoComplete="off"
             />
             <button
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 border-[var(--accent)] bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]"
               type="submit"
               disabled={busy || (!isAdmin && !user?.tenant_id) || (isAdmin && !form.tenant_id)}
             >
@@ -271,7 +270,7 @@ export function Integrations() {
                     <Link to={`/integrations/${i.id}`} className="text-[var(--muted)] text-xs">Details</Link>
                     <button
                       type="button"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 border-[var(--danger)] bg-transparent text-[var(--danger)]"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]"
                       disabled={busy}
                       onClick={() => onRetire(i.id, i.shortcode)}
                     >

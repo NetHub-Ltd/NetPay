@@ -11,7 +11,7 @@ export function OAuthClients() {
   const [tenantId, setTenantId] = useState(params.get('tenant_id') || '')
   const [name, setName] = useState('Default API client')
   const [created, setCreated] = useState<OAuthClientOut | null>(null)
-  const [border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)], setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function OAuthClients() {
           <p>Client-credentials for machine access (admin)</p>
         </div>
       </div>
-      {border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]}</div>}
+      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
       {created && (
         <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]">
           Client created — copy the secret now; it is not shown again.
@@ -66,7 +66,9 @@ export function OAuthClients() {
           </select>
           <label>Name</label>
           <input required value={name} onChange={(e) => setName(e.target.value)} />
-          <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 border-[var(--accent)] bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]" type="submit" disabled={busy || !tenantId}>{busy ? 'Creating…' : 'Create OAuth client'}</button>
+          <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" type="submit" disabled={busy}>
+            {busy ? 'Creating…' : 'Create client'}
+          </button>
         </form>
       </div>
 

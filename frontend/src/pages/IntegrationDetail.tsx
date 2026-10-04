@@ -26,7 +26,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
         <code className="font-mono text-[0.85em] text-xs" style={{ wordBreak: 'break-all' }}>
           {value}
         </code>
-        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50" onClick={copy}>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" onClick={copy}>
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
@@ -39,7 +39,7 @@ export function IntegrationDetail() {
   const [item, setItem] = useState<Integration | null>(null)
   const [edgeBase, setEdgeBase] = useState('https://gateway.nethub.co.ke')
   const [pathPrefix, setPathPrefix] = useState('/cb')
-  const [border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)], setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [connectedOnce, setConnectedOnce] = useState(false)
@@ -79,11 +79,11 @@ export function IntegrationDetail() {
 
   async function connectPayments() {
     if (!item) return
-    const border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)] = window.confirm(
+    const confirmed = window.confirm(
       `Connect shortcode ${item.shortcode} so payment results can reach NetPay automatically?\n\n` +
         `You only need to do this once per shortcode. You can still copy the technical links below if your provider portal needs them.`,
     )
-    if (!border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]) return
+    if (!confirmed) return
 
     setBusy(true)
     setError(null)
@@ -114,10 +114,10 @@ export function IntegrationDetail() {
     }
   }
 
-  if (border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] && !item) {
+  if (error && !item) {
     return (
       <div data-testid="integration-detail-page">
-        <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]}</div>
+        <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </div>
     )
@@ -135,7 +135,7 @@ export function IntegrationDetail() {
         <div>
           <h1>Shortcode {item.shortcode}</h1>
           <p>
-            {item.type === 'till' ? 'Till' : 'Paybill'} ·{' '}
+            {item.type === 'till' ? 'Till' : 'Paybill'} · {' '}
             {item.environment === 'production' ? 'Live' : 'Test'}
           </p>
         </div>
@@ -144,7 +144,7 @@ export function IntegrationDetail() {
           <StatusBadge value={item.status} />
         </div>
       </div>
-      {border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]}</div>}
+      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
       {msg && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]">{msg}</div>}
 
       <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
@@ -167,9 +167,9 @@ export function IntegrationDetail() {
         <h2>Connect payment updates</h2>
         <p style={{ marginTop: 0 }}>
           One click tells the network where to send results for this shortcode so NetPay can mark payments Paid or
-          Failed. You’ll be asked to confirm before anything is sent.
+          Failed. You'll be asked to confirm before anything is sent.
         </p>
-        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 border-[var(--accent)] bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]" type="button" disabled={busy} onClick={connectPayments}>
+        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" type="button" onClick={connectPayments} disabled={busy}>
           {busy ? 'Connecting…' : 'Connect this shortcode'}
         </button>
       </div>

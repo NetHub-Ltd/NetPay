@@ -40,7 +40,7 @@ export function Health() {
   const [data, setData] = useState<HealthT | null>(null)
   const [edge, setEdge] = useState<EdgeConnection | null>(null)
   const [outbound, setOutbound] = useState<OutboundRow[]>([])
-  const [border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)], setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const { connected, lastMessage } = useLiveStatus()
 
   const load = useCallback(async () => {
@@ -81,11 +81,11 @@ export function Health() {
             {connected ? ' Live updates on.' : ' Live channel reconnecting…'}
           </p>
         </div>
-        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50" onClick={load}>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" onClick={() => load()}>
           Refresh
         </button>
       </div>
-      {border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]}</div>}
+      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
 
       {edge && (
         <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
