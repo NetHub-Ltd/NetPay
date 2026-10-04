@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
-import { useTheme } from '../theme/ThemeContext'
+import { useAuth } from '../auth/authState'
+import { useTheme } from '../theme/themeState'
 
 export function Login() {
   const { user, login, loading, oidcReady } = useAuth()

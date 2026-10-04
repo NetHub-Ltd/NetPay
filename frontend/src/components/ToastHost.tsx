@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react'
-import { subscribeNotifications, type AppNotification } from '../hooks/useWebSocket'
+import { subscribeNotifications, type AppNotification } from '../hooks/liveEvents'
 
 type ToastItem = { key: string; title: string; body: string; level: string; href?: string | null; leaving?: boolean }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type Integration } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
@@ -44,7 +44,7 @@ export function IntegrationDetail() {
   const [busy, setBusy] = useState(false)
   const [connectedOnce, setConnectedOnce] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!id) return
     try {
       const found = await api.get<Integration>(`/v1/integrations/${id}`)
@@ -54,10 +54,10 @@ export function IntegrationDetail() {
       setError(e instanceof ApiError ? e.detail : 'Could not load shortcode')
       setItem(null)
     }
-  }
+  }, [id])
 
   useEffect(() => {
-    load()
+    void Promise.resolve().then(load)
     api
       .get<PublicConfig>('/v1/system/public-config')
       .then((c) => {
@@ -65,7 +65,7 @@ export function IntegrationDetail() {
         if (c.edge_callback_path_prefix) setPathPrefix(c.edge_callback_path_prefix)
       })
       .catch(() => {})
-  }, [id])
+  }, [id, load])
 
   function buildUrls(publicId: string) {
     const prefix = pathPrefix.startsWith('/') ? pathPrefix : `/${pathPrefix}`

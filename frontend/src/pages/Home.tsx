@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Bell, CreditCard, Landmark, Sparkles } from 'lucide-react'
+import { ArrowRight, Bell, CreditCard, Landmark, Sparkles, type LucideIcon } from 'lucide-react'
 import { api, ApiError, type Integration, type PaymentIntent, type Webhook } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { DataTable } from '../components/DataTable'
-import { useAuth } from '../auth/AuthContext'
-import { subscribeLiveMessages } from '../hooks/useWebSocket'
+import { useAuth } from '../auth/authState'
+import { subscribeLiveMessages } from '../hooks/liveEvents'
 
 function money(minor?: number) { return minor == null ? '—' : `KES ${(minor / 100).toFixed(2)}` }
 function greetingName(user: { display_name?: string | null; email?: string } | null) {
@@ -21,13 +21,13 @@ export function Home() {
   const { user } = useAuth(); const navigate = useNavigate()
   const [payments,setPayments]=useState<PaymentIntent[]>([]); const [integrations,setIntegrations]=useState<Integration[]>([])
   const [hooks,setHooks]=useState(0); const [error,setError]=useState<string|null>(null); const [loading,setLoading]=useState(true)
-  async function load(quiet=false){ if(!quiet)setLoading(true); try{
+  const load = useCallback(async (quiet=false) => { if(!quiet)setLoading(true); try{
     const [pay,integ]=await Promise.all([api.get<PaymentIntent[]>('/v1/payment-intents'),api.get<Integration[]>('/v1/integrations')])
     setPayments((pay||[]).slice(0,5)); setIntegrations(integ||[]); const tid=user?.tenant_id
     if(tid){try{const w=await api.get<Webhook[]>(`/v1/webhooks?tenant_id=${tid}`);setHooks(w.length)}catch{setHooks(0)}}
-  }catch(e){setError(e instanceof ApiError?e.detail:'Could not load dashboard')}finally{setLoading(false)}}
-  useEffect(()=>{load()},[user])
-  useEffect(()=>subscribeLiveMessages(m=>{if(m.type==='payment.update'||m.type==='notification')load(true)}),[user])
+  }catch(e){setError(e instanceof ApiError?e.detail:'Could not load dashboard')}finally{setLoading(false)}},[user])
+  useEffect(()=>{void Promise.resolve().then(()=>load(true))},[load])
+  useEffect(()=>subscribeLiveMessages(m=>{if(m.type==='payment.update'||m.type==='notification')void load(true)}),[load])
   const first=greetingName(user), hasShortcode=integrations.length>0, waitingCount=payments.filter(p=>p.status==='provider_requested'||p.status==='created').length
   const nextStep=!hasShortcode?{title:'Add a shortcode',body:'Connect a paybill or till so you can request payments from customers.',to:'/integrations',label:'Add shortcode',Icon:Landmark}:waitingCount>0?{title:'Payments waiting on the customer',body:'A phone prompt is open. It usually settles within a minute — open a payment for details.',to:'/intents',label:'View payments',Icon:CreditCard}:{title:'Request a payment',body:'Send a prompt to a customer’s phone and track the result here.',to:'/intents',label:'New payment',Icon:CreditCard}
   const NextIcon=nextStep.Icon
@@ -38,8 +38,12 @@ export function Home() {
     </div>
     {error&&<div className="mb-4 rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-4 py-3 text-sm text-[var(--danger)]">{error}</div>}
     <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-      {[[Landmark,'Shortcodes',integrations.length,'Manage','/integrations'],[Bell,'App endpoints',hooks,'Configure','/webhooks'],[CreditCard,'Recent',payments.length,'All payments','/intents']].map(([Icon,label,value,action,to])=><div key={String(label)} className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
-        <div className="flex items-center gap-1 text-xs font-medium text-[var(--muted)]"><Icon size={14} strokeWidth={1.75}/>{label}</div><div className="my-1 text-2xl font-bold tracking-tight">{loading?'—':value as number}</div><Link to={String(to)} className="inline-flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--accent)]"><span>{String(action)}</span><ArrowRight size={12}/></Link>
+      {([
+        { Icon: Landmark, label: 'Shortcodes', value: integrations.length, action: 'Manage', to: '/integrations' },
+        { Icon: Bell, label: 'App endpoints', value: hooks, action: 'Configure', to: '/webhooks' },
+        { Icon: CreditCard, label: 'Recent', value: payments.length, action: 'All payments', to: '/intents' },
+      ] satisfies { Icon: LucideIcon; label: string; value: number; action: string; to: string }[]).map(({ Icon, label, value, action, to })=><div key={label} className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+        <div className="flex items-center gap-1 text-xs font-medium text-[var(--muted)]"><Icon size={14} strokeWidth={1.75}/>{label}</div><div className="my-1 text-2xl font-bold tracking-tight">{loading?'—':value}</div><Link to={to} className="inline-flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--accent)]"><span>{action}</span><ArrowRight size={12}/></Link>
       </div>)}
     </div>
     <section className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">

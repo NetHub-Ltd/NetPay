@@ -1,9 +1,9 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError, type Integration, type Tenant, type Webhook } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { StatusBadge } from '../components/StatusBadge'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/authState'
 
 export function Integrations() {
   const { isAdmin, user } = useAuth()
@@ -27,7 +27,7 @@ export function Integrations() {
     passkey: '',
   })
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       const integ = await api.get<Integration[]>('/v1/integrations')
       setItems(integ)
@@ -50,11 +50,11 @@ export function Integrations() {
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Could not load paybills & tills')
     }
-  }
+  }, [form.tenant_id, isAdmin, user])
 
   useEffect(() => {
-    load()
-  }, [])
+    void Promise.resolve().then(load)
+  }, [load])
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()

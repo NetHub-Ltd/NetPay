@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type PaymentIntent } from '../api/client'
-import { StatusBadge, formatKes, statusHint } from '../components/StatusBadge'
+import { StatusBadge } from '../components/StatusBadge'
+import { formatKes, statusHint } from '../components/statusUtils'
 
 type LedgerRow = {
   id: string
@@ -94,7 +95,7 @@ export function PaymentIntentDetail() {
   const [timeline, setTimeline] = useState<{ steps: TimelineStep[] } | null>(null)
   const [showTech, setShowTech] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setItem(await api.get<PaymentIntent>(`/v1/payment-intents/${id}`))
       try {
@@ -110,11 +111,11 @@ export function PaymentIntentDetail() {
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Not found')
     }
-  }
+  }, [id])
 
   useEffect(() => {
-    load()
-  }, [id])
+    void Promise.resolve().then(load)
+  }, [load])
 
   async function queryNetwork() {
     setBusy(true)

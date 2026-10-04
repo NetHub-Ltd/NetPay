@@ -1,9 +1,10 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { subscribeLiveMessages } from '../hooks/useWebSocket'
+import { subscribeLiveMessages } from '../hooks/liveEvents'
 import { api, ApiError, type Integration, type PaymentIntent } from '../api/client'
 import { DataTable } from '../components/DataTable'
-import { StatusBadge, formatKes, statusHint, paymentLifecycleBucket } from '../components/StatusBadge'
+import { StatusBadge } from '../components/StatusBadge'
+import { formatKes, paymentLifecycleBucket, statusHint } from '../components/statusUtils'
 
 export function PaymentIntents() {
   const navigate = useNavigate()
@@ -23,28 +24,30 @@ export function PaymentIntents() {
   })
   const [showAdvanced, setShowAdvanced] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setItems(await api.get<PaymentIntent[]>('/v1/payment-intents'))
       const integ = await api.get<Integration[]>('/v1/integrations')
       setIntegrations(integ)
-      if (!form.integration_public_id && integ[0]?.public_id) {
-        setForm((f) => ({ ...f, integration_public_id: integ[0].public_id }))
-      }
+      setForm((f) =>
+        !f.integration_public_id && integ[0]?.public_id
+          ? { ...f, integration_public_id: integ[0].public_id }
+          : f,
+      )
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Failed to load payments')
     }
-  }
+  }, [])
 
   useEffect(() => {
-    load()
-  }, [])
+    void Promise.resolve().then(load)
+  }, [load])
 
   useEffect(() => {
     return subscribeLiveMessages((m) => {
-      if (m.type === 'payment.update' || m.type === 'notification') load()
+      if (m.type === 'payment.update' || m.type === 'notification') void load()
     })
-  }, [])
+  }, [load])
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()

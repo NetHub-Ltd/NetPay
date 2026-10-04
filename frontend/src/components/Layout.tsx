@@ -3,8 +3,8 @@ import {
   Activity, AlertTriangle, Bell, Building2, CircleHelp, CreditCard, Home,
   KeyRound, Landmark, LogOut, Moon, Plus, Radio, Sun,
 } from 'lucide-react'
-import { useAuth } from '../auth/AuthContext'
-import { useTheme } from '../theme/ThemeContext'
+import { useAuth } from '../auth/authState'
+import { useTheme } from '../theme/themeState'
 import { NotificationBell } from './NotificationBell'
 import { LiveProvider } from '../hooks/useWebSocket'
 import { ToastHost } from './ToastHost'

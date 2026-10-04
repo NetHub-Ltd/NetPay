@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Bell, X } from 'lucide-react'
-import { useNotificationInbox } from '../hooks/useWebSocket'
+import { useNotificationInbox } from '../hooks/liveEvents'
 
 const buttonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--panel-2)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
 
