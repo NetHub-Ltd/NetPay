@@ -1,11 +1,10 @@
 import { createContext, useContext } from 'react'
 
-export type ThemeMode = 'light' | 'dark'
+/** Light-only for now — dark theme removed from product UI. */
+export type ThemeMode = 'light'
 
 type ThemeCtx = {
   theme: ThemeMode
-  setTheme: (t: ThemeMode) => void
-  toggle: () => void
 }
 
 export const Ctx = createContext<ThemeCtx | null>(null)

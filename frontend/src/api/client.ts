@@ -83,8 +83,12 @@ export type User = {
   id: string
   email: string
   display_name?: string | null
+  full_name?: string | null
+  username?: string | null
   role: 'admin' | 'user'
   tenant_id?: string | null
+  tenant_name?: string | null
+  tenant_tier?: string | null
   is_active: boolean
 }
 

@@ -9,15 +9,12 @@ import {
   CreditCard,
   Landmark,
   LockKeyhole,
-  Moon,
   Radio,
   ShieldCheck,
-  Sun,
   Webhook,
   Zap,
 } from 'lucide-react'
 import { useAuth } from '../auth/authState'
-import { useTheme } from '../theme/themeState'
 
 const button =
   'inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
@@ -66,7 +63,6 @@ const steps = [
 
 export function Landing() {
   const { user } = useAuth()
-  const { theme, toggle } = useTheme()
   const primaryHref = user ? '/dashboard' : '/login'
 
   return (
@@ -98,15 +94,6 @@ export function Landing() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <button
-            className="flex size-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:bg-[var(--panel-2)] hover:text-[var(--text)]"
-            type="button"
-            onClick={toggle}
-            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-          >
-            {theme === 'light' ? <Moon size={17} aria-hidden="true" /> : <Sun size={17} aria-hidden="true" />}
-          </button>
           <Link
             className="hidden rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--panel-2)] sm:inline-flex"
             to={user ? '/dashboard' : '/login'}

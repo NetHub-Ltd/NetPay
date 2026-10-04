@@ -1,11 +1,17 @@
 import { Link } from 'react-router-dom'
+import { Button } from '../components/primitives'
 
 export function NotFound() {
   return (
-    <div className="mx-auto my-12 mb-4 max-w-[480px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow)]" data-testid="notfound-page">
-      <h1 className="text-2xl font-semibold tracking-tight">404 — Not found</h1>
-      <p className="text-[var(--muted)]">That page or resource does not exist.</p>
-      <Link className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50" to="/">Home</Link>
+    <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-start justify-center gap-4">
+      <p className="m-0 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">404</p>
+      <h1 className="m-0 text-2xl font-semibold">Page not found</h1>
+      <p className="m-0 text-sm text-[var(--muted)]">
+        That link doesn&apos;t match anything in NetPay.
+      </p>
+      <Link to="/" className="no-underline">
+        <Button variant="secondary">Go home</Button>
+      </Link>
     </div>
   )
 }
