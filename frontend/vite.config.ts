@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      '/config.json': 'http://127.0.0.1:8000',
       '/auth': 'http://127.0.0.1:8000',
       '/oauth': 'http://127.0.0.1:8000',
       '/v1': 'http://127.0.0.1:8000',

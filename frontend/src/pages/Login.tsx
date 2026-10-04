@@ -134,9 +134,10 @@ export function Login() {
                 role="alert"
               >
                 OIDC is not configured. Set{' '}
-                <code className="font-mono text-[0.9em]">VITE_OIDC_ISSUER</code> and{' '}
-                <code className="font-mono text-[0.9em]">VITE_OIDC_CLIENT_ID</code>{' '}
-                for this build.
+                <code className="font-mono text-[0.9em]">OIDC_ISSUER</code> and{' '}
+                <code className="font-mono text-[0.9em]">OIDC_CLIENT_ID</code> on the
+                server (or <code className="font-mono text-[0.9em]">VITE_*</code> for
+                local dev).
               </div>
             )}
 

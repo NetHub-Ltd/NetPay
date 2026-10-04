@@ -6,17 +6,39 @@ import {
   type ReactNode,
 } from 'react'
 import { api, clearSessionTokens, getToken, type User } from '../api/client'
-import { beginLogin, beginLogout, getIdTokenFromStorage, isOidcConfigured } from './oidcBridge'
+import {
+  beginLogin,
+  beginLogout,
+  ensureOidcConfig,
+  getIdTokenFromStorage,
+} from './oidcBridge'
 import { AuthContext } from './authState'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(() => Boolean(getToken()))
-  const oidcReady = isOidcConfigured()
+  const [oidcReady, setOidcReady] = useState(false)
+  const [oidcChecked, setOidcChecked] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void ensureOidcConfig().then((cfg) => {
+      if (!cancelled) {
+        setOidcReady(cfg !== null)
+        setOidcChecked(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const refresh = useCallback(async () => {
     const token = getToken()
-    if (!token) return
+    if (!token) {
+      setLoading(false)
+      return
+    }
     try {
       const me = await api.get<User>('/auth/me')
       setUser(me)
@@ -33,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   const login = useCallback(async () => {
+    await ensureOidcConfig()
     await beginLogin('/dashboard')
   }, [])
 
@@ -46,13 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
-      loading,
+      loading: loading || !oidcChecked,
       login,
       logout,
       isAdmin: user?.role === 'admin',
       oidcReady,
     }),
-    [user, loading, login, logout, oidcReady],
+    [user, loading, login, logout, oidcReady, oidcChecked],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
