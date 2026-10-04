@@ -52,6 +52,17 @@ class Settings(BaseSettings):
     nethub_api_base_url: str = Field(default="", alias="NETHUB_API_BASE_URL")
     nethub_api_timeout_seconds: float = Field(default=8.0, alias="NETHUB_API_TIMEOUT_SECONDS")
 
+    # SPA OIDC (public client / PKCE). Served at GET /config.json so the same
+    # image works on GHCR, Render, and k3s without rebuilding the frontend.
+    # Optional VITE_* bake at image build remains a local-dev fallback only.
+    oidc_issuer: str = Field(default="", alias="OIDC_ISSUER")
+    oidc_client_id: str = Field(default="", alias="OIDC_CLIENT_ID")
+    oidc_redirect_uri: str = Field(default="", alias="OIDC_REDIRECT_URI")
+    oidc_scopes: str = Field(
+        default="openid profile email offline_access",
+        alias="OIDC_SCOPES",
+    )
+
     @property
     def async_database_url(self) -> str:
         return self.database_url

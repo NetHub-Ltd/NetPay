@@ -68,7 +68,7 @@ if STATIC_DIR.is_dir():
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str, request: Request):
         # Do not swallow API/docs paths
-        blocked = ("api", "v1", "auth", "oauth", "health", "internal", "ws", "docs", "redoc", "openapi.json", "assets")
+        blocked = ("api", "v1", "auth", "oauth", "health", "internal", "ws", "docs", "redoc", "openapi.json", "assets", "config.json")
         first = full_path.split("/", 1)[0]
         if first in blocked:
             return {"detail": "Not Found"}

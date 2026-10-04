@@ -40,3 +40,28 @@ async def health() -> HealthOut:
         environment=settings.environment,
         version=settings.app_version,
     )
+
+
+@router.get("/config.json")
+async def public_spa_config() -> dict[str, str | bool]:
+    """Public SPA bootstrap config (no secrets).
+
+    OIDC values come from runtime env so one container image works everywhere.
+    The browser never receives a client secret (PKCE public client only).
+    """
+    issuer = (settings.oidc_issuer or "").strip().rstrip("/")
+    client_id = (settings.oidc_client_id or "").strip()
+    redirect = (settings.oidc_redirect_uri or "").strip()
+    scopes = (settings.oidc_scopes or "").strip() or "openid profile email offline_access"
+    configured = bool(issuer and client_id and issuer != "https://build-placeholder.invalid")
+    return {
+        "oidc_issuer": issuer,
+        "oidc_client_id": client_id,
+        "oidc_redirect_uri": redirect,
+        "oidc_scopes": scopes,
+        "oidc_configured": configured,
+        "nethub_api_configured": bool((settings.nethub_api_base_url or "").strip()),
+        "environment": settings.environment,
+        "version": settings.app_version,
+    }
+
