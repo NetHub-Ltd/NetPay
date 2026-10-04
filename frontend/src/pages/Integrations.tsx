@@ -13,7 +13,7 @@ export function Integrations() {
   const [items, setItems] = useState<Integration[]>([])
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [webhookCount, setWebhookCount] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+  const [border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)], setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -88,10 +88,10 @@ export function Integrations() {
   }
 
   async function onRetire(id: string, shortcode: string) {
-    const ok = window.confirm(
+    const border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)] = window.confirm(
       `Retire shortcode ${shortcode}?\n\nIt will no longer appear in your list. Existing payments keep their history. You can add the shortcode again later if needed.`,
     )
-    if (!ok) return
+    if (!border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]) return
     setBusy(true)
     setError(null)
     try {
@@ -107,21 +107,21 @@ export function Integrations() {
 
   return (
     <div data-testid="integrations-page">
-      <div className="page-header">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1>Paybills &amp; tills</h1>
           <p>Your M-Pesa shortcodes — the numbers customers pay to.</p>
         </div>
-        <button className="btn primary" type="button" onClick={() => setShowForm((v) => !v)}>
+        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 border-[var(--accent)] bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]" type="button" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Cancel' : 'Add shortcode'}
         </button>
       </div>
-      {error && <div className="alert error">{error}</div>}
-      {msg && <div className="alert ok">{msg}</div>}
+      {border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]}</div>}
+      {msg && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]">{msg}</div>}
 
-      <div className="card">
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
         <h2>Setup checklist</h2>
-        <p className="muted tiny" style={{ marginTop: 0 }}>
+        <p className="text-[var(--muted)] text-xs" style={{ marginTop: 0 }}>
           Complete these so payments can settle and your app can be notified.
         </p>
         <ol style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
@@ -147,9 +147,9 @@ export function Integrations() {
       </div>
 
       {showForm && (
-        <div className="card">
+        <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
           <h2>Add a paybill or till</h2>
-          <p className="muted tiny">
+          <p className="text-[var(--muted)] text-xs">
             Use the shortcode and API details from the Safaricom Daraja portal (sandbox or live).
           </p>
           <form onSubmit={onCreate}>
@@ -171,11 +171,11 @@ export function Integrations() {
               </>
             )}
             {!isAdmin && !user?.tenant_id && (
-              <div className="alert error">
+              <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">
                 Your account isn’t linked to a business. Ask an admin to link you before adding a shortcode.
               </div>
             )}
-            <div className="grid-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
                 <label>Shortcode</label>
                 <input
@@ -227,7 +227,7 @@ export function Integrations() {
               autoComplete="off"
             />
             <button
-              className="btn primary"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 border-[var(--accent)] bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
               type="submit"
               disabled={busy || (!isAdmin && !user?.tenant_id) || (isAdmin && !form.tenant_id)}
             >
@@ -243,7 +243,7 @@ export function Integrations() {
           hint="Add a shortcode to start sending payment requests to customers."
         />
       ) : (
-        <div className="card">
+        <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
           <table>
             <thead>
               <tr>
@@ -259,7 +259,7 @@ export function Integrations() {
                 <tr key={i.id}>
                   <td>
                     <strong>{i.shortcode}</strong>
-                    <div className="muted tiny mono">{i.public_id}</div>
+                    <div className="text-[var(--muted)] text-xs font-mono text-[0.85em]">{i.public_id}</div>
                   </td>
                   <td>{i.type === 'till' ? 'Till' : 'Paybill'}</td>
                   <td>{i.environment === 'production' ? 'Live' : 'Test'}</td>
@@ -268,10 +268,10 @@ export function Integrations() {
                   </td>
                   <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                     <Link to={`/integrations/${i.id}`}>Continue setup</Link>
-                    <Link to={`/integrations/${i.id}`} className="muted tiny">Details</Link>
+                    <Link to={`/integrations/${i.id}`} className="text-[var(--muted)] text-xs">Details</Link>
                     <button
                       type="button"
-                      className="btn danger"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 border-[var(--danger)] bg-transparent text-[var(--danger)]"
                       disabled={busy}
                       onClick={() => onRetire(i.id, i.shortcode)}
                     >
