@@ -4,6 +4,7 @@ import { api, type Health as HealthT } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { DataTable } from '../components/DataTable'
 import { useLiveStatus } from '../hooks/liveEvents'
+import { button, card, errorAlert, pageDescription, pageHeader, pageTitle } from '../components/ui'
 
 type EdgeConnection = {
   status: string
@@ -74,29 +75,29 @@ export function Health() {
 
   return (
     <div data-testid="health-page">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+      <div className={pageHeader}>
         <div>
-          <h1>System status</h1>
-          <p>
+          <h1 className={pageTitle}>System status</h1>
+          <p className={pageDescription}>
             Service health, edge link, and recent calls to the payment network.
             {connected ? ' Live updates on.' : ' Live channel reconnecting…'}
           </p>
         </div>
-        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" onClick={() => load()}>
+        <button type="button" className={button} onClick={() => void load()}>
           Refresh
         </button>
       </div>
-      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
 
       {displayedEdge && (
-        <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
-          <h2>Edge connection</h2>
-          <p style={{ marginTop: 0 }}>{displayedEdge.label}</p>
+        <div className={card}>
+          <h2 className="mb-2 text-base font-semibold">Edge connection</h2>
+          <p className="mb-4">{displayedEdge.label}</p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
               <div className="text-[var(--muted)] text-xs">Status</div>
               <StatusBadge
-                value={displayedEdge.status === 'connected' ? 'border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]' : displayedEdge.status === 'errors' ? 'failed' : displayedEdge.status}
+                value={displayedEdge.status === 'connected' ? 'ok' : displayedEdge.status === 'errors' ? 'failed' : displayedEdge.status}
               />
             </div>
             <div>
@@ -115,9 +116,9 @@ export function Health() {
         </div>
       )}
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
-        <h2>Provider calls</h2>
-        <p className="text-[var(--muted)] text-xs" style={{ marginTop: 0 }}>
+      <div className={card}>
+        <h2 className="mb-2 text-base font-semibold">Provider calls</h2>
+        <p className="mb-4 text-xs text-[var(--muted)]">
           Recent requests NetPay made to the payment network (login, phone prompts, connect shortcode).
         </p>
         <DataTable
@@ -146,7 +147,7 @@ export function Health() {
               header: 'Result',
               cell: (r) => (
                 <>
-                  <StatusBadge value={r.success ? 'border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]' : 'failed'} />
+                  <StatusBadge value={r.success ? 'ok' : 'failed'} />
                   {r.response_status != null && (
                     <span className="text-[var(--muted)] text-xs"> · HTTP {r.response_status}</span>
                   )}
@@ -177,27 +178,27 @@ export function Health() {
 
       {data && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+          <div className={card}>
             <div className="text-[var(--muted)] text-xs">Database</div>
             <div>{data.database ? 'OK' : 'Down'}</div>
           </div>
-          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+          <div className={card}>
             <div className="text-[var(--muted)] text-xs">Redis</div>
             <div>{data.redis}</div>
           </div>
-          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+          <div className={card}>
             <div className="text-[var(--muted)] text-xs">Admin ready</div>
             <div>{data.admin_ready ? 'Yes' : 'No'}</div>
           </div>
-          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+          <div className={card}>
             <div className="text-[var(--muted)] text-xs">Environment</div>
             <div>{data.environment}</div>
           </div>
-          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+          <div className={card}>
             <div className="text-[var(--muted)] text-xs">Version</div>
             <div>{data.version}</div>
           </div>
-          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+          <div className={card}>
             <div className="text-[var(--muted)] text-xs">Overall</div>
             <StatusBadge value={data.status} />
           </div>

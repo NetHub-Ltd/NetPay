@@ -21,7 +21,7 @@ import { NotFound } from './pages/NotFound'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="login-page"><p className="muted">Loading…</p></div>
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-sm text-[var(--muted)]">Loading…</div>
   if (!user) return <Navigate to="/login" replace />
   return <>{children}</>
 }

@@ -30,8 +30,8 @@ export function Layout() {
   return (
     <LiveProvider>
       <ToastHost />
-      <div className="grid h-screen max-h-screen grid-cols-[240px_minmax(0,1fr)] overflow-hidden bg-[var(--bg)] text-[var(--text)]">
-        <aside className="sticky top-0 flex h-screen max-h-screen flex-col gap-3 overflow-hidden border-r border-[var(--border)] bg-[var(--panel)] px-4 py-5">
+      <div className="grid min-h-screen grid-cols-1 bg-[var(--bg)] text-[var(--text)] lg:h-screen lg:max-h-screen lg:grid-cols-[240px_minmax(0,1fr)] lg:overflow-hidden">
+        <aside className="flex flex-col gap-3 border-b border-[var(--border)] bg-[var(--panel)] px-4 py-4 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:overflow-hidden lg:border-b-0 lg:border-r lg:px-4 lg:py-5">
           <div className="flex shrink-0 items-center gap-3">
             <span className="flex items-center" aria-hidden>
               <Landmark size={22} strokeWidth={1.75} />
@@ -42,7 +42,7 @@ export function Layout() {
             </div>
           </div>
 
-          <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto pr-1" aria-label="Main">
+          <nav className="flex min-h-0 flex-1 flex-row flex-wrap gap-1 overflow-x-hidden overflow-y-auto pr-1 lg:flex-col lg:flex-nowrap" aria-label="Main">
             <NavLink to="/" end className={linkClass}><Home {...ico} /> Home</NavLink>
             <NavLink to="/intents" className={linkClass}><CreditCard {...ico} /> Payments</NavLink>
             <NavLink to="/integrations" className={linkClass}><Landmark {...ico} /> Shortcodes</NavLink>
@@ -56,7 +56,7 @@ export function Layout() {
           </nav>
         </aside>
 
-        <div className="flex h-screen min-h-0 min-w-0 flex-col overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-col lg:h-screen lg:overflow-hidden">
           <header className="z-5 flex shrink-0 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--panel)] px-6 py-2.5">
             <div><span className="text-sm font-semibold">Dashboard</span></div>
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -73,7 +73,7 @@ export function Layout() {
               <button type="button" className={iconButtonClass} onClick={logout} title="Sign out" aria-label="Sign out"><LogOut size={16} strokeWidth={1.75} /></button>
             </div>
           </header>
-          <main className="mx-auto w-full max-w-[1120px] flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-6">{<Outlet />}</main>
+          <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 sm:px-6 lg:min-h-0 lg:overflow-y-auto"><Outlet /></main>
         </div>
       </div>
     </LiveProvider>

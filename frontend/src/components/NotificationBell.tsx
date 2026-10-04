@@ -8,6 +8,7 @@ const buttonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-lg 
 export function NotificationBell() {
   const { items, open, setOpen, unread, markAllRead, markRead, clear } = useNotificationInbox()
   const panelRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -15,7 +16,7 @@ export function NotificationBell() {
     function onPointer(e: MouseEvent | TouchEvent) {
       const target = e.target as Node | null
       if (!target) return
-      if ((target as Element).closest?.('.notif-btn')) return
+      if (triggerRef.current?.contains(target)) return
       if (panelRef.current && !panelRef.current.contains(target)) setOpen(false)
     }
     document.addEventListener('keydown', onKey)
@@ -35,7 +36,7 @@ export function NotificationBell() {
 
   return (
     <div className="relative">
-      <button type="button" className={`${buttonClass} relative`} title="Notifications" aria-label="Notifications" aria-expanded={open} onClick={toggle}>
+      <button ref={triggerRef} type="button" className={`${buttonClass} relative`} title="Notifications" aria-label="Notifications" aria-expanded={open} onClick={toggle}>
         <Bell size={16} strokeWidth={1.75} />
         {unread > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[var(--danger)] px-1 text-center text-[10px] font-bold leading-4 text-white">{unread > 9 ? '9+' : unread}</span>}
       </button>

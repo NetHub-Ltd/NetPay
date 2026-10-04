@@ -4,6 +4,7 @@ import { api, ApiError, type Integration, type Tenant, type Webhook } from '../a
 import { EmptyState } from '../components/EmptyState'
 import { StatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth/authState'
+import { button, card, control, errorAlert, label, pageDescription, pageHeader, pageTitle, primaryButton, successAlert, table, tableWrap } from '../components/ui'
 
 export function Integrations() {
   const { isAdmin, user } = useAuth()
@@ -106,26 +107,27 @@ export function Integrations() {
 
   return (
     <div data-testid="integrations-page">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+      <div className={pageHeader}>
         <div>
-          <h1>Paybills &amp; tills</h1>
-          <p>Your M-Pesa shortcodes — the numbers customers pay to.</p>
+          <h1 className={pageTitle}>Paybills &amp; tills</h1>
+          <p className={pageDescription}>Your M-Pesa shortcodes — the numbers customers pay to.</p>
         </div>
-        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-sm transition-all hover:shadow-md"
+        <button className={button}
+          type="button"
           onClick={() => setShowForm(!showForm)}
         >
           {showForm ? 'Cancel' : 'Add shortcode'}
         </button>
       </div>
-      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
-      {msg && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]">{msg}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
+      {msg && <div className={successAlert} role="status">{msg}</div>}
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
-        <h2>Setup checklist</h2>
-        <p className="text-[var(--muted)] text-xs" style={{ marginTop: 0 }}>
+      <div className={card}>
+        <h2 className="mb-2 text-base font-semibold">Setup checklist</h2>
+        <p className="mb-0 text-xs text-[var(--muted)]">
           Complete these so payments can settle and your app can be notified.
         </p>
-        <ol style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
           <li>
             <strong>Add a shortcode</strong>
             {items.length > 0 ? ' — done' : ' — use Add shortcode'}
@@ -148,16 +150,17 @@ export function Integrations() {
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
-          <h2>Add a paybill or till</h2>
+        <div className={card}>
+          <h2 className="mb-2 text-base font-semibold">Add a paybill or till</h2>
           <p className="text-[var(--muted)] text-xs">
             Use the shortcode and API details from the Safaricom Daraja portal (sandbox or live).
           </p>
           <form onSubmit={onCreate}>
             {isAdmin && (
               <>
-                <label>Business</label>
+                <label className={label}>Business</label>
                 <select
+                  className={control}
                   required
                   value={form.tenant_id}
                   onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}
@@ -178,8 +181,9 @@ export function Integrations() {
             )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
-                <label>Shortcode</label>
+                <label className={label}>Shortcode</label>
                 <input
+                  className={control}
                   required
                   value={form.shortcode}
                   onChange={(e) => setForm({ ...form, shortcode: e.target.value })}
@@ -187,15 +191,16 @@ export function Integrations() {
                 />
               </div>
               <div>
-                <label>Type</label>
-                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                <label className={label}>Type</label>
+                <select className={control} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
                   <option value="paybill">Paybill</option>
                   <option value="till">Till number</option>
                 </select>
               </div>
               <div>
-                <label>Environment</label>
+                <label className={label}>Environment</label>
                 <select
+                  className={control}
                   value={form.environment}
                   onChange={(e) => setForm({ ...form, environment: e.target.value })}
                 >
@@ -204,23 +209,26 @@ export function Integrations() {
                 </select>
               </div>
             </div>
-            <label>Consumer key</label>
+            <label className={label}>Consumer key</label>
             <input
+              className={control}
               required
               value={form.consumer_key}
               onChange={(e) => setForm({ ...form, consumer_key: e.target.value })}
               autoComplete="off"
             />
-            <label>Consumer secret</label>
+            <label className={label}>Consumer secret</label>
             <input
+              className={control}
               required
               type="password"
               value={form.consumer_secret}
               onChange={(e) => setForm({ ...form, consumer_secret: e.target.value })}
               autoComplete="off"
             />
-            <label>Passkey (Lipa Na M-Pesa)</label>
+            <label className={label}>Passkey (Lipa Na M-Pesa)</label>
             <input
+              className={control}
               required
               type="password"
               value={form.passkey}
@@ -228,7 +236,7 @@ export function Integrations() {
               autoComplete="off"
             />
             <button
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-sm transition-all hover:shadow-md"
+              className={`${primaryButton} mt-4`}
               type="submit"
               disabled={busy || (!isAdmin && !user?.tenant_id) || (isAdmin && !form.tenant_id)}
             >
@@ -244,8 +252,8 @@ export function Integrations() {
           hint="Add a shortcode to start sending payment requests to customers."
         />
       ) : (
-        <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
-          <table>
+        <div className={tableWrap}>
+          <table className={table}>
             <thead>
               <tr>
                 <th>Shortcode</th>
@@ -260,24 +268,26 @@ export function Integrations() {
                 <tr key={i.id}>
                   <td>
                     <strong>{i.shortcode}</strong>
-                    <div className="text-[var(--muted)] text-xs font-mono text-[0.85em]">{i.public_id}</div>
+                    <div className="font-mono text-xs text-[var(--muted)]">{i.public_id}</div>
                   </td>
                   <td>{i.type === 'till' ? 'Till' : 'Paybill'}</td>
                   <td>{i.environment === 'production' ? 'Live' : 'Test'}</td>
                   <td>
                     <StatusBadge value={i.status} />
                   </td>
-                  <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <td>
+                    <div className="flex flex-wrap justify-end gap-2">
                     <Link to={`/integrations/${i.id}`}>Continue setup</Link>
-                    <Link to={`/integrations/${i.id}`} className="text-[var(--muted)] text-xs">Details</Link>
+                    <Link to={`/integrations/${i.id}`} className="text-xs text-[var(--muted)]">Details</Link>
                     <button
                       type="button"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-sm transition-all hover:shadow-md"
+                      className={button}
                       disabled={busy}
                       onClick={() => onRetire(i.id, i.shortcode)}
                     >
                       Retire
                     </button>
+                    </div>
                   </td>
                 </tr>
               ))}
