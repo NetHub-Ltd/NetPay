@@ -58,6 +58,25 @@ async def create_integration(
 ) -> Integration:
     if not can_access_tenant(user, body.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Validate Daraja credentials for the chosen environment before persisting.
+    try:
+        await get_access_token(
+            body.consumer_key.strip(),
+            body.consumer_secret.strip(),
+            body.environment,  # type: ignore[arg-type]
+            session=session,
+            tenant_id=body.tenant_id,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Could not verify M-Pesa API credentials for this environment. "
+                f"Check consumer key/secret and sandbox vs live. ({str(exc)[:240]})"
+            ),
+        ) from exc
+
     pub = new_id("gw")
     integ = await integration_crud.create(
         session,

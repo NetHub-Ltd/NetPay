@@ -8,4 +8,5 @@ class Tenant(BaseMixin, table=True):
     name: str = Field(max_length=120)
     slug: str = Field(index=True, unique=True, max_length=40)
     status: str = Field(default="active", max_length=32)
-    created_by: UUID = Field(foreign_key="users.id")
+    # NetHub principal id or platform admin id — no local users FK (identity is NetHub).
+    created_by: UUID = Field(index=True)

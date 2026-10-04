@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type Tenant } from '../api/client'
+import { api, ApiError, type Tenant } from '../api/client'
 import { PageHeader } from '../components/PageHeader'
-import { PageLoader } from '../components/primitives'
+import { PageLoader, Button } from '../components/primitives'
 import { StatusBadge } from '../components/StatusBadge'
-import { Button } from '../components/primitives'
 import { mono } from '../components/ui'
 
 export function TenantDetail() {
@@ -13,19 +12,43 @@ export function TenantDetail() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api
-      .get<Tenant[]>('/v1/tenants')
-      .then((list) => {
-        const t = list.find((x) => x.id === id)
-        if (!t) setError('Business not found')
-        else setTenant(t)
+    if (!id) return
+    let cancelled = false
+    void api
+      .get<Tenant>(`/v1/tenants/${id}`)
+      .then((t) => {
+        if (!cancelled) {
+          setTenant(t)
+          setError(null)
+        }
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e instanceof ApiError ? e.detail : e.message || 'Could not load business')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
   }, [id])
+
+  if (!id) {
+    return (
+      <div
+        className="rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
+        role="alert"
+      >
+        Business not found
+      </div>
+    )
+  }
 
   if (error) {
     return (
-      <div className="rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+      <div
+        className="rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
+        role="alert"
+      >
         {error}
       </div>
     )
@@ -50,7 +73,7 @@ export function TenantDetail() {
               Notifications
             </Button>
           </Link>
-          <Link to={`/intents`} className="no-underline">
+          <Link to="/intents" className="no-underline">
             <Button size="sm" variant="secondary">
               Payments
             </Button>
