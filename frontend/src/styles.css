@@ -53,6 +53,33 @@
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
+
+/* Brand tokens exposed to Tailwind utilities (v4 @theme).
+   Prefer these over one-off bg-[var(--…)] where practical. */
+@theme {
+  --color-np-bg: var(--bg);
+  --color-np-panel: var(--panel);
+  --color-np-panel-2: var(--panel-2);
+  --color-np-border: var(--border);
+  --color-np-text: var(--text);
+  --color-np-muted: var(--muted);
+  --color-np-accent: var(--accent);
+  --color-np-accent-hover: var(--accent-hover);
+  --color-np-accent-2: var(--accent-2);
+  --color-np-accent-soft: var(--accent-soft);
+  --color-np-danger: var(--danger);
+  --color-np-danger-soft: var(--danger-soft);
+  --color-np-warn: var(--warn);
+  --color-np-warn-soft: var(--warn-soft);
+  --color-np-ok-soft: var(--ok-soft);
+  --radius-np: var(--radius);
+  --radius-np-sm: var(--radius-sm);
+  --font-np: var(--font);
+  --font-np-mono: var(--font-mono);
+  --shadow-np: var(--shadow);
+  --shadow-np-sm: var(--shadow-sm);
+}
+
 @layer base {
   html,
   body,
