@@ -257,7 +257,7 @@ export function Integrations() {
         }
       >
         <p className="mb-4 mt-0 text-xs leading-5 text-[var(--muted)]">
-          Use the shortcode and API keys from the Safaricom Daraja portal (test or live).
+          We verify consumer key and secret with Safaricom (sandbox or live) before saving. Use keys from the Daraja portal for the environment you select.
         </p>
         <form
           id="np-add-shortcode"

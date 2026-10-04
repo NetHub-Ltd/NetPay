@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import re
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import get_current_user, get_session, require_admin
+from app.api.deps import can_access_tenant, get_current_user, get_session, require_admin
 from app.crud.tenant import tenant_crud
 from app.crud.user import user_crud
 from app.models.tenant import Tenant
@@ -28,7 +29,27 @@ async def list_tenants(
     session: Annotated[AsyncSession, Depends(get_session)],
     _: Annotated[Principal, Depends(require_admin)],
 ) -> list[Tenant]:
-    return list(await tenant_crud.list_all(session))
+    stmt = (
+        select(Tenant)
+        .where(col(Tenant.deleted_at).is_(None))
+        .order_by(col(Tenant.created_at).desc())
+        .limit(200)
+    )
+    return list((await session.exec(stmt)).all())
+
+
+@router.get("/{tenant_id}", response_model=TenantOut)
+async def get_tenant(
+    tenant_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[Principal, Depends(get_current_user)],
+) -> Tenant:
+    t = await tenant_crud.get(session, tenant_id)
+    if not t or getattr(t, "deleted_at", None) is not None:
+        raise HTTPException(status_code=404, detail="Business not found")
+    if not can_access_tenant(user, t.id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return t
 
 
 @router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
@@ -58,17 +79,13 @@ async def create_tenant(
     return t
 
 
-
 @router.post("/self", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
 async def self_register_business(
     body: TenantCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> Tenant:
-    """
-    Free tier: a non-admin with no business may create exactly one.
-    Maps the NetHub principal onto that tenant in NetPay local user row.
-    """
+    """Free tier: non-admin with no business may create exactly one."""
     if user.is_admin:
         raise HTTPException(
             status_code=400,
@@ -109,7 +126,6 @@ async def self_register_business(
             obj_in={"tenant_id": t.id, "display_name": user.full_name or local.display_name},
         )
     else:
-        # Persist mapping for ACL when NetHub has no tenant_id
         await user_crud.create(
             session,
             obj_in={
