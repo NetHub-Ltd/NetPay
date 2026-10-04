@@ -1,9 +1,19 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
-import { api, ApiError, type OAuthClientOut, type Tenant } from '../api/client'
-import { useAuth } from '../auth/authState'
+import { KeyRound } from 'lucide-react'
+import { api, ApiError, type Tenant } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
-import { card, control, errorAlert, label, pageDescription, pageHeader, pageTitle, primaryButton } from '../components/ui'
+import { PageHeader } from '../components/PageHeader'
+import { useAuth } from '../auth/authState'
+import { Button, Input, Modal } from '../components/primitives'
+import { mono } from '../components/ui'
+
+type OAuthClientOut = {
+  client_id: string
+  client_secret: string
+  name: string
+  tenant_id: string
+}
 
 export function OAuthClients() {
   const { isAdmin } = useAuth()
@@ -14,13 +24,17 @@ export function OAuthClients() {
   const [created, setCreated] = useState<OAuthClientOut | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
     if (!isAdmin) return
-    api.get<Tenant[]>('/v1/tenants').then((t) => {
-      setTenants(t)
-      setTenantId((current) => current || t[0]?.id || '')
-    }).catch(() => {})
+    api
+      .get<Tenant[]>('/v1/tenants')
+      .then((t) => {
+        setTenants(t)
+        setTenantId((current) => current || t[0]?.id || '')
+      })
+      .catch(() => {})
   }, [isAdmin])
 
   if (!isAdmin) return <Navigate to="/forbidden" replace />
@@ -31,49 +45,112 @@ export function OAuthClients() {
     setError(null)
     setCreated(null)
     try {
-      const res = await api.post<OAuthClientOut>('/v1/oauth-clients', { tenant_id: tenantId, name })
+      const res = await api.post<OAuthClientOut>('/v1/oauth/clients', {
+        tenant_id: tenantId,
+        name: name.trim(),
+      })
       setCreated(res)
+      setShowForm(false)
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Create failed')
+      setError(err instanceof ApiError ? err.detail : 'Could not create API client')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div data-testid="oauth-page">
-      <div className={pageHeader}>
-        <div>
-        <h1 className={pageTitle}>OAuth clients</h1>
-        <p className={pageDescription}>Client-credentials for machine access (admin)</p>
-        </div>
-      </div>
-      {error && <div className={errorAlert} role="alert">{error}</div>}
-      {created && (
-        <div className="mb-4 rounded-lg border border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 px-4 py-3 text-sm text-[var(--text)]" role="status">
-          Client created — copy the secret now; it is not shown again.
-          <div className="mt-2 break-all font-mono">client_id: {created.client_id}</div>
-          <div className="mt-2 break-all font-mono">client_secret: {created.client_secret}</div>
+    <div>
+      <PageHeader
+        title="Apps & API access"
+        description="Machine credentials for systems that call NetPay on behalf of a business (admin only)."
+        actions={
+          <Button
+            disabled={!tenantId}
+            onClick={() => {
+              setError(null)
+              setShowForm(true)
+            }}
+          >
+            Create client
+          </Button>
+        }
+      />
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+          {error}
         </div>
       )}
 
-      <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">Create client</h2>
-        <form className="max-w-xl" onSubmit={onCreate}>
-          <label className={label}>Tenant</label>
-          <select className={control} required value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
-            <option value="">Select</option>
-            {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <label className={label}>Name</label>
-          <input className={control} required value={name} onChange={(e) => setName(e.target.value)} />
-          <button className={`${primaryButton} mt-4`} type="submit" disabled={busy}>
-            {busy ? 'Creating…' : 'Create client'}
-          </button>
-        </form>
-      </div>
+      {created && (
+        <div className="mb-4 rounded-xl border border-[var(--warn)]/30 bg-[var(--warn-soft)] px-4 py-3 text-sm">
+          <p className="m-0 font-semibold">Copy the secret now — it will not be shown again.</p>
+          <p className="mb-1 mt-3 text-xs text-[var(--muted)]">Client ID</p>
+          <code className={`${mono} break-all`}>{created.client_id}</code>
+          <p className="mb-1 mt-3 text-xs text-[var(--muted)]">Client secret</p>
+          <code className={`${mono} break-all`}>{created.client_secret}</code>
+          <div className="mt-3">
+            <Button size="sm" variant="secondary" onClick={() => setCreated(null)}>
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
 
-      {!tenants.length && <EmptyState title="No tenants" hint="Create a tenant first." />}
+      {!tenantId && tenants.length === 0 ? (
+        <EmptyState
+          icon={<KeyRound size={22} />}
+          title="No businesses yet"
+          hint="Create a business first, then issue API credentials for it."
+        />
+      ) : (
+        <p className="text-sm text-[var(--muted)]">
+          Choose a business and create a client when your backend needs to call NetPay with
+          client-credentials.
+        </p>
+      )}
+
+      <Modal
+        open={showForm}
+        title="Create API client"
+        onClose={() => !busy && setShowForm(false)}
+        footer={
+          <>
+            <Button variant="secondary" disabled={busy} onClick={() => setShowForm(false)}>
+              Cancel
+            </Button>
+            <Button form="np-oauth-form" type="submit" loading={busy} disabled={!tenantId}>
+              Create
+            </Button>
+          </>
+        }
+      >
+        <form id="np-oauth-form" className="flex flex-col gap-3" onSubmit={(e) => void onCreate(e)}>
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-medium">Business</span>
+            <select
+              className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3.5 py-2.5 text-sm"
+              required
+              value={tenantId}
+              onChange={(e) => setTenantId(e.target.value)}
+            >
+              <option value="">Select…</option>
+              {tenants.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Input
+            label="Name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Production backend"
+          />
+        </form>
+      </Modal>
     </div>
   )
 }

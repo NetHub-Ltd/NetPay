@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type PaymentIntent } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatKes, statusHint } from '../components/statusUtils'
-import { button, card, errorAlert, ghostButton, pageHeader, pageTitle, primaryButton, successAlert, table } from '../components/ui'
+import { PageHeader } from '../components/PageHeader'
+import { card, errorAlert, successAlert, table, button, primaryButton, ghostButton } from '../components/ui'
 
 type LedgerRow = {
   id: string
@@ -159,24 +160,21 @@ export function PaymentIntentDetail() {
 
   return (
     <div data-testid="intent-detail-page" className="space-y-4">
-      <div className={pageHeader}>
-        <div>
-          <p className="mb-1 text-sm text-[var(--muted)]">
-            <Link to="/intents">← Payments</Link>
-          </p>
-          <h1 className={pageTitle}>
-            {formatKes(item.amount_minor, item.amount, item.currency)}
-            <span className="ml-2 text-base font-medium text-[var(--muted)]">
-              to {item.phone}
-            </span>
-          </h1>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            {item.created_at ? new Date(item.created_at).toLocaleString() : ''}
-            {item.account_reference ? ` · Ref ${item.account_reference}` : ''}
-          </p>
-        </div>
-        <StatusBadge value={item.status} />
-      </div>
+      <p className="mb-2 text-sm text-[var(--muted)]">
+        <Link to="/intents">← Payments</Link>
+      </p>
+      <PageHeader
+        title={`${formatKes(item.amount_minor, item.amount, item.currency)} to ${item.phone || '—'}`}
+        description={
+          [
+            item.created_at ? new Date(item.created_at).toLocaleString() : '',
+            item.account_reference ? `Ref ${item.account_reference}` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        }
+        actions={<StatusBadge value={item.status} />}
+      />
 
       {error && <div className={errorAlert} role="alert">{error}</div>}
       {item.failure_reason && item.status !== 'succeeded' && (

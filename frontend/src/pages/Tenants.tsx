@@ -1,31 +1,34 @@
-import { type FormEvent, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { Link, Navigate } from 'react-router-dom'
+import { Building2, Plus } from 'lucide-react'
 import { api, ApiError, type Tenant } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
-import { StatusBadge } from '../components/StatusBadge'
+import { PageHeader } from '../components/PageHeader'
 import { useAuth } from '../auth/authState'
-import { Navigate } from 'react-router-dom'
-import { card, control, errorAlert, label, mono, pageDescription, pageHeader, pageTitle, primaryButton, table, tableWrap } from '../components/ui'
+import { Button, Input, Modal } from '../components/primitives'
+import { mono, table, tableWrap } from '../components/ui'
 
 export function Tenants() {
   const { isAdmin } = useAuth()
   const [items, setItems] = useState<Tenant[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [name, setName] = useState('')
-  const [slug, setSlug] = useState('')
+  const [msg, setMsg] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [name, setName] = useState('')
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setItems(await api.get<Tenant[]>('/v1/tenants'))
+      setError(null)
     } catch (e) {
-      setError(e instanceof ApiError ? e.detail : 'Failed to load tenants')
+      setError(e instanceof ApiError ? e.detail : 'Could not load businesses')
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (isAdmin) void Promise.resolve().then(load)
-  }, [isAdmin])
+  }, [isAdmin, load])
 
   if (!isAdmin) return <Navigate to="/forbidden" replace />
 
@@ -33,67 +36,108 @@ export function Tenants() {
     e.preventDefault()
     setBusy(true)
     setError(null)
+    setMsg(null)
     try {
-      await api.post('/v1/tenants', { name, slug: slug || name.toLowerCase().replace(/\s+/g, '-') })
+      await api.post<Tenant>('/v1/tenants', { name: name.trim() })
       setName('')
-      setSlug('')
+      setShowForm(false)
+      setMsg('Business created. You can add shortcodes for it next.')
       await load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Create failed')
+      setError(err instanceof ApiError ? err.detail : 'Could not create business')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div data-testid="tenants-page">
-      <div className={pageHeader}>
-        <div>
-          <h1 className={pageTitle}>Businesses</h1>
-          <p className={pageDescription}>Client organizations (admin only)</p>
-        </div>
-      </div>
-      {error && <div className={errorAlert} role="alert">{error}</div>}
+    <div>
+      <PageHeader
+        title="Businesses"
+        description="Organizations that own shortcodes and payment activity (admin only)."
+        actions={
+          <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
+            Add business
+          </Button>
+        }
+      />
 
-      <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">Onboard client</h2>
-        <form onSubmit={onCreate} className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className={label}>Name</label>
-            <input className={control} value={name} onChange={(e) => setName(e.target.value)} required placeholder="Acme Retail" />
-          </div>
-          <div>
-            <label className={label}>Slug</label>
-            <input className={control} value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="acme-retail" />
-          </div>
-          <div className="md:col-span-2">
-            <button className={primaryButton} type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create tenant'}</button>
-          </div>
-        </form>
-      </div>
+      {error && (
+        <div className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+          {error}
+        </div>
+      )}
+      {msg && (
+        <div className="mb-4 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-4 py-3 text-sm">
+          {msg}
+        </div>
+      )}
 
       {items.length === 0 ? (
-        <EmptyState title="No tenants yet" hint="Create a client organization to begin onboarding." />
+        <EmptyState
+          icon={<Building2 size={22} />}
+          title="No businesses yet"
+          hint="Create a business, then attach shortcodes and users to it."
+          action={
+            <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
+              Add business
+            </Button>
+          }
+        />
       ) : (
         <div className={tableWrap}>
           <table className={table}>
             <thead>
-              <tr><th>Name</th><th>Slug</th><th>Status</th><th>Created</th><th></th></tr>
+              <tr>
+                <th>Name</th>
+                <th>Id</th>
+                <th></th>
+              </tr>
             </thead>
             <tbody>
               {items.map((t) => (
                 <tr key={t.id}>
-                  <td>{t.name}</td>
-                  <td className={mono}>{t.slug}</td>
-                  <td><StatusBadge value={t.status} /></td>
-                  <td className="text-xs text-[var(--muted)]">{new Date(t.created_at).toLocaleString()}</td>
-                  <td><Link to={`/tenants/${t.id}`}>Open</Link></td>
+                  <td className="font-semibold">{t.name}</td>
+                  <td className={`${mono} text-xs text-[var(--muted)]`}>{t.id}</td>
+                  <td>
+                    <Link to={`/tenants/${t.id}`} className="no-underline">
+                      <Button size="sm" variant="secondary">
+                        Open
+                      </Button>
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <Modal
+        open={showForm}
+        title="Add business"
+        onClose={() => !busy && setShowForm(false)}
+        footer={
+          <>
+            <Button variant="secondary" disabled={busy} onClick={() => setShowForm(false)}>
+              Cancel
+            </Button>
+            <Button form="np-tenant-form" type="submit" loading={busy}>
+              Save
+            </Button>
+          </>
+        }
+      >
+        <form id="np-tenant-form" onSubmit={(e) => void onCreate(e)}>
+          <Input
+            label="Business name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Acme Retail"
+          />
+        </form>
+      </Modal>
     </div>
   )
 }
