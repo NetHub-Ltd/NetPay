@@ -191,10 +191,46 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Repo Variables (Settings → Secrets and variables → Actions → Variables).
+      # These are not secrets; they are baked into the SPA at image build.
+      - name: Require OIDC build variables
+        env:
+          OIDC_ISSUER: ${{ vars.OIDC_ISSUER }}
+          OIDC_CLIENT_ID: ${{ vars.OIDC_CLIENT_ID }}
+          NETPAY_OIDC_REDIRECT_URI: ${{ vars.NETPAY_OIDC_REDIRECT_URI }}
+          OIDC_SCOPES: ${{ vars.OIDC_SCOPES }}
+        run: |
+          set -euo pipefail
+          missing=0
+          check() {
+            local name="$1" value="$2"
+            if [ -z "${value// }" ]; then
+              echo "::error title=Missing repository variable::${name} is empty. Set it under Settings → Secrets and variables → Actions → Variables."
+              missing=1
+            else
+              # Confirm presence without dumping full values into logs unnecessarily
+              echo "${name}=set (len=${#value})"
+            fi
+          }
+          check OIDC_ISSUER "${OIDC_ISSUER:-}"
+          check OIDC_CLIENT_ID "${OIDC_CLIENT_ID:-}"
+          check NETPAY_OIDC_REDIRECT_URI "${NETPAY_OIDC_REDIRECT_URI:-}"
+          check OIDC_SCOPES "${OIDC_SCOPES:-}"
+          if [ "$missing" -ne 0 ]; then
+            echo "Refusing to build SPA image without OIDC variables (login would be broken in production)."
+            exit 1
+          fi
+          # Reject Docker build placeholders if someone left defaults
+          if [ "${OIDC_ISSUER}" = "https://build-placeholder.invalid" ] || [ "${OIDC_CLIENT_ID}" = "build-placeholder-client" ]; then
+            echo "::error::OIDC_ISSUER/OIDC_CLIENT_ID still look like build placeholders — set real repo variables."
+            exit 1
+          fi
+          echo "All required OIDC variables are present."
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          # Same names as NetHubKe — set as repo Variables (or Secrets).
+          # Same names as NetHubKe — from repository Variables (validated above).
           # SPA public client: no OIDC_CLIENT_SECRET in the browser build.
           build-args: |
             OIDC_ISSUER=${{ vars.OIDC_ISSUER }}
