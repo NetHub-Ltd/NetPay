@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -11,7 +11,12 @@ import {
   Plus,
   Sparkles,
 } from 'lucide-react'
-import { api, ApiError, type Integration, type PaymentIntent, type Webhook } from '../api/client'
+import {
+  api,
+  ApiError,
+  type PaymentIntent,
+  type Readiness,
+} from '../api/client'
 import { useAuth } from '../auth/authState'
 import { paymentLifecycleBucket } from '../components/statusUtils'
 import { subscribeLiveMessages } from '../hooks/liveEvents'
@@ -35,46 +40,65 @@ function greeting() {
   return 'Good evening'
 }
 
+const NEXT_COPY: Record<
+  Readiness['next_step'],
+  { title: string; detail: string; cta: string; to: string }
+> = {
+  create_business: {
+    title: 'Create your business',
+    detail: 'Free tier includes one business workspace.',
+    cta: 'Create business',
+    to: '/tenants?self=1',
+  },
+  add_shortcode: {
+    title: 'Add a shortcode',
+    detail: 'Paybill or till so customers know where to pay.',
+    cta: 'Add shortcode',
+    to: '/integrations',
+  },
+  connect_mpesa: {
+    title: 'Connect M-Pesa',
+    detail: 'So payment results reach NetPay automatically.',
+    cta: 'Continue setup',
+    to: '/integrations',
+  },
+  take_payment: {
+    title: 'Take a payment',
+    detail: 'You’re set to collect — send a phone prompt when ready.',
+    cta: 'Take a payment',
+    to: '/intents',
+  },
+  done: {
+    title: 'You’re set up',
+    detail: 'Shortcode connected. Collect or review activity anytime.',
+    cta: 'Take a payment',
+    to: '/intents',
+  },
+}
+
 export function Home() {
-  const { user } = useAuth()
+  const { user, establishSession } = useAuth()
+  const [readiness, setReadiness] = useState<Readiness | null>(null)
   const [payments, setPayments] = useState<PaymentIntent[]>([])
-  const [integrations, setIntegrations] = useState<Integration[]>([])
-  const [webhookCount, setWebhookCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(
-    async (quiet = false) => {
-      if (!quiet) setLoading(true)
-      try {
-        const [paymentRows, integrationRows] = await Promise.all([
-          api.get<PaymentIntent[]>('/v1/payment-intents'),
-          api.get<Integration[]>('/v1/integrations'),
-        ])
-        setPayments(paymentRows || [])
-        setIntegrations(integrationRows || [])
-        setError(null)
-
-        if (user?.tenant_id) {
-          try {
-            const webhooks = await api.get<Webhook[]>(
-              `/v1/webhooks?tenant_id=${user.tenant_id}`,
-            )
-            setWebhookCount(webhooks.length)
-          } catch {
-            setWebhookCount(0)
-          }
-        } else {
-          setWebhookCount(0)
-        }
-      } catch (e) {
-        setError(e instanceof ApiError ? e.detail : 'Could not load overview')
-      } finally {
-        setLoading(false)
-      }
-    },
-    [user],
-  )
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true)
+    try {
+      const [ready, paymentRows] = await Promise.all([
+        api.get<Readiness>('/v1/readiness'),
+        api.get<PaymentIntent[]>('/v1/payment-intents'),
+      ])
+      setReadiness(ready)
+      setPayments(paymentRows || [])
+      setError(null)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Could not load overview')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     void Promise.resolve().then(() => load())
@@ -90,94 +114,77 @@ export function Home() {
     [load],
   )
 
+  // Refresh session user when readiness gains a tenant (self-serve business)
+  useEffect(() => {
+    if (readiness?.tenant_id && !user?.tenant_id) {
+      const token = sessionStorage.getItem('nethub_token')
+      if (token) void establishSession(token).catch(() => {})
+    }
+  }, [readiness?.tenant_id, user?.tenant_id, establishSession])
+
   const firstName = greetingName(user)
-  const hasShortcode = integrations.length > 0
-  const hasWebhooks = webhookCount > 0
-  const firstIntegrationId = integrations[0]?.id
-
-  const setupSteps = useMemo(
-    () => [
-      {
-        id: 'shortcode',
-        title: 'Add a shortcode',
-        detail: 'Paybill or till so customers know where to pay.',
-        complete: hasShortcode,
-        to: '/integrations',
-        cta: 'Add shortcode',
-      },
-      {
-        id: 'connect',
-        title: 'Confirm M-Pesa connection',
-        detail: 'Open your shortcode and connect so results reach NetPay.',
-        complete: hasShortcode,
-        to: firstIntegrationId ? `/integrations/${firstIntegrationId}` : '/integrations',
-        cta: 'Open shortcode',
-        optional: true,
-      },
-      {
-        id: 'notify',
-        title: 'Notify your app',
-        detail: 'HTTPS URL for paid / failed updates.',
-        complete: hasWebhooks,
-        to: '/webhooks',
-        cta: 'Add URL',
-        optional: true,
-      },
-    ],
-    [hasShortcode, hasWebhooks, firstIntegrationId],
-  )
-
-  const setupIncomplete = !hasShortcode
-  const nextStep = setupSteps.find((s) => !s.complete)
+  const step = readiness?.next_step || 'add_shortcode'
+  const copy = NEXT_COPY[step]
+  const connectTo =
+    step === 'connect_mpesa' && readiness?.primary_integration_id
+      ? `/integrations/${readiness.primary_integration_id}`
+      : copy.to
 
   const paidCount = payments.filter((p) => paymentLifecycleBucket(p.status) === 'successful').length
   const waitingCount = payments.filter((p) => paymentLifecycleBucket(p.status) === 'processing').length
   const failedCount = payments.filter((p) => paymentLifecycleBucket(p.status) === 'failed').length
 
-  const heroCta = !hasShortcode
-    ? { to: '/integrations', label: 'Add shortcode', icon: Landmark }
-    : { to: '/intents', label: 'Take a payment', icon: Plus }
+  const heroCta =
+    step === 'create_business'
+      ? { to: '/tenants?self=1', label: 'Create business', icon: Landmark }
+      : step === 'add_shortcode'
+        ? { to: '/integrations', label: 'Add shortcode', icon: Landmark }
+        : step === 'connect_mpesa'
+          ? { to: connectTo, label: 'Connect M-Pesa', icon: Landmark }
+          : { to: '/intents', label: 'Take a payment', icon: Plus }
+
+  const ready = readiness?.ready_to_collect === true
 
   return (
     <div className="space-y-6" data-testid="home-page">
-      <section className="relative isolate overflow-hidden rounded-3xl bg-[var(--hero-bg)] px-6 py-7 text-white shadow-[var(--shadow)] sm:px-8 sm:py-9">
+      <section className="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--hero-from)] via-[var(--hero-via)] to-[var(--hero-to)] px-6 py-7 text-[var(--on-hero)] shadow-[var(--shadow)] sm:px-8 sm:py-9">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -right-20 -top-28 -z-10 size-80 rounded-full border border-white/10"
+          className="pointer-events-none absolute -right-20 -top-28 -z-10 size-80 rounded-full border border-[var(--on-hero)]/10"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -right-8 -top-16 -z-10 size-56 rounded-full border border-white/10"
+          className="pointer-events-none absolute -right-8 -top-16 -z-10 size-56 rounded-full border border-[var(--on-hero)]/10"
         />
         <div className="relative flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white/90">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--on-hero)]/20 bg-[var(--on-hero)]/10 px-3 py-1 text-xs font-medium text-[var(--on-hero)]/90">
               <Sparkles size={14} aria-hidden="true" />
-              {setupIncomplete ? 'Get ready to collect' : 'Your collections, in one place'}
+              {ready ? 'Ready to collect' : 'Get ready to collect'}
             </div>
             <h1 className="m-0 text-3xl font-semibold tracking-tight sm:text-4xl">
               {greeting()}
               {firstName ? `, ${firstName}` : ''}.
             </h1>
-            <p className="mb-0 mt-3 max-w-xl text-sm leading-6 text-white/75 sm:text-base">
-              {setupIncomplete
-                ? nextStep
-                  ? `Next: ${nextStep.title.toLowerCase()}.`
-                  : 'Finish setup so payments can flow.'
-                : 'See what needs attention and jump into the work that matters.'}
+            <p className="mb-0 mt-3 max-w-xl text-sm leading-6 text-[var(--on-hero-muted)] sm:text-base">
+              {loading
+                ? 'Checking your workspace…'
+                : ready
+                  ? 'See what needs attention and jump into the work that matters.'
+                  : copy.detail}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[var(--accent-hover)] no-underline shadow-sm transition hover:bg-white/90"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--on-hero)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-hover)] no-underline shadow-sm transition hover:opacity-95"
               to={heroCta.to}
             >
               <heroCta.icon size={17} aria-hidden="true" />
               {heroCta.label}
             </Link>
-            {hasShortcode && (
+            {readiness?.has_shortcode && (
               <Link
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/40 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white no-underline transition hover:bg-white/15"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--on-hero)]/40 bg-[var(--on-hero)]/10 px-4 py-2.5 text-sm font-semibold text-[var(--on-hero)] no-underline transition hover:bg-[var(--on-hero)]/15"
                 to="/integrations"
               >
                 Manage shortcodes
@@ -197,7 +204,6 @@ export function Home() {
         </div>
       )}
 
-      {/* Pulse — insight only, links into filtered lists */}
       <section aria-label="Payment pulse">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
           Pulse
@@ -209,7 +215,7 @@ export function Home() {
             value={loading ? '—' : String(paidCount)}
             detail="Successful payments"
             to="/intents"
-            color="text-[var(--accent)] bg-[var(--accent-soft)]"
+            tone="accent"
           />
           <PulseCard
             icon={Clock3}
@@ -217,7 +223,7 @@ export function Home() {
             value={loading ? '—' : String(waitingCount)}
             detail="Still in progress"
             to="/intents"
-            color="text-[var(--warn)] bg-[var(--warn-soft)]"
+            tone="warn"
           />
           <PulseCard
             icon={CircleAlert}
@@ -225,101 +231,56 @@ export function Home() {
             value={loading ? '—' : String(failedCount)}
             detail="Need a new attempt"
             to="/intents"
-            color="text-[var(--danger)] bg-[var(--danger-soft)]"
+            tone="danger"
           />
           <PulseCard
             icon={Landmark}
             label="Shortcodes"
-            value={loading ? '—' : String(integrations.length)}
-            detail={hasShortcode ? 'Ready for collection' : 'Add one to collect'}
+            value={loading ? '—' : String(readiness?.shortcode_count ?? 0)}
+            detail={
+              readiness?.has_connected_shortcode
+                ? 'Connected for results'
+                : readiness?.has_shortcode
+                  ? 'Connect M-Pesa next'
+                  : 'Add one to collect'
+            }
             to="/integrations"
-            color="text-[var(--accent)] bg-[var(--accent-soft)]"
+            tone="accent"
           />
         </div>
       </section>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        {/* Readiness — hide when fully ready (required steps done) */}
-        {setupIncomplete ? (
-          <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]">
-            <h2 className="m-0 text-base font-semibold tracking-tight">Get ready</h2>
-            <p className="mb-4 mt-1 text-sm text-[var(--muted)]">
-              Complete these so you can collect with confidence.
-            </p>
-            <ul className="m-0 flex list-none flex-col gap-3 p-0">
-              {setupSteps.map((step) => (
-                <li
-                  key={step.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-4 py-3"
-                >
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span
-                      className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${
-                        step.complete
-                          ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                          : 'bg-[var(--panel)] text-[var(--muted)]'
-                      }`}
-                    >
-                      {step.complete ? (
-                        <Check size={16} aria-hidden="true" />
-                      ) : (
-                        <span className="text-xs font-bold">{step.optional ? '·' : '!'}</span>
-                      )}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="m-0 text-sm font-semibold text-[var(--text)]">
-                        {step.title}
-                        {step.optional && (
-                          <span className="ml-2 text-xs font-normal text-[var(--muted)]">
-                            Optional
-                          </span>
-                        )}
-                      </p>
-                      <p className="mb-0 mt-0.5 text-xs text-[var(--muted)]">{step.detail}</p>
-                    </div>
-                  </div>
-                  {!step.complete && (
-                    <Link to={step.to} className="no-underline">
-                      <Button size="sm" variant={step.optional ? 'secondary' : 'primary'}>
-                        {step.cta}
-                      </Button>
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : (
-          <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]">
-            <div className="flex items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]">
-                <Check size={18} aria-hidden="true" />
-              </span>
-              <div>
-                <h2 className="m-0 text-base font-semibold">You’re set up</h2>
-                <p className="mb-3 mt-1 text-sm text-[var(--muted)]">
-                  Shortcode is in place
-                  . Take a payment or review
-                  activity anytime.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Link to="/intents" className="no-underline">
-                    <Button size="sm" leftIcon={<Plus size={16} />}>
-                      Take a payment
-                    </Button>
-                  </Link>
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]">
+          <div className="flex items-start gap-3">
+            <span
+              className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
+                ready
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                  : 'bg-[var(--warn-soft)] text-[var(--warn)]'
+              }`}
+            >
+              {ready ? <Check size={18} aria-hidden /> : <CircleAlert size={18} aria-hidden />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="m-0 text-base font-semibold">{copy.title}</h2>
+              <p className="mb-3 mt-1 text-sm text-[var(--muted)]">{copy.detail}</p>
+              <div className="flex flex-wrap gap-2">
+                <Link to={connectTo} className="no-underline">
+                  <Button size="sm">{copy.cta}</Button>
+                </Link>
+                {readiness?.has_shortcode && step !== 'add_shortcode' && (
                   <Link to="/integrations" className="no-underline">
                     <Button size="sm" variant="secondary">
                       Shortcodes
                     </Button>
                   </Link>
-                </div>
+                )}
               </div>
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
-        {/* Attention — only emphasize when something waits */}
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]">
           <div className="flex items-start gap-3">
             <span
@@ -330,9 +291,9 @@ export function Home() {
               }`}
             >
               {waitingCount > 0 || failedCount > 0 ? (
-                <CircleAlert size={18} aria-hidden="true" />
+                <CircleAlert size={18} aria-hidden />
               ) : (
-                <Check size={18} aria-hidden="true" />
+                <Check size={18} aria-hidden />
               )}
             </span>
             <div className="min-w-0">
@@ -342,9 +303,7 @@ export function Home() {
                   ? 'Checking activity…'
                   : waitingCount > 0 || failedCount > 0
                     ? [
-                        waitingCount > 0
-                          ? `${waitingCount} waiting on the customer`
-                          : null,
+                        waitingCount > 0 ? `${waitingCount} waiting on the customer` : null,
                         failedCount > 0 ? `${failedCount} failed` : null,
                       ]
                         .filter(Boolean)
@@ -356,7 +315,7 @@ export function Home() {
                 to={waitingCount > 0 || failedCount > 0 ? '/intents' : '/reconciliation'}
               >
                 {waitingCount > 0 || failedCount > 0 ? 'Review payments' : 'Needs attention board'}
-                <ArrowRight size={15} aria-hidden="true" />
+                <ArrowRight size={15} aria-hidden />
               </Link>
             </div>
           </div>
@@ -372,28 +331,35 @@ function PulseCard({
   value,
   detail,
   to,
-  color,
+  tone,
 }: {
   icon: typeof CreditCard
   label: string
   value: string
   detail: string
   to: string
-  color: string
+  tone: 'accent' | 'warn' | 'danger'
 }) {
+  const toneClass =
+    tone === 'warn'
+      ? 'text-[var(--warn)] bg-[var(--warn-soft)]'
+      : tone === 'danger'
+        ? 'text-[var(--danger)] bg-[var(--danger-soft)]'
+        : 'text-[var(--accent)] bg-[var(--accent-soft)]'
+
   return (
     <Link
       className="group rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 no-underline shadow-[var(--shadow-sm)] transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-[var(--shadow)]"
       to={to}
     >
       <div className="flex items-start justify-between gap-3">
-        <span className={`flex size-10 items-center justify-center rounded-xl ${color}`}>
-          <Icon size={18} aria-hidden="true" />
+        <span className={`flex size-10 items-center justify-center rounded-xl ${toneClass}`}>
+          <Icon size={18} aria-hidden />
         </span>
         <ArrowUpRight
           className="text-[var(--muted)] transition group-hover:text-[var(--accent)]"
           size={16}
-          aria-hidden="true"
+          aria-hidden
         />
       </div>
       <p className="mb-0 mt-4 text-sm font-medium text-[var(--muted)]">{label}</p>

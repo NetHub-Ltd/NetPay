@@ -9,6 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
 from app.core.db import get_session
+from app.crud.user import user_crud
 from app.schemas.principal import Principal
 from app.services.nethub_auth import NetHubAuthError, fetch_principal
 
@@ -27,10 +28,11 @@ async def require_internal_api_key(
 
 async def get_current_user(
     creds: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Principal:
     """
-    Resolve the caller via NetHub GET /users/me using the Bearer token as-is.
-    NetPay does not decode the token or load a local user row.
+    Resolve via NetHub GET /users/me. If NetHub has no tenant_id, use NetPay
+    local user mapping (free-tier self-registered business).
     """
     if not creds or not creds.credentials:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -40,6 +42,14 @@ async def get_current_user(
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     if not principal.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+
+    if principal.tenant_id is None and not principal.is_admin:
+        local = await user_crud.get_active_by_id(session, principal.id)
+        if local is None:
+            local = await user_crud.get_by_email(session, principal.email)
+        if local and local.tenant_id:
+            principal = principal.model_copy(update={"tenant_id": local.tenant_id})
+
     return principal
 
 
