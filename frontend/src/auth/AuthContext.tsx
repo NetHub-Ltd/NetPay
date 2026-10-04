@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react'
 import { api, clearSessionTokens, getToken, type User } from '../api/client'
+import { applyAccessToken } from './authToken'
 import {
   beginLogin,
   beginLogout,
@@ -16,17 +17,13 @@ import { AuthContext } from './authState'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(() => Boolean(getToken()))
+  const [loading, setLoading] = useState(true)
   const [oidcReady, setOidcReady] = useState(false)
-  const [oidcChecked, setOidcChecked] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     void ensureOidcConfig().then((cfg) => {
-      if (!cancelled) {
-        setOidcReady(cfg !== null)
-        setOidcChecked(true)
-      }
+      if (!cancelled) setOidcReady(cfg !== null)
     })
     return () => {
       cancelled = true
@@ -36,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const token = getToken()
     if (!token) {
+      setUser(null)
       setLoading(false)
       return
     }
@@ -54,6 +52,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void Promise.resolve().then(refresh)
   }, [refresh])
 
+  const establishSession = useCallback(
+    async (accessToken: string, idToken?: string) => {
+      setLoading(true)
+      try {
+        const me = await applyAccessToken(accessToken, idToken)
+        setUser(me)
+        return me
+      } catch (e) {
+        clearSessionTokens()
+        setUser(null)
+        throw e
+      } finally {
+        setLoading(false)
+      }
+    },
+    [],
+  )
+
   const login = useCallback(async () => {
     await ensureOidcConfig()
     await beginLogin('/dashboard')
@@ -69,13 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
-      loading: loading || !oidcChecked,
+      loading,
       login,
+      establishSession,
       logout,
       isAdmin: user?.role === 'admin',
       oidcReady,
     }),
-    [user, loading, login, logout, oidcReady, oidcChecked],
+    [user, loading, login, establishSession, logout, oidcReady],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
