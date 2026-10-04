@@ -1,3 +1,10 @@
+@import "tailwindcss";
+
+/* NetPay Tailwind migration foundation.
+ * Legacy component selectors remain temporarily while pages are migrated.
+ * Do not add new selectors here; new UI must use Tailwind utilities.
+ */
+
 /* NetPay theme — confident, calm, trustworthy */
 
 :root,

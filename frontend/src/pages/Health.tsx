@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type Health as HealthT } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { DataTable } from '../components/DataTable'
-import { useLiveStatus } from '../hooks/useWebSocket'
+import { useLiveStatus } from '../hooks/liveEvents'
 
 type EdgeConnection = {
   status: string
@@ -62,14 +62,15 @@ export function Health() {
   }, [])
 
   useEffect(() => {
-    load()
+    void Promise.resolve().then(load)
   }, [load])
 
-  useEffect(() => {
-    if (!lastMessage || lastMessage.type !== 'edge.connection') return
-    const p = lastMessage.payload as EdgeConnection | undefined
-    if (p && typeof p.status === 'string') setEdge(p)
-  }, [lastMessage])
+  const liveEdge =
+    lastMessage?.type === 'edge.connection' &&
+    typeof lastMessage.payload?.status === 'string'
+      ? (lastMessage.payload as EdgeConnection)
+      : null
+  const displayedEdge = liveEdge || edge
 
   return (
     <div data-testid="health-page">
@@ -87,28 +88,28 @@ export function Health() {
       </div>
       {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
 
-      {edge && (
+      {displayedEdge && (
         <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
           <h2>Edge connection</h2>
-          <p style={{ marginTop: 0 }}>{edge.label}</p>
+          <p style={{ marginTop: 0 }}>{displayedEdge.label}</p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
               <div className="text-[var(--muted)] text-xs">Status</div>
               <StatusBadge
-                value={edge.status === 'connected' ? 'border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]' : edge.status === 'errors' ? 'failed' : edge.status}
+                value={displayedEdge.status === 'connected' ? 'border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]' : displayedEdge.status === 'errors' ? 'failed' : displayedEdge.status}
               />
             </div>
             <div>
               <div className="text-[var(--muted)] text-xs">Last message</div>
-              <div>{fmt(edge.last_inbound_at)}</div>
+              <div>{fmt(displayedEdge.last_inbound_at)}</div>
               <div className="text-[var(--muted)] text-xs">
-                {edge.last_inbound_event_type || '—'} · {edge.last_inbound_status || '—'}
+                {displayedEdge.last_inbound_event_type || '—'} · {displayedEdge.last_inbound_status || '—'}
               </div>
             </div>
             <div>
               <div className="text-[var(--muted)] text-xs">Last heartbeat</div>
-              <div>{fmt(edge.last_heartbeat_at)}</div>
-              <div className="text-[var(--muted)] text-xs">Failed deliveries (24h): {edge.dead_events_last_24h ?? 0}</div>
+              <div>{fmt(displayedEdge.last_heartbeat_at)}</div>
+              <div className="text-[var(--muted)] text-xs">Failed deliveries (24h): {displayedEdge.dead_events_last_24h ?? 0}</div>
             </div>
           </div>
         </div>

@@ -1,14 +1,15 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError, type Tenant, type Webhook } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/authState'
 
 export function Webhooks() {
   const { isAdmin, user } = useAuth()
   const [items, setItems] = useState<Webhook[]>([])
   const [tenants, setTenants] = useState<Tenant[]>([])
-  const [tenantId, setTenantId] = useState(user?.tenant_id || '')
+  const [selectedTenantId, setSelectedTenantId] = useState(user?.tenant_id || '')
+  const tenantId = isAdmin ? selectedTenantId : user?.tenant_id || ''
   const [url, setUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -16,30 +17,25 @@ export function Webhooks() {
   const [secretAck, setSecretAck] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!tenantId && !isAdmin) return
-    if (!tenantId) {
-      setItems([])
-      return
-    }
+    if (!tenantId) return
     try {
       setItems(await api.get<Webhook[]>(`/v1/webhooks?tenant_id=${tenantId}`))
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Could not load notification URLs')
     }
-  }
+  }, [isAdmin, tenantId])
 
   useEffect(() => {
     if (isAdmin) {
       api.get<Tenant[]>('/v1/tenants').then(setTenants).catch(() => {})
-    } else if (user?.tenant_id) {
-      setTenantId(user.tenant_id)
     }
-  }, [isAdmin, user])
+  }, [isAdmin])
 
   useEffect(() => {
-    load()
-  }, [tenantId])
+    void Promise.resolve().then(load)
+  }, [load])
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()
@@ -126,7 +122,7 @@ export function Webhooks() {
         {isAdmin && (
           <>
             <label>Business</label>
-            <select value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
+            <select value={tenantId} onChange={(e) => setSelectedTenantId(e.target.value)}>
               <option value="">Select…</option>
               {tenants.map((t) => (
                 <option key={t.id} value={t.id}>

@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError, type OAuthClientOut, type Tenant } from '../api/client'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/authState'
 import { EmptyState } from '../components/EmptyState'
 
 export function OAuthClients() {
@@ -18,7 +18,7 @@ export function OAuthClients() {
     if (!isAdmin) return
     api.get<Tenant[]>('/v1/tenants').then((t) => {
       setTenants(t)
-      if (!tenantId && t[0]) setTenantId(t[0].id)
+      setTenantId((current) => current || t[0]?.id || '')
     }).catch(() => {})
   }, [isAdmin])
 

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, ApiError, type Tenant } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { StatusBadge } from '../components/StatusBadge'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/authState'
 import { Navigate } from 'react-router-dom'
 
 export function Tenants() {
@@ -23,7 +23,7 @@ export function Tenants() {
   }
 
   useEffect(() => {
-    if (isAdmin) load()
+    if (isAdmin) void Promise.resolve().then(load)
   }, [isAdmin])
 
   if (!isAdmin) return <Navigate to="/forbidden" replace />

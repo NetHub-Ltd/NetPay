@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError, type GatewayEvent } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
-import { useLiveStatus } from '../hooks/useWebSocket'
+import { useLiveStatus } from '../hooks/liveEvents'
 
 export function Events() {
   const [items, setItems] = useState<GatewayEvent[]>([])
@@ -9,19 +9,19 @@ export function Events() {
   const [msg, setMsg] = useState<string | null>(null)
   const { connected } = useLiveStatus()
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setItems(await api.get<GatewayEvent[]>('/v1/events'))
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Failed to load events')
     }
-  }
+  }, [])
 
   useEffect(() => {
-    load()
-    const t = window.setInterval(load, 10000)
+    void Promise.resolve().then(load)
+    const t = window.setInterval(() => void load(), 10000)
     return () => clearInterval(t)
-  }, [])
+  }, [load])
 
   async function replay(id: string) {
     setMsg(null)

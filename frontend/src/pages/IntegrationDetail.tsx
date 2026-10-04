@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type Integration } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
@@ -44,7 +44,7 @@ export function IntegrationDetail() {
   const [busy, setBusy] = useState(false)
   const [connectedOnce, setConnectedOnce] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!id) return
     try {
       const found = await api.get<Integration>(`/v1/integrations/${id}`)
@@ -54,10 +54,10 @@ export function IntegrationDetail() {
       setError(e instanceof ApiError ? e.detail : 'Could not load shortcode')
       setItem(null)
     }
-  }
+  }, [id])
 
   useEffect(() => {
-    load()
+    void Promise.resolve().then(load)
     api
       .get<PublicConfig>('/v1/system/public-config')
       .then((c) => {
@@ -65,7 +65,7 @@ export function IntegrationDetail() {
         if (c.edge_callback_path_prefix) setPathPrefix(c.edge_callback_path_prefix)
       })
       .catch(() => {})
-  }, [id])
+  }, [id, load])
 
   function buildUrls(publicId: string) {
     const prefix = pathPrefix.startsWith('/') ? pathPrefix : `/${pathPrefix}`
@@ -135,7 +135,7 @@ export function IntegrationDetail() {
         <div>
           <h1>Shortcode {item.shortcode}</h1>
           <p>
-            {item.type === 'till' ? 'Till' : 'Paybill'} ·{' '}
+            {item.type === 'till' ? 'Till' : 'Paybill'} · {' '}
             {item.environment === 'production' ? 'Live' : 'Test'}
           </p>
         </div>
@@ -167,7 +167,7 @@ export function IntegrationDetail() {
         <h2>Connect payment updates</h2>
         <p style={{ marginTop: 0 }}>
           One click tells the network where to send results for this shortcode so NetPay can mark payments Paid or
-          Failed. You’ll be asked to confirm before anything is sent.
+          Failed. You'll be asked to confirm before anything is sent.
         </p>
         <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" type="button" onClick={connectPayments} disabled={busy}>
           {busy ? 'Connecting…' : 'Connect this shortcode'}

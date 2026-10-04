@@ -1,16 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-
-export type ThemeMode = 'light' | 'dark'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Ctx, type ThemeMode } from './themeState'
 
 const STORAGE_KEY = 'nethub_theme'
-
-type ThemeCtx = {
-  theme: ThemeMode
-  setTheme: (t: ThemeMode) => void
-  toggle: () => void
-}
-
-const Ctx = createContext<ThemeCtx | null>(null)
 
 function readStored(): ThemeMode {
   try {
@@ -22,7 +13,7 @@ function readStored(): ThemeMode {
   return 'light'
 }
 
-export function applyTheme(theme: ThemeMode) {
+function applyTheme(theme: ThemeMode) {
   document.documentElement.setAttribute('data-theme', theme)
 }
 
@@ -48,10 +39,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
-}
-
-export function useTheme() {
-  const ctx = useContext(Ctx)
-  if (!ctx) throw new Error('useTheme outside ThemeProvider')
-  return ctx
 }

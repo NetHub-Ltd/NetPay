@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/authState'
 import { EmptyState } from '../components/EmptyState'
 import { StatusBadge } from '../components/StatusBadge'
 
@@ -30,17 +30,17 @@ export function Reconciliation() {
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setItems(await api.get<ReconRow[]>('/v1/reconciliation/exceptions'))
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Could not load exceptions')
     }
-  }
+  }, [])
 
   useEffect(() => {
-    load()
-  }, [])
+    void Promise.resolve().then(load)
+  }, [load])
 
   async function scan() {
     setBusy(true)
