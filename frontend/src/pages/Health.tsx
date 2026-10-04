@@ -40,7 +40,7 @@ export function Health() {
   const [data, setData] = useState<HealthT | null>(null)
   const [edge, setEdge] = useState<EdgeConnection | null>(null)
   const [outbound, setOutbound] = useState<OutboundRow[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)], setError] = useState<string | null>(null)
   const { connected, lastMessage } = useLiveStatus()
 
   const load = useCallback(async () => {
@@ -73,7 +73,7 @@ export function Health() {
 
   return (
     <div data-testid="health-page">
-      <div className="page-header">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1>System status</h1>
           <p>
@@ -81,42 +81,42 @@ export function Health() {
             {connected ? ' Live updates on.' : ' Live channel reconnecting…'}
           </p>
         </div>
-        <button type="button" className="btn" onClick={load}>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow-sm)] hover:bg-[var(--panel-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50" onClick={load}>
           Refresh
         </button>
       </div>
-      {error && <div className="alert error">{error}</div>}
+      {border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]}</div>}
 
       {edge && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
+        <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
           <h2>Edge connection</h2>
           <p style={{ marginTop: 0 }}>{edge.label}</p>
-          <div className="grid-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <div className="muted tiny">Status</div>
+              <div className="text-[var(--muted)] text-xs">Status</div>
               <StatusBadge
-                value={edge.status === 'connected' ? 'ok' : edge.status === 'errors' ? 'failed' : edge.status}
+                value={edge.status === 'connected' ? 'border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]' : edge.status === 'errors' ? 'failed' : edge.status}
               />
             </div>
             <div>
-              <div className="muted tiny">Last message</div>
+              <div className="text-[var(--muted)] text-xs">Last message</div>
               <div>{fmt(edge.last_inbound_at)}</div>
-              <div className="muted tiny">
+              <div className="text-[var(--muted)] text-xs">
                 {edge.last_inbound_event_type || '—'} · {edge.last_inbound_status || '—'}
               </div>
             </div>
             <div>
-              <div className="muted tiny">Last heartbeat</div>
+              <div className="text-[var(--muted)] text-xs">Last heartbeat</div>
               <div>{fmt(edge.last_heartbeat_at)}</div>
-              <div className="muted tiny">Failed deliveries (24h): {edge.dead_events_last_24h ?? 0}</div>
+              <div className="text-[var(--muted)] text-xs">Failed deliveries (24h): {edge.dead_events_last_24h ?? 0}</div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
         <h2>Provider calls</h2>
-        <p className="muted tiny" style={{ marginTop: 0 }}>
+        <p className="text-[var(--muted)] text-xs" style={{ marginTop: 0 }}>
           Recent requests NetPay made to the payment network (login, phone prompts, connect shortcode).
         </p>
         <DataTable
@@ -132,7 +132,7 @@ export function Health() {
               id: 'when',
               header: 'When',
               searchValue: (r) => r.created_at || '',
-              cell: (r) => <span className="muted tiny">{fmt(r.created_at)}</span>,
+              cell: (r) => <span className="text-[var(--muted)] text-xs">{fmt(r.created_at)}</span>,
             },
             {
               id: 'what',
@@ -145,9 +145,9 @@ export function Health() {
               header: 'Result',
               cell: (r) => (
                 <>
-                  <StatusBadge value={r.success ? 'ok' : 'failed'} />
+                  <StatusBadge value={r.success ? 'border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]' : 'failed'} />
                   {r.response_status != null && (
-                    <span className="muted tiny"> · HTTP {r.response_status}</span>
+                    <span className="text-[var(--muted)] text-xs"> · HTTP {r.response_status}</span>
                   )}
                 </>
               ),
@@ -157,7 +157,7 @@ export function Health() {
               header: 'Detail',
               searchValue: (r) => r.error_message || '',
               cell: (r) => (
-                <span className="muted tiny">{(r.error_message || '—').slice(0, 120)}</span>
+                <span className="text-[var(--muted)] text-xs">{(r.error_message || '—').slice(0, 120)}</span>
               ),
             },
             {
@@ -175,29 +175,29 @@ export function Health() {
       </div>
 
       {data && (
-        <div className="grid-3">
-          <div className="card">
-            <div className="muted tiny">Database</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+            <div className="text-[var(--muted)] text-xs">Database</div>
             <div>{data.database ? 'OK' : 'Down'}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Redis</div>
+          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+            <div className="text-[var(--muted)] text-xs">Redis</div>
             <div>{data.redis}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Admin ready</div>
+          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+            <div className="text-[var(--muted)] text-xs">Admin ready</div>
             <div>{data.admin_ready ? 'Yes' : 'No'}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Environment</div>
+          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+            <div className="text-[var(--muted)] text-xs">Environment</div>
             <div>{data.environment}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Version</div>
+          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+            <div className="text-[var(--muted)] text-xs">Version</div>
             <div>{data.version}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Overall</div>
+          <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
+            <div className="text-[var(--muted)] text-xs">Overall</div>
             <StatusBadge value={data.status} />
           </div>
         </div>
