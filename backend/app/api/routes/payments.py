@@ -16,7 +16,7 @@ from app.crud.integration import integration_crud
 from app.crud.payment_intent import payment_intent_crud
 from app.domain.payment_status import IllegalTransitionError, major_units_from_minor
 from app.models.payment_intent import PaymentIntent
-from app.models.user import User
+from app.schemas.principal import Principal
 from app.providers.mpesa import StkPushError, get_access_token, normalize_msisdn, stk_push, stk_query
 from app.crud.ledger import ledger_entry_crud
 from app.schemas.ledger import LedgerEntryOut
@@ -46,7 +46,7 @@ def _daraja_error_message(exc: Exception) -> str:
 @router.get("", response_model=list[IntentOut])
 async def list_intents(
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> list[PaymentIntent]:
     return list(
         await payment_intent_crud.list_for_user(
@@ -61,7 +61,7 @@ async def list_intents(
 async def get_intent(
     intent_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> IntentDetailOut:
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
@@ -103,7 +103,7 @@ async def get_intent(
 async def create_intent(
     body: IntentCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
     idempotency_key: Annotated[Optional[str], Header(alias="Idempotency-Key")] = None,
 ) -> IntentCreateResponse:
     """
@@ -318,7 +318,7 @@ async def create_intent(
 async def payment_timeline(
     intent_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> dict:
     """Quiet timeline: status steps, gateway events, matching inbound callbacks."""
     from sqlmodel import col, select
@@ -427,7 +427,7 @@ async def payment_timeline(
 async def query_provider_status(
     intent_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> IntentDetailOut:
     """
     Ask M-Pesa for the current STK result (Daraja STK Query).
@@ -510,7 +510,7 @@ async def query_provider_status(
 async def list_intent_ledger(
     intent_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> list:
     """Append-only ledger rows for a payment intent (tenant-scoped)."""
     intent = await payment_intent_crud.get(session, intent_id)
@@ -524,7 +524,7 @@ async def list_intent_ledger(
 async def simulate_callback(
     intent_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> PaymentIntent:
     """Dev helper: mark intent succeeded without Daraja."""
     intent = await payment_intent_crud.get(session, intent_id)

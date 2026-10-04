@@ -1,21 +1,16 @@
 # Task tracker
 
-**Updated:** 2026-09-15
+**Updated:** 2026-10-04
 
-## Closed this cycle
+## In progress
 
-| Item | Evidence |
-|------|----------|
-| P0 financial integrity | Milestone closed |
-| P1 collections (durable events, timeout, recon, **C2B #24**) | Milestone closed; PR #57 |
-| M0 baseline | Milestone closed |
+| Item | Notes |
+|------|--------|
+| **#25** [P2] NetHub identity | NetPay forwards Bearer to NetHub `/users/me`; no local password auth |
 
-## Next (board)
+## Next
 
-1. **#25** [P2] NetHub AS token validation  
-2. **#26** Provider credentials secrets / encryption  
-3. **#27** Rate limits + log redaction  
-4. **#28** Metrics, alerts, runbooks  
-5. **#29** Production k3s manifests  
-
-P3 (#30–#32) after core ops trustworthy.
+2. **#26** Provider credentials secrets / encryption
+3. **#27** Rate limits + log redaction
+4. **#28** Metrics, alerts, runbooks
+5. **#29** Production k3s manifests

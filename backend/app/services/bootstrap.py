@@ -1,17 +1,19 @@
-"""Startup: Alembic migrate, health probes, admin bootstrap."""
+"""Startup: Alembic migrate, health probes. Identity is NetHub-owned."""
 from __future__ import annotations
+
 import sys
 from pathlib import Path
-from app.core.logging import logger
+
 from sqlalchemy import create_engine, text
-from sqlmodel import Session, select
+
 from app.core.config import settings
-from app.core.security import hash_password
-from app.models.user import User
+from app.core.logging import logger
+
 
 def run_alembic_upgrade() -> None:
     from alembic import command
     from alembic.config import Config
+
     root = Path(__file__).resolve().parents[2]
     cfg = Config(str(root / "alembic.ini"))
     cfg.set_main_option("sqlalchemy.url", settings.sync_database_url)
@@ -24,6 +26,7 @@ def run_alembic_upgrade() -> None:
     logger.info("Alembic upgrade head → {}", settings.sync_database_url.split("@")[-1])
     command.upgrade(cfg, "head")
 
+
 def probe_database_sync() -> bool:
     try:
         engine = create_engine(settings.sync_database_url)
@@ -35,27 +38,14 @@ def probe_database_sync() -> bool:
         logger.error("Database health check failed: {}", exc)
         return False
 
+
 def ensure_admin() -> None:
-    engine = create_engine(settings.sync_database_url)
-    with Session(engine) as session:
-        existing = session.exec(select(User).where(User.email == settings.admin_email.lower())).first()
-        if existing:
-            if existing.role != "admin":
-                existing.role = "admin"
-                session.add(existing)
-                session.commit()
-            logger.info("Admin present: {}", settings.admin_email)
-            return
-        session.add(User(
-            email=settings.admin_email.lower(),
-            hashed_password=hash_password(settings.admin_password),
-            display_name="Admin",
-            role="admin",
-            is_active=True,
-        ))
-        session.commit()
-        logger.info("Admin created: {}", settings.admin_email)
-    engine.dispose()
+    """No local admin user. Platform admin is ADMIN_EMAIL matched on NetHub principal."""
+    logger.info(
+        "Identity via NetHub; platform admin emails include {}",
+        settings.admin_email,
+    )
+
 
 async def startup_sequence() -> dict:
     run_alembic_upgrade()
@@ -65,6 +55,7 @@ async def startup_sequence() -> dict:
             sys.exit(1)
         raise RuntimeError("Database unreachable")
     from app.core.redis import redis_healthy
+
     redis_ok = await redis_healthy()
     if settings.redis_required or settings.environment == "production":
         if not redis_ok:
@@ -73,4 +64,9 @@ async def startup_sequence() -> dict:
     elif not redis_ok:
         logger.warning("Redis unavailable — continuing (REDIS_REQUIRED=false)")
     ensure_admin()
-    return {"database": True, "redis": "ok" if redis_ok else "unavailable", "admin_ready": True}
+    return {
+        "database": True,
+        "redis": "ok" if redis_ok else "unavailable",
+        "admin_ready": True,
+        "identity": "nethub",
+    }

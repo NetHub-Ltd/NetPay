@@ -12,7 +12,7 @@ from sqlmodel import Session
 
 from app.core.config import settings
 from app.models.payment_intent import PaymentIntent
-from tests.helpers import FIXTURE_USER_PASSWORD, internal_headers, login, seed_tenant_user_integration
+from tests.helpers import internal_headers, login, seed_tenant_user_integration
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ async def p1_env(client: AsyncClient):
         email="p1user@nethub.test",
         public_id="gw_p1_test",
     )
-    token = await login(client, meta["email"], FIXTURE_USER_PASSWORD)
+    token = await login(client, meta["email"], "unused")
     return {**meta, "token": token}
 
 

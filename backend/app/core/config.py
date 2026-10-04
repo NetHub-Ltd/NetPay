@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-change-me"
     app_version: str = "1.1.0"
     admin_email: str = "admin@nethub.test"
-    admin_password: str = "ChangeMeAdmin123!"
+    # Comma-separated extra emails treated as platform admin (optional)
+    admin_emails: str = Field(default="", alias="ADMIN_EMAILS")
     internal_api_key: str = "change-me-internal-worker-secret"
     database_url: str = Field(default="sqlite+aiosqlite:///./data/gateway.db", alias="DATABASE_URL")
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
@@ -46,15 +47,10 @@ class Settings(BaseSettings):
         alias="EDGE_CALLBACK_PATH_PREFIX",
     )
 
-    # NetHub AS (Authorization Server) — placeholders only.
-    # User auth/registration is owned by NetHub AS, not NetPay.
-    # When nethub_as_enabled is true AND validation is implemented, NetPay will
-    # validate Bearer tokens from the AS. Default false keeps local HS256 JWT.
-    # See docs/auth-model.md.
-    nethub_as_enabled: bool = Field(default=False, alias="NETHUB_AS_ENABLED")
-    nethub_as_issuer: str = Field(default="", alias="NETHUB_AS_ISSUER")
-    nethub_as_jwks_url: str = Field(default="", alias="NETHUB_AS_JWKS_URL")
-    nethub_as_audience: str = Field(default="", alias="NETHUB_AS_AUDIENCE")
+    # NetHub API — identity only. NetPay forwards Bearer tokens to NetHub and
+    # never decodes JWTs or stores user credentials. See docs/auth-model.md.
+    nethub_api_base_url: str = Field(default="", alias="NETHUB_API_BASE_URL")
+    nethub_api_timeout_seconds: float = Field(default=8.0, alias="NETHUB_API_TIMEOUT_SECONDS")
 
     @property
     def async_database_url(self) -> str:

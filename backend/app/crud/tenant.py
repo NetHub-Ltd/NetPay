@@ -37,11 +37,12 @@ class TenantCRUD(BaseCRUD[Tenant, TenantCreate, TenantUpdate]):
         name: str,
         slug: str,
         created_by: UUID,
+        id: Optional[UUID] = None,
     ) -> Tenant:
-        return await self.create(
-            db,
-            obj_in={"name": name, "slug": slug, "created_by": created_by},
-        )
+        payload = {"name": name, "slug": slug, "created_by": created_by}
+        if id is not None:
+            payload["id"] = id
+        return await self.create(db, obj_in=payload)
 
 
 tenant_crud = TenantCRUD(Tenant)

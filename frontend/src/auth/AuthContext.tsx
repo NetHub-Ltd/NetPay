@@ -1,10 +1,19 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, getToken, setToken, type TokenResponse, type User } from '../api/client'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
+import { api, getToken, setToken, ApiError, type User } from '../api/client'
 
 type AuthState = {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  /** Store an IdP access token; NetPay resolves identity via NetHub. */
+  setAccessToken: (token: string) => Promise<void>
   logout: () => void
   isAdmin: boolean
 }
@@ -15,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const loadMe = useCallback(async () => {
+  const refresh = useCallback(async () => {
     const token = getToken()
     if (!token) {
       setUser(null)
@@ -34,12 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    loadMe()
-  }, [loadMe])
+    void refresh()
+  }, [refresh])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<TokenResponse>('/auth/login', { email, password })
-    setToken(res.access_token)
+  const setAccessToken = useCallback(async (token: string) => {
+    setToken(token.trim())
     const me = await api.get<User>('/auth/me')
     setUser(me)
   }, [])
@@ -53,18 +61,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
-      login,
+      setAccessToken,
       logout,
       isAdmin: user?.role === 'admin',
     }),
-    [user, loading, login, logout],
+    [user, loading, setAccessToken, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
+export function useAuth(): AuthState {
   const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth outside provider')
+  if (!ctx) throw new Error('useAuth outside AuthProvider')
   return ctx
 }
+
+export type { ApiError }

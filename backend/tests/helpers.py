@@ -1,23 +1,23 @@
-"""Shared test helpers — credentials come from env set in conftest (fixture-only)."""
+"""Shared test helpers — identity is mocked NetHub principal (see conftest)."""
 from __future__ import annotations
 
-import os
 from typing import Any
+from uuid import UUID, uuid4
 
 from httpx import AsyncClient
 from sqlalchemy import create_engine
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.security import hash_password
 from app.models.integration import Credential, Integration
 from app.models.tenant import Tenant
-from app.models.user import User
 
-# Never hardcode password/api-key literals in individual tests.
-FIXTURE_USER_PASSWORD = os.environ["TEST_USER_PASSWORD"]
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@nethub.test")
-ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+ADMIN_EMAIL = "admin@nethub.test"
+ADMIN_ID = UUID("00000000-0000-4000-8000-000000000001")
+# Default tenant id matches conftest admin/user principal
+TENANT_ID = UUID("00000000-0000-4000-8000-0000000000aa")
+FIXTURE_USER_PASSWORD = "unused"
+ADMIN_PASSWORD = "unused"
 
 
 def internal_headers() -> dict[str, str]:
@@ -25,7 +25,6 @@ def internal_headers() -> dict[str, str]:
 
 
 def fixture_provider_credentials() -> list[tuple[str, str]]:
-    """Placeholder M-Pesa credential rows for sandbox tests (not real Daraja secrets)."""
     return [
         ("consumer_key", "fixture-mpesa-consumer-key"),
         ("consumer_secret", "fixture-mpesa-consumer-secret"),
@@ -33,14 +32,13 @@ def fixture_provider_credentials() -> list[tuple[str, str]]:
     ]
 
 
-async def login(client: AsyncClient, email: str, password: str) -> str:
-    res = await client.post("/auth/login", json={"email": email, "password": password})
-    assert res.status_code == 200, res.text
-    return res.json()["access_token"]
-
-
 async def login_admin(client: AsyncClient) -> str:
-    return await login(client, ADMIN_EMAIL, ADMIN_PASSWORD)
+    return "test-admin-token"
+
+
+async def login(client: AsyncClient, email: str, password: str) -> str:
+    _ = client, email, password
+    return "test-user-token"
 
 
 def seed_tenant_user_integration(
@@ -48,29 +46,28 @@ def seed_tenant_user_integration(
     slug: str,
     email: str,
     public_id: str,
+    tenant_id: UUID | None = None,
 ) -> dict[str, Any]:
-    """Idempotent seed via sync engine for payment tests."""
+    """Idempotent seed. Default tenant_id matches conftest principal."""
+    _ = email
+    tid = tenant_id or TENANT_ID
     engine = create_engine(settings.sync_database_url)
     with Session(engine) as session:
-        admin = session.exec(select(User).where(User.email == ADMIN_EMAIL)).first()
-        assert admin is not None
         tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
         if not tenant:
-            tenant = Tenant(name=slug, slug=slug, status="active", created_by=admin.id)
+            # Reuse fixed id only if free; otherwise allocate a new UUID
+            existing_id = session.get(Tenant, tid)
+            use_id = tid if existing_id is None else uuid4()
+            tenant = Tenant(
+                id=use_id,
+                name=slug,
+                slug=slug,
+                status="active",
+                created_by=ADMIN_ID,
+            )
             session.add(tenant)
             session.commit()
             session.refresh(tenant)
-        user = session.exec(select(User).where(User.email == email)).first()
-        if not user:
-            user = User(
-                email=email,
-                hashed_password=hash_password(FIXTURE_USER_PASSWORD),
-                role="user",
-                tenant_id=tenant.id,
-                is_active=True,
-            )
-            session.add(user)
-            session.commit()
         integ = session.exec(select(Integration).where(Integration.public_id == public_id)).first()
         if not integ:
             integ = Integration(

@@ -8,7 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import can_access_tenant, get_current_user, get_session, require_admin
 from app.crud.reconciliation import reconciliation_crud
-from app.models.user import User
+from app.schemas.principal import Principal
 from app.schemas.reconciliation import ReconciliationExceptionOut, ResolveBody
 from app.services.reconciliation import run_reconciliation_scan
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/v1/reconciliation", tags=["reconciliation"])
 @router.get("/exceptions", response_model=list[ReconciliationExceptionOut])
 async def list_exceptions(
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> list:
     """Open reconciliation exceptions for your tenant (admin sees all)."""
     return list(
@@ -33,7 +33,7 @@ async def list_exceptions(
 @router.post("/scan", response_model=dict)
 async def trigger_scan(
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(require_admin)],
+    user: Annotated[Principal, Depends(require_admin)],
 ) -> dict:
     """Admin: run internal consistency scan and open new exceptions."""
     return await run_reconciliation_scan(session)
@@ -44,7 +44,7 @@ async def resolve_exception(
     exception_id: UUID,
     body: ResolveBody,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ):
     row = await reconciliation_crud.get(session, exception_id)
     if not row:
