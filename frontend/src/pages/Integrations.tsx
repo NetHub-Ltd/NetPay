@@ -171,7 +171,7 @@ export function Integrations() {
             )}
             {!isAdmin && !user?.tenant_id && (
               <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">
-                Your account isn't linked to a business. Ask an admin to link you before adding a shortcode.
+                Your account isn’t linked to a business. Ask an admin to link you before adding a shortcode.
               </div>
             )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
