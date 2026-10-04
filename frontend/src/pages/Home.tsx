@@ -19,9 +19,14 @@ import { StatusBadge } from '../components/StatusBadge'
 import { formatKes } from '../components/statusUtils'
 import { subscribeLiveMessages } from '../hooks/liveEvents'
 
-function greetingName(user: { display_name?: string | null; email?: string } | null) {
+function greetingName(user: {
+  display_name?: string | null
+  full_name?: string | null
+  email?: string
+} | null) {
   if (!user) return null
-  if (user.display_name?.trim()) return user.display_name.trim().split(/\s+/)[0]
+  const name = (user.full_name || user.display_name || '').trim()
+  if (name) return name.split(/\s+/)[0]
   return user.email?.split('@')[0] || null
 }
 

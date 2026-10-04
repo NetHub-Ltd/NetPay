@@ -19,10 +19,11 @@ import { Events } from './pages/Events'
 import { OAuthClients } from './pages/OAuthClients'
 import { Forbidden } from './pages/Forbidden'
 import { NotFound } from './pages/NotFound'
+import { PageLoader } from './components/primitives'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-sm text-[var(--muted)]">Loading…</div>
+  if (loading) return <PageLoader label="Loading your workspace…" />
   if (!user) return <Navigate to="/login" replace />
   return <>{children}</>
 }

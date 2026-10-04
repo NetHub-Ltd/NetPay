@@ -1,42 +1,18 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Ctx, type ThemeMode } from './themeState'
-
-const STORAGE_KEY = 'nethub_theme'
-
-function readStored(): ThemeMode {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY)
-    if (v === 'dark' || v === 'light') return v
-  } catch {
-    /* ignore */
-  }
-  return 'light'
-}
-
-function applyTheme(theme: ThemeMode) {
-  document.documentElement.setAttribute('data-theme', theme)
-}
+import { useEffect, useMemo, type ReactNode } from 'react'
+import { Ctx } from './themeState'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>(() => readStored())
-
   useEffect(() => {
-    applyTheme(theme)
+    document.documentElement.setAttribute('data-theme', 'light')
+    document.documentElement.classList.remove('dark')
     try {
-      localStorage.setItem(STORAGE_KEY, theme)
+      localStorage.removeItem('nethub_theme')
     } catch {
       /* ignore */
     }
-  }, [theme])
+  }, [])
 
-  const value = useMemo(
-    () => ({
-      theme,
-      setTheme: setThemeState,
-      toggle: () => setThemeState((t) => (t === 'light' ? 'dark' : 'light')),
-    }),
-    [theme],
-  )
+  const value = useMemo(() => ({ theme: 'light' as const }), [])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
