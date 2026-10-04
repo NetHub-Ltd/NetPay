@@ -89,7 +89,7 @@ async function pkceChallenge(verifier: string): Promise<string> {
 }
 
 /** Begin authorization-code + PKCE login at the IdP. */
-export async function beginLogin(returnTo = '/'): Promise<void> {
+export async function beginLogin(returnTo = '/dashboard'): Promise<void> {
   const cfg = getOidcConfig()
   if (!cfg) {
     throw new Error(
@@ -142,7 +142,7 @@ export async function completeLogin(params: URLSearchParams): Promise<{
   const state = params.get('state')
   const expected = sessionStorage.getItem(STORAGE.state)
   const verifier = sessionStorage.getItem(STORAGE.verifier)
-  const returnTo = sessionStorage.getItem(STORAGE.returnTo) || '/'
+  const returnTo = sessionStorage.getItem(STORAGE.returnTo) || '/dashboard'
   sessionStorage.removeItem(STORAGE.state)
   sessionStorage.removeItem(STORAGE.verifier)
   sessionStorage.removeItem(STORAGE.returnTo)

@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   const login = useCallback(async () => {
-    await beginLogin('/')
+    await beginLogin('/dashboard')
   }, [])
 
   const logout = useCallback(() => {

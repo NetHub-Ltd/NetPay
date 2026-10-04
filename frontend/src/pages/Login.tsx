@@ -10,7 +10,7 @@ export function Login() {
   const [busy, setBusy] = useState(false)
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-sm text-[var(--muted)]">Loading…</div>
-  if (user) return <Navigate to="/" replace />
+  if (user) return <Navigate to="/dashboard" replace />
 
   async function onSignIn() {
     setBusy(true); setError(null)
