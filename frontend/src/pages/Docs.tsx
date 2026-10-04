@@ -1,17 +1,18 @@
 import { Link } from 'react-router-dom'
+import { card, pageDescription, pageHeader, pageTitle } from '../components/ui'
 
 export function Docs() {
   return (
     <div data-testid="docs-page">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+      <div className={pageHeader}>
         <div>
-          <h1>Help</h1>
-          <p>How to collect payments with NetPay.</p>
+          <h1 className={pageTitle}>Help</h1>
+          <p className={pageDescription}>How to collect payments with NetPay.</p>
         </div>
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
-        <h2>1. First-time setup</h2>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">1. First-time setup</h2>
         <ol>
           <li>
             <Link to="/integrations">Paybills &amp; tills</Link> — add your shortcode and network credentials.
@@ -31,16 +32,16 @@ export function Docs() {
         </p>
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
-        <h2>2. Take a payment</h2>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">2. Take a payment</h2>
         <p>
           Open <Link to="/intents">Payments</Link>, choose the shortcode, enter the customer’s phone and amount, then
           send. The customer gets a prompt on their phone.
         </p>
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
-        <h2>2b. Paybill &amp; till (C2B)</h2>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">2b. Paybill &amp; till (C2B)</h2>
         <p>
           Customers can also pay your paybill or till without a phone prompt. Safaricom sends a confirmation to NetHub
           edge; we match it using the <strong>account reference</strong> (bill reference) on an open payment.
@@ -57,8 +58,8 @@ export function Docs() {
         </ul>
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
-        <h2>3. What each status means</h2>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">3. What each status means</h2>
         <ul>
           <li>
             <strong>Created</strong> — saved, not yet sent to the network.
@@ -78,8 +79,8 @@ export function Docs() {
         </ul>
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
-        <h2>4. Phone prompt stuck or failed?</h2>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">4. Phone prompt stuck or failed?</h2>
         <ol>
           <li>
             Open the payment — check <strong>Timeline</strong> and any failure message.
@@ -101,9 +102,9 @@ export function Docs() {
         </ol>
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
-        <h2>5. For other systems (API)</h2>
-        <p className="text-[var(--muted)]" style={{ marginTop: 0 }}>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">5. For other systems (API)</h2>
+        <p className="mb-0 text-sm text-[var(--muted)]">
           Create a payment with <code>POST /v1/payment-intents</code> and header <code>Idempotency-Key</code> (required).
         </p>
         <ul>
@@ -126,8 +127,8 @@ export function Docs() {
         </ul>
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]" style={{ marginBottom: '1rem' }}>
-        <h2>6. Ledger &amp; exceptions</h2>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">6. Ledger &amp; exceptions</h2>
         <p>
           On a payment’s detail page, the <strong>Ledger</strong> section shows financial lines. A successful collection
           adds one <code>collection_credit</code>.

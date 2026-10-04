@@ -5,6 +5,7 @@ import { api, ApiError, type Integration, type PaymentIntent } from '../api/clie
 import { DataTable } from '../components/DataTable'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatKes, paymentLifecycleBucket, statusHint } from '../components/statusUtils'
+import { button, card, control, errorAlert, label, mono, pageDescription, pageHeader, pageTitle, primaryButton, successAlert } from '../components/ui'
 
 export function PaymentIntents() {
   const navigate = useNavigate()
@@ -93,22 +94,22 @@ export function PaymentIntents() {
 
   return (
     <div data-testid="intents-page">
-      <div className="page-header">
+      <div className={pageHeader}>
         <div>
-          <h1>Payments</h1>
-          <p>Collect money with M-Pesa STK Push. Status updates when the customer completes the prompt.</p>
+          <h1 className={pageTitle}>Payments</h1>
+          <p className={pageDescription}>Collect money with M-Pesa STK Push. Status updates when the customer completes the prompt.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Link className="btn" to="/docs">Help</Link>
-          <button className="btn primary" type="button" onClick={() => setShowForm((v) => !v)}>
+        <div className="flex flex-wrap gap-2">
+          <Link className={button} to="/docs">Help</Link>
+          <button className={primaryButton} type="button" onClick={() => setShowForm((v) => !v)}>
             {showForm ? 'Cancel' : 'Take a payment'}
           </button>
         </div>
       </div>
 
-      {error && <div className="alert error">{error}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
       {success && (
-        <div className="alert ok">
+        <div className={successAlert} role="status">
           {success}{' '}
           {lastCreatedId && (
             <Link to={`/intents/${lastCreatedId}`}>View payment</Link>
@@ -117,14 +118,14 @@ export function PaymentIntents() {
       )}
 
       {showForm && (
-        <form className="card" onSubmit={onCreate} style={{ marginBottom: '1rem' }}>
-          <h2 style={{ marginTop: 0 }}>New payment</h2>
-          <p className="muted" style={{ marginTop: 0 }}>
+        <form className={card} onSubmit={onCreate}>
+          <h2 className="mb-2 text-base font-semibold">New payment</h2>
+          <p className="mb-4 text-sm text-[var(--muted)]">
             We generate a secure idempotency key automatically so double-clicks cannot charge twice.
           </p>
-          <label>
+          <label className={label}>
             Integration
-            <select
+            <select className={control}
               required
               value={form.integration_public_id}
               onChange={(e) => setForm({ ...form, integration_public_id: e.target.value })}
@@ -137,18 +138,18 @@ export function PaymentIntents() {
               ))}
             </select>
           </label>
-          <label>
+          <label className={label}>
             Customer phone
-            <input
+            <input className={control}
               required
               placeholder="2547…"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
             />
           </label>
-          <label>
+          <label className={label}>
             Amount (KES)
-            <input
+            <input className={control}
               required
               type="number"
               min="1"
@@ -157,22 +158,22 @@ export function PaymentIntents() {
               onChange={(e) => setForm({ ...form, amount: e.target.value })}
             />
           </label>
-          <button type="button" className="btn" onClick={() => setShowAdvanced((v) => !v)}>
+          <button type="button" className={`${button} mt-4`} onClick={() => setShowAdvanced((v) => !v)}>
             {showAdvanced ? 'Hide advanced' : 'Advanced options'}
           </button>
           {showAdvanced && (
             <>
-              <label>
+              <label className={label}>
                 Account reference
-                <input
+                <input className={control}
                   maxLength={12}
                   value={form.account_reference}
                   onChange={(e) => setForm({ ...form, account_reference: e.target.value })}
                 />
               </label>
-              <label>
+              <label className={label}>
                 Description
-                <input
+                <input className={control}
                   maxLength={32}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -180,8 +181,8 @@ export function PaymentIntents() {
               </label>
             </>
           )}
-          <div style={{ marginTop: '0.75rem' }}>
-            <button className="btn primary" type="submit" disabled={busy}>
+          <div className="mt-4">
+            <button className={primaryButton} type="submit" disabled={busy}>
               {busy ? 'Sending…' : 'Send STK Push'}
             </button>
           </div>
@@ -212,12 +213,12 @@ export function PaymentIntents() {
               <>
                 <StatusBadge value={p.status} />
                 {p.failure_reason && (
-                  <div className="muted tiny" style={{ maxWidth: 220 }}>
+                  <div className="max-w-[220px] text-xs text-[var(--muted)]">
                     {p.failure_reason}
                   </div>
                 )}
                 {!p.failure_reason && p.status === 'provider_requested' && (
-                  <div className="muted tiny">{statusHint(p.status)}</div>
+                  <div className="text-xs text-[var(--muted)]">{statusHint(p.status)}</div>
                 )}
               </>
             ),
@@ -232,14 +233,14 @@ export function PaymentIntents() {
             id: 'phone',
             header: 'Phone',
             searchValue: (p) => p.phone || '',
-            cell: (p) => <span className="mono">{p.phone}</span>,
+            cell: (p) => <span className={mono}>{p.phone}</span>,
           },
           {
             id: 'when',
             header: 'When',
             searchValue: (p) => p.created_at || '',
             cell: (p) => (
-              <span className="muted">
+              <span className="text-[var(--muted)]">
                 {p.created_at ? new Date(p.created_at).toLocaleString() : '—'}
               </span>
             ),

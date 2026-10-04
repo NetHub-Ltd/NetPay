@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type Integration } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
+import { button, card, errorAlert, pageHeader, pageTitle, successAlert } from '../components/ui'
 
 type PublicConfig = {
   edge_public_base_url: string
@@ -20,13 +21,13 @@ function CopyField({ label, value }: { label: string; value: string }) {
     }
   }
   return (
-    <div style={{ marginBottom: '0.75rem' }}>
+    <div className="mb-3">
       <div className="text-[var(--muted)] text-xs">{label}</div>
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <code className="font-mono text-[0.85em] text-xs" style={{ wordBreak: 'break-all' }}>
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="break-all font-mono text-xs">
           {value}
         </code>
-        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" onClick={copy}>
+        <button type="button" className={button} onClick={copy}>
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
@@ -117,7 +118,7 @@ export function IntegrationDetail() {
   if (error && !item) {
     return (
       <div data-testid="integration-detail-page">
-        <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>
+        <div className={errorAlert} role="alert">{error}</div>
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </div>
     )
@@ -128,28 +129,28 @@ export function IntegrationDetail() {
 
   return (
     <div data-testid="integration-detail-page">
-      <p className="text-[var(--muted)] text-xs">
+      <p className="mb-3 text-xs text-[var(--muted)]">
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </p>
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+      <div className={pageHeader}>
         <div>
-          <h1>Shortcode {item.shortcode}</h1>
-          <p>
+          <h1 className={pageTitle}>Shortcode {item.shortcode}</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">
             {item.type === 'till' ? 'Till' : 'Paybill'} · {' '}
             {item.environment === 'production' ? 'Live' : 'Test'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="flex gap-2">
           <StatusBadge value={item.environment} />
           <StatusBadge value={item.status} />
         </div>
       </div>
-      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
-      {msg && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]">{msg}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
+      {msg && <div className={successAlert} role="status">{msg}</div>}
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
-        <h2>Setup for this shortcode</h2>
-        <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">Setup for this shortcode</h2>
+        <ol className="list-decimal space-y-2 pl-5 text-sm">
           <li>
             <strong>Shortcode saved</strong> — done
           </li>
@@ -163,20 +164,20 @@ export function IntegrationDetail() {
         </ol>
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
-        <h2>Connect payment updates</h2>
-        <p style={{ marginTop: 0 }}>
+      <div className={card}>
+        <h2 className="mb-2 text-base font-semibold">Connect payment updates</h2>
+        <p className="mb-4 text-sm text-[var(--muted)]">
           One click tells the network where to send results for this shortcode so NetPay can mark payments Paid or
           Failed. You'll be asked to confirm before anything is sent.
         </p>
-        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" type="button" onClick={connectPayments} disabled={busy}>
+        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white shadow-[var(--shadow-sm)] hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={connectPayments} disabled={busy}>
           {busy ? 'Connecting…' : 'Connect this shortcode'}
         </button>
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
-        <h2>Links (if you need them)</h2>
-        <p className="text-[var(--muted)]" style={{ marginTop: 0 }}>
+      <div className={card}>
+        <h2 className="mb-2 text-base font-semibold">Links (if you need them)</h2>
+        <p className="mb-4 text-sm text-[var(--muted)]">
           Keep these for your records or if a portal asks you to paste addresses manually. You can return here anytime
           from <Link to="/integrations">Paybills &amp; tills</Link> → Open.
         </p>
@@ -185,8 +186,8 @@ export function IntegrationDetail() {
         <CopyField label="Paybill / till pre-check" value={urls.validation} />
       </div>
 
-      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
-        <h2>Advanced</h2>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">Advanced</h2>
         <div className="text-[var(--muted)] text-xs">Routing id (support)</div>
         <code className="font-mono text-[0.85em]">{item.public_id}</code>
       </div>

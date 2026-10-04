@@ -5,6 +5,7 @@ import { EmptyState } from '../components/EmptyState'
 import { StatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth/authState'
 import { Navigate } from 'react-router-dom'
+import { card, control, errorAlert, label, mono, pageDescription, pageHeader, pageTitle, primaryButton, table, tableWrap } from '../components/ui'
 
 export function Tenants() {
   const { isAdmin } = useAuth()
@@ -46,27 +47,27 @@ export function Tenants() {
 
   return (
     <div data-testid="tenants-page">
-      <div className="page-header">
+      <div className={pageHeader}>
         <div>
-          <h1>Businesses</h1>
-          <p>Client organizations (admin only)</p>
+          <h1 className={pageTitle}>Businesses</h1>
+          <p className={pageDescription}>Client organizations (admin only)</p>
         </div>
       </div>
-      {error && <div className="alert error">{error}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
 
-      <div className="card">
-        <h2>Onboard client</h2>
-        <form onSubmit={onCreate} className="grid-2">
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">Onboard client</h2>
+        <form onSubmit={onCreate} className="grid gap-4 md:grid-cols-2">
           <div>
-            <label>Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Acme Retail" />
+            <label className={label}>Name</label>
+            <input className={control} value={name} onChange={(e) => setName(e.target.value)} required placeholder="Acme Retail" />
           </div>
           <div>
-            <label>Slug</label>
-            <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="acme-retail" />
+            <label className={label}>Slug</label>
+            <input className={control} value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="acme-retail" />
           </div>
-          <div className="form-actions">
-            <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create tenant'}</button>
+          <div className="md:col-span-2">
+            <button className={primaryButton} type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create tenant'}</button>
           </div>
         </form>
       </div>
@@ -74,8 +75,8 @@ export function Tenants() {
       {items.length === 0 ? (
         <EmptyState title="No tenants yet" hint="Create a client organization to begin onboarding." />
       ) : (
-        <div className="card">
-          <table>
+        <div className={tableWrap}>
+          <table className={table}>
             <thead>
               <tr><th>Name</th><th>Slug</th><th>Status</th><th>Created</th><th></th></tr>
             </thead>
@@ -83,9 +84,9 @@ export function Tenants() {
               {items.map((t) => (
                 <tr key={t.id}>
                   <td>{t.name}</td>
-                  <td className="mono">{t.slug}</td>
+                  <td className={mono}>{t.slug}</td>
                   <td><StatusBadge value={t.status} /></td>
-                  <td className="muted tiny">{new Date(t.created_at).toLocaleString()}</td>
+                  <td className="text-xs text-[var(--muted)]">{new Date(t.created_at).toLocaleString()}</td>
                   <td><Link to={`/tenants/${t.id}`}>Open</Link></td>
                 </tr>
               ))}
