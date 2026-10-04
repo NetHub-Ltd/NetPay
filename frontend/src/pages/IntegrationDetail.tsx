@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type Integration } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
+import { button, card, errorAlert, pageHeader, pageTitle, successAlert } from '../components/ui'
 
 type PublicConfig = {
   edge_public_base_url: string
@@ -20,13 +21,13 @@ function CopyField({ label, value }: { label: string; value: string }) {
     }
   }
   return (
-    <div style={{ marginBottom: '0.75rem' }}>
-      <div className="muted tiny">{label}</div>
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <code className="mono tiny" style={{ wordBreak: 'break-all' }}>
+    <div className="mb-3">
+      <div className="text-[var(--muted)] text-xs">{label}</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="break-all font-mono text-xs">
           {value}
         </code>
-        <button type="button" className="btn" onClick={copy}>
+        <button type="button" className={button} onClick={copy}>
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
@@ -44,7 +45,7 @@ export function IntegrationDetail() {
   const [busy, setBusy] = useState(false)
   const [connectedOnce, setConnectedOnce] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!id) return
     try {
       const found = await api.get<Integration>(`/v1/integrations/${id}`)
@@ -54,10 +55,10 @@ export function IntegrationDetail() {
       setError(e instanceof ApiError ? e.detail : 'Could not load shortcode')
       setItem(null)
     }
-  }
+  }, [id])
 
   useEffect(() => {
-    load()
+    void Promise.resolve().then(load)
     api
       .get<PublicConfig>('/v1/system/public-config')
       .then((c) => {
@@ -65,7 +66,7 @@ export function IntegrationDetail() {
         if (c.edge_callback_path_prefix) setPathPrefix(c.edge_callback_path_prefix)
       })
       .catch(() => {})
-  }, [id])
+  }, [id, load])
 
   function buildUrls(publicId: string) {
     const prefix = pathPrefix.startsWith('/') ? pathPrefix : `/${pathPrefix}`
@@ -79,11 +80,11 @@ export function IntegrationDetail() {
 
   async function connectPayments() {
     if (!item) return
-    const ok = window.confirm(
+    const confirmed = window.confirm(
       `Connect shortcode ${item.shortcode} so payment results can reach NetPay automatically?\n\n` +
         `You only need to do this once per shortcode. You can still copy the technical links below if your provider portal needs them.`,
     )
-    if (!ok) return
+    if (!confirmed) return
 
     setBusy(true)
     setError(null)
@@ -117,7 +118,7 @@ export function IntegrationDetail() {
   if (error && !item) {
     return (
       <div data-testid="integration-detail-page">
-        <div className="alert error">{error}</div>
+        <div className={errorAlert} role="alert">{error}</div>
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </div>
     )
@@ -128,28 +129,28 @@ export function IntegrationDetail() {
 
   return (
     <div data-testid="integration-detail-page">
-      <p className="muted tiny">
+      <p className="mb-3 text-xs text-[var(--muted)]">
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </p>
-      <div className="page-header">
+      <div className={pageHeader}>
         <div>
-          <h1>Shortcode {item.shortcode}</h1>
-          <p>
-            {item.type === 'till' ? 'Till' : 'Paybill'} ·{' '}
+          <h1 className={pageTitle}>Shortcode {item.shortcode}</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            {item.type === 'till' ? 'Till' : 'Paybill'} · {' '}
             {item.environment === 'production' ? 'Live' : 'Test'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="flex gap-2">
           <StatusBadge value={item.environment} />
           <StatusBadge value={item.status} />
         </div>
       </div>
-      {error && <div className="alert error">{error}</div>}
-      {msg && <div className="alert ok">{msg}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
+      {msg && <div className={successAlert} role="status">{msg}</div>}
 
-      <div className="card">
-        <h2>Setup for this shortcode</h2>
-        <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">Setup for this shortcode</h2>
+        <ol className="list-decimal space-y-2 pl-5 text-sm">
           <li>
             <strong>Shortcode saved</strong> — done
           </li>
@@ -163,20 +164,20 @@ export function IntegrationDetail() {
         </ol>
       </div>
 
-      <div className="card">
-        <h2>Connect payment updates</h2>
-        <p style={{ marginTop: 0 }}>
+      <div className={card}>
+        <h2 className="mb-2 text-base font-semibold">Connect payment updates</h2>
+        <p className="mb-4 text-sm text-[var(--muted)]">
           One click tells the network where to send results for this shortcode so NetPay can mark payments Paid or
-          Failed. You’ll be asked to confirm before anything is sent.
+          Failed. You'll be asked to confirm before anything is sent.
         </p>
-        <button className="btn primary" type="button" disabled={busy} onClick={connectPayments}>
+        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white shadow-[var(--shadow-sm)] hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={connectPayments} disabled={busy}>
           {busy ? 'Connecting…' : 'Connect this shortcode'}
         </button>
       </div>
 
-      <div className="card">
-        <h2>Links (if you need them)</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
+      <div className={card}>
+        <h2 className="mb-2 text-base font-semibold">Links (if you need them)</h2>
+        <p className="mb-4 text-sm text-[var(--muted)]">
           Keep these for your records or if a portal asks you to paste addresses manually. You can return here anytime
           from <Link to="/integrations">Paybills &amp; tills</Link> → Open.
         </p>
@@ -185,10 +186,10 @@ export function IntegrationDetail() {
         <CopyField label="Paybill / till pre-check" value={urls.validation} />
       </div>
 
-      <div className="card">
-        <h2>Advanced</h2>
-        <div className="muted tiny">Routing id (support)</div>
-        <code className="mono">{item.public_id}</code>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">Advanced</h2>
+        <div className="text-[var(--muted)] text-xs">Routing id (support)</div>
+        <code className="font-mono text-[0.85em]">{item.public_id}</code>
       </div>
     </div>
   )

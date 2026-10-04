@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { api, type Health as HealthT } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { DataTable } from '../components/DataTable'
-import { useLiveStatus } from '../hooks/useWebSocket'
+import { useLiveStatus } from '../hooks/liveEvents'
+import { button, card, errorAlert, pageDescription, pageHeader, pageTitle } from '../components/ui'
 
 type EdgeConnection = {
   status: string
@@ -62,61 +63,62 @@ export function Health() {
   }, [])
 
   useEffect(() => {
-    load()
+    void Promise.resolve().then(load)
   }, [load])
 
-  useEffect(() => {
-    if (!lastMessage || lastMessage.type !== 'edge.connection') return
-    const p = lastMessage.payload as EdgeConnection | undefined
-    if (p && typeof p.status === 'string') setEdge(p)
-  }, [lastMessage])
+  const liveEdge =
+    lastMessage?.type === 'edge.connection' &&
+    typeof lastMessage.payload?.status === 'string'
+      ? (lastMessage.payload as EdgeConnection)
+      : null
+  const displayedEdge = liveEdge || edge
 
   return (
     <div data-testid="health-page">
-      <div className="page-header">
+      <div className={pageHeader}>
         <div>
-          <h1>System status</h1>
-          <p>
+          <h1 className={pageTitle}>System status</h1>
+          <p className={pageDescription}>
             Service health, edge link, and recent calls to the payment network.
             {connected ? ' Live updates on.' : ' Live channel reconnecting…'}
           </p>
         </div>
-        <button type="button" className="btn" onClick={load}>
+        <button type="button" className={button} onClick={() => void load()}>
           Refresh
         </button>
       </div>
-      {error && <div className="alert error">{error}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
 
-      {edge && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <h2>Edge connection</h2>
-          <p style={{ marginTop: 0 }}>{edge.label}</p>
-          <div className="grid-3">
+      {displayedEdge && (
+        <div className={card}>
+          <h2 className="mb-2 text-base font-semibold">Edge connection</h2>
+          <p className="mb-4">{displayedEdge.label}</p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <div className="muted tiny">Status</div>
+              <div className="text-[var(--muted)] text-xs">Status</div>
               <StatusBadge
-                value={edge.status === 'connected' ? 'ok' : edge.status === 'errors' ? 'failed' : edge.status}
+                value={displayedEdge.status === 'connected' ? 'ok' : displayedEdge.status === 'errors' ? 'failed' : displayedEdge.status}
               />
             </div>
             <div>
-              <div className="muted tiny">Last message</div>
-              <div>{fmt(edge.last_inbound_at)}</div>
-              <div className="muted tiny">
-                {edge.last_inbound_event_type || '—'} · {edge.last_inbound_status || '—'}
+              <div className="text-[var(--muted)] text-xs">Last message</div>
+              <div>{fmt(displayedEdge.last_inbound_at)}</div>
+              <div className="text-[var(--muted)] text-xs">
+                {displayedEdge.last_inbound_event_type || '—'} · {displayedEdge.last_inbound_status || '—'}
               </div>
             </div>
             <div>
-              <div className="muted tiny">Last heartbeat</div>
-              <div>{fmt(edge.last_heartbeat_at)}</div>
-              <div className="muted tiny">Failed deliveries (24h): {edge.dead_events_last_24h ?? 0}</div>
+              <div className="text-[var(--muted)] text-xs">Last heartbeat</div>
+              <div>{fmt(displayedEdge.last_heartbeat_at)}</div>
+              <div className="text-[var(--muted)] text-xs">Failed deliveries (24h): {displayedEdge.dead_events_last_24h ?? 0}</div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <h2>Provider calls</h2>
-        <p className="muted tiny" style={{ marginTop: 0 }}>
+      <div className={card}>
+        <h2 className="mb-2 text-base font-semibold">Provider calls</h2>
+        <p className="mb-4 text-xs text-[var(--muted)]">
           Recent requests NetPay made to the payment network (login, phone prompts, connect shortcode).
         </p>
         <DataTable
@@ -132,7 +134,7 @@ export function Health() {
               id: 'when',
               header: 'When',
               searchValue: (r) => r.created_at || '',
-              cell: (r) => <span className="muted tiny">{fmt(r.created_at)}</span>,
+              cell: (r) => <span className="text-[var(--muted)] text-xs">{fmt(r.created_at)}</span>,
             },
             {
               id: 'what',
@@ -147,7 +149,7 @@ export function Health() {
                 <>
                   <StatusBadge value={r.success ? 'ok' : 'failed'} />
                   {r.response_status != null && (
-                    <span className="muted tiny"> · HTTP {r.response_status}</span>
+                    <span className="text-[var(--muted)] text-xs"> · HTTP {r.response_status}</span>
                   )}
                 </>
               ),
@@ -157,7 +159,7 @@ export function Health() {
               header: 'Detail',
               searchValue: (r) => r.error_message || '',
               cell: (r) => (
-                <span className="muted tiny">{(r.error_message || '—').slice(0, 120)}</span>
+                <span className="text-[var(--muted)] text-xs">{(r.error_message || '—').slice(0, 120)}</span>
               ),
             },
             {
@@ -175,29 +177,29 @@ export function Health() {
       </div>
 
       {data && (
-        <div className="grid-3">
-          <div className="card">
-            <div className="muted tiny">Database</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className={card}>
+            <div className="text-[var(--muted)] text-xs">Database</div>
             <div>{data.database ? 'OK' : 'Down'}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Redis</div>
+          <div className={card}>
+            <div className="text-[var(--muted)] text-xs">Redis</div>
             <div>{data.redis}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Admin ready</div>
+          <div className={card}>
+            <div className="text-[var(--muted)] text-xs">Admin ready</div>
             <div>{data.admin_ready ? 'Yes' : 'No'}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Environment</div>
+          <div className={card}>
+            <div className="text-[var(--muted)] text-xs">Environment</div>
             <div>{data.environment}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Version</div>
+          <div className={card}>
+            <div className="text-[var(--muted)] text-xs">Version</div>
             <div>{data.version}</div>
           </div>
-          <div className="card">
-            <div className="muted tiny">Overall</div>
+          <div className={card}>
+            <div className="text-[var(--muted)] text-xs">Overall</div>
             <StatusBadge value={data.status} />
           </div>
         </div>

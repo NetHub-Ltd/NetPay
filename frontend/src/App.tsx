@@ -1,7 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { useAuth } from './auth/AuthContext'
+import { useAuth } from './auth/authState'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
+import { Landing } from './pages/Landing'
 import { AuthCallback } from './pages/AuthCallback'
 import { Health } from './pages/Health'
 import { Home } from './pages/Home'
@@ -21,7 +22,7 @@ import { NotFound } from './pages/NotFound'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="login-page"><p className="muted">Loading…</p></div>
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-sm text-[var(--muted)]">Loading…</div>
   if (!user) return <Navigate to="/login" replace />
   return <>{children}</>
 }
@@ -29,17 +30,17 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
-        path="/"
         element={
           <RequireAuth>
             <Layout />
           </RequireAuth>
         }
       >
-        <Route index element={<Home />} />
+        <Route path="dashboard" element={<Home />} />
         <Route path="status" element={<Health />} />
         <Route path="tenants" element={<Tenants />} />
         <Route path="tenants/:id" element={<TenantDetail />} />
@@ -53,8 +54,8 @@ export default function App() {
         <Route path="events" element={<Events />} />
         <Route path="oauth-clients" element={<OAuthClients />} />
         <Route path="forbidden" element={<Forbidden />} />
-        <Route path="*" element={<NotFound />} />
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

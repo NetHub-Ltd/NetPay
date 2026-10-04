@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type PaymentIntent } from '../api/client'
-import { StatusBadge, formatKes, statusHint } from '../components/StatusBadge'
+import { StatusBadge } from '../components/StatusBadge'
+import { formatKes, statusHint } from '../components/statusUtils'
+import { button, card, errorAlert, ghostButton, pageHeader, pageTitle, primaryButton, successAlert, table } from '../components/ui'
 
 type LedgerRow = {
   id: string
@@ -33,9 +35,9 @@ function parseJson(raw?: string | null): Record<string, unknown> | null {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="detail-field">
-      <div className="detail-field-label">{label}</div>
-      <div className="detail-field-value">{children}</div>
+    <div className="mb-3 last:mb-0">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</div>
+      <div className="break-words text-sm">{children}</div>
     </div>
   )
 }
@@ -44,17 +46,17 @@ function KvTable({ data, prefer }: { data: Record<string, unknown>; prefer?: str
   const keys = prefer?.filter((k) => data[k] !== undefined && data[k] !== null && data[k] !== '') || []
   const rest = Object.keys(data).filter((k) => !keys.includes(k) && data[k] !== undefined && data[k] !== null && data[k] !== '')
   const ordered = [...keys, ...rest]
-  if (ordered.length === 0) return <p className="muted tiny">No fields</p>
+  if (ordered.length === 0) return <p className="text-xs text-[var(--muted)]">No fields</p>
   return (
-    <dl className="kv-list">
+    <dl className="m-0">
       {ordered.map((k) => {
         const v = data[k]
         const display =
           typeof v === 'object' ? JSON.stringify(v) : String(v)
         return (
-          <div className="kv-row" key={k}>
-            <dt>{k}</dt>
-            <dd className={typeof v === 'string' && v.length > 24 ? 'mono tiny' : undefined}>{display}</dd>
+          <div className="grid grid-cols-[minmax(7rem,38%)_1fr] gap-x-3 gap-y-2 border-b border-[var(--border)] py-2 text-sm last:border-0" key={k}>
+            <dt className="m-0 font-medium text-[var(--muted)]">{k}</dt>
+            <dd className={`m-0 break-words ${typeof v === 'string' && v.length > 24 ? 'font-mono text-xs' : ''}`}>{display}</dd>
           </div>
         )
       })}
@@ -94,7 +96,7 @@ export function PaymentIntentDetail() {
   const [timeline, setTimeline] = useState<{ steps: TimelineStep[] } | null>(null)
   const [showTech, setShowTech] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setItem(await api.get<PaymentIntent>(`/v1/payment-intents/${id}`))
       try {
@@ -110,11 +112,11 @@ export function PaymentIntentDetail() {
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Not found')
     }
-  }
+  }, [id])
 
   useEffect(() => {
-    load()
-  }, [id])
+    void Promise.resolve().then(load)
+  }, [load])
 
   async function queryNetwork() {
     setBusy(true)
@@ -149,26 +151,26 @@ export function PaymentIntentDetail() {
   const req = useMemo(() => parseJson(item?.stk_request_json), [item?.stk_request_json])
   const res = useMemo(() => parseJson(item?.stk_response_json), [item?.stk_response_json])
 
-  if (error && !item) return <div className="alert error" data-testid="intent-detail-page">{error}</div>
+  if (error && !item) return <div className={errorAlert} role="alert" data-testid="intent-detail-page">{error}</div>
   if (!item) return <div data-testid="intent-detail-page">Loading…</div>
 
   const hint = statusHint(item.status, item.failure_reason)
   const steps = timeline?.steps || []
 
   return (
-    <div data-testid="intent-detail-page" className="payment-detail">
-      <div className="page-header">
+    <div data-testid="intent-detail-page" className="space-y-4">
+      <div className={pageHeader}>
         <div>
-          <p className="muted" style={{ margin: 0 }}>
+          <p className="mb-1 text-sm text-[var(--muted)]">
             <Link to="/intents">← Payments</Link>
           </p>
-          <h1>
+          <h1 className={pageTitle}>
             {formatKes(item.amount_minor, item.amount, item.currency)}
-            <span className="muted" style={{ fontWeight: 500, fontSize: '1rem', marginLeft: '0.65rem' }}>
+            <span className="ml-2 text-base font-medium text-[var(--muted)]">
               to {item.phone}
             </span>
           </h1>
-          <p className="muted tiny" style={{ margin: '0.25rem 0 0' }}>
+          <p className="mt-1 text-xs text-[var(--muted)]">
             {item.created_at ? new Date(item.created_at).toLocaleString() : ''}
             {item.account_reference ? ` · Ref ${item.account_reference}` : ''}
           </p>
@@ -176,30 +178,30 @@ export function PaymentIntentDetail() {
         <StatusBadge value={item.status} />
       </div>
 
-      {error && <div className="alert error">{error}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
       {item.failure_reason && item.status !== 'succeeded' && (
-        <div className="alert error">{item.failure_reason}</div>
+        <div className={errorAlert} role="alert">{item.failure_reason}</div>
       )}
-      {msg && <div className="alert ok">{msg}</div>}
+      {msg && <div className={successAlert} role="status">{msg}</div>}
       {hint && !item.failure_reason && (
-        <p className="muted" style={{ marginTop: 0 }}>
+        <p className="m-0 text-sm text-[var(--muted)]">
           {hint}
         </p>
       )}
 
-      <div className="detail-grid">
-        <section className="card detail-main">
-          <h2>Timeline</h2>
+      <div className="grid items-start gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <section className={card}>
+          <h2 className="mb-3 text-base font-semibold">Timeline</h2>
           {steps.length === 0 ? (
-            <p className="muted tiny">No timeline events yet.</p>
+            <p className="text-xs text-[var(--muted)]">No timeline events yet.</p>
           ) : (
-            <ol className="detail-timeline">
+            <ol className="m-0 list-none space-y-4 border-l border-[var(--border)] pl-4">
               {steps.map((s, i) => (
-                <li key={i} className={s.success === false ? 'is-bad' : s.kind === 'status' && (s.label === 'Paid' || s.status === 'succeeded') ? 'is-good' : ''}>
-                  <div className="detail-timeline-dot" aria-hidden />
-                  <div className="detail-timeline-body">
-                    <div className="detail-timeline-label">{s.label}</div>
-                    <div className="muted tiny">
+                <li key={`${s.at || ''}-${s.kind}-${i}`} className="relative">
+                  <span className={`absolute -left-[1.28rem] top-1 size-2.5 rounded-full ring-4 ring-[var(--panel)] ${s.success === false ? 'bg-[var(--danger)]' : 'bg-[var(--accent)]'}`} aria-hidden />
+                  <div>
+                    <div className="text-sm font-semibold">{s.label}</div>
+                    <div className="text-xs text-[var(--muted)]">
                       {s.at ? new Date(s.at).toLocaleString() : ''}
                       {s.failure_reason ? ` · ${s.failure_reason}` : ''}
                       {s.success === false ? ' · did not succeed' : ''}
@@ -211,43 +213,43 @@ export function PaymentIntentDetail() {
           )}
         </section>
 
-        <aside className="detail-side">
-          <section className="card">
-            <h2>Summary</h2>
+        <aside className="flex flex-col gap-4">
+          <section className={card}>
+            <h2 className="mb-3 text-base font-semibold">Summary</h2>
             <Field label="Amount">{formatKes(item.amount_minor, item.amount, item.currency)}</Field>
             <Field label="Phone">
-              <span className="mono">{item.phone}</span>
+              <span className="font-mono">{item.phone}</span>
             </Field>
             <Field label="Reference">{item.account_reference || '—'}</Field>
             <Field label="Description">{item.description || '—'}</Field>
             {item.status_callback_url && (
               <Field label="Status callback">
-                <span className="mono tiny">{item.status_callback_url}</span>
+                <span className="break-all font-mono text-xs">{item.status_callback_url}</span>
               </Field>
             )}
           </section>
 
-          <section className="card">
-            <h2>Network</h2>
+          <section className={card}>
+            <h2 className="mb-3 text-base font-semibold">Network</h2>
             <Field label="Checkout ID">
-              <span className="mono tiny">{item.provider_checkout_id || '—'}</span>
+              <span className="break-all font-mono text-xs">{item.provider_checkout_id || '—'}</span>
             </Field>
             <Field label="Receipt / txn">
-              <span className="mono tiny">{item.provider_transaction_id || '—'}</span>
+              <span className="break-all font-mono text-xs">{item.provider_transaction_id || '—'}</span>
             </Field>
-            <div className="detail-actions">
+            <div className="mt-3 flex flex-wrap gap-2">
               {(item.status === 'created' || item.status === 'provider_requested') && item.provider_checkout_id && (
-                <button className="btn" type="button" disabled={busy} onClick={queryNetwork}>
+                <button className={button} type="button" disabled={busy} onClick={queryNetwork}>
                   {busy ? 'Checking…' : 'Check with network'}
                 </button>
               )}
               {(item.status === 'created' || item.status === 'provider_requested') && (
-                <button className="btn" type="button" disabled={busy} onClick={simulate}>
+                <button className={button} type="button" disabled={busy} onClick={simulate}>
                   {busy ? 'Working…' : 'Simulate success (dev)'}
                 </button>
               )}
               {(item.status === 'failed' || item.status === 'expired') && (
-                <Link className="btn primary" to="/intents">
+                <Link className={primaryButton} to="/intents">
                   Start a new payment
                 </Link>
               )}
@@ -257,40 +259,40 @@ export function PaymentIntentDetail() {
       </div>
 
       {(req || res) && (
-        <section className="card" style={{ marginTop: '1rem' }}>
-          <h2>Phone prompt exchange</h2>
-          <p className="muted tiny" style={{ marginTop: 0 }}>
+        <section className={card}>
+          <h2 className="mb-2 text-base font-semibold">Phone prompt exchange</h2>
+          <p className="mb-4 text-xs text-[var(--muted)]">
             What we sent to the network and what came back. Secrets are redacted.
           </p>
-          <div className="detail-exchange">
+          <div className="grid gap-5 md:grid-cols-2">
             {req && (
               <div>
-                <h3 className="detail-subhead">Request</h3>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Request</h3>
                 <KvTable data={req} prefer={REQUEST_PREFER} />
               </div>
             )}
             {res && (
               <div>
-                <h3 className="detail-subhead">Response</h3>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Response</h3>
                 <KvTable data={res} prefer={RESPONSE_PREFER} />
               </div>
             )}
           </div>
-          <button type="button" className="btn ghost" style={{ marginTop: '0.75rem' }} onClick={() => setShowTech((v) => !v)}>
+          <button type="button" className={`${ghostButton} mt-3`} onClick={() => setShowTech((v) => !v)}>
             {showTech ? 'Hide raw JSON' : 'Show raw JSON'}
           </button>
           {showTech && (
-            <div className="detail-raw">
+            <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3">
               {item.stk_request_json && (
                 <>
-                  <div className="muted tiny">Request</div>
-                  <pre className="mono tiny">{item.stk_request_json}</pre>
+                  <div className="text-xs text-[var(--muted)]">Request</div>
+                  <pre className="my-2 max-h-52 overflow-auto whitespace-pre-wrap break-words font-mono text-xs">{item.stk_request_json}</pre>
                 </>
               )}
               {item.stk_response_json && (
                 <>
-                  <div className="muted tiny">Response</div>
-                  <pre className="mono tiny">{item.stk_response_json}</pre>
+                  <div className="text-xs text-[var(--muted)]">Response</div>
+                  <pre className="my-2 max-h-52 overflow-auto whitespace-pre-wrap break-words font-mono text-xs">{item.stk_response_json}</pre>
                 </>
               )}
             </div>
@@ -298,13 +300,13 @@ export function PaymentIntentDetail() {
         </section>
       )}
 
-      <section className="card" style={{ marginTop: '1rem' }}>
-        <h2>Ledger</h2>
+      <section className={card}>
+        <h2 className="mb-3 text-base font-semibold">Ledger</h2>
         {ledger.length === 0 ? (
-          <p className="muted">No ledger entries yet. A credit appears when the payment is successful.</p>
+          <p className="text-sm text-[var(--muted)]">No ledger entries yet. A credit appears when the payment is successful.</p>
         ) : (
-          <div className="table-wrap">
-            <table>
+          <div className="overflow-x-auto">
+            <table className={table}>
               <thead>
                 <tr>
                   <th>Type</th>
@@ -318,8 +320,8 @@ export function PaymentIntentDetail() {
                   <tr key={row.id}>
                     <td>{row.entry_type === 'collection_credit' ? 'Collection credit' : row.entry_type}</td>
                     <td>{formatKes(row.amount_minor, null, row.currency)}</td>
-                    <td className="mono tiny">{row.provider_ref || '—'}</td>
-                    <td className="muted tiny">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                    <td className="font-mono text-xs">{row.provider_ref || '—'}</td>
+                    <td className="text-xs text-[var(--muted)]">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -328,8 +330,8 @@ export function PaymentIntentDetail() {
         )}
       </section>
 
-      <p className="muted tiny" style={{ marginTop: '1rem' }}>
-        Payment id <span className="mono">{item.id}</span>
+      <p className="mt-4 text-xs text-[var(--muted)]">
+        Payment id <span className="font-mono">{item.id}</span>
         {(item.status === 'provider_requested' || item.status === 'failed') && (
           <>
             {' '}

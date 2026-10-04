@@ -1,8 +1,9 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError, type OAuthClientOut, type Tenant } from '../api/client'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/authState'
 import { EmptyState } from '../components/EmptyState'
+import { card, control, errorAlert, label, pageDescription, pageHeader, pageTitle, primaryButton } from '../components/ui'
 
 export function OAuthClients() {
   const { isAdmin } = useAuth()
@@ -18,7 +19,7 @@ export function OAuthClients() {
     if (!isAdmin) return
     api.get<Tenant[]>('/v1/tenants').then((t) => {
       setTenants(t)
-      if (!tenantId && t[0]) setTenantId(t[0].id)
+      setTenantId((current) => current || t[0]?.id || '')
     }).catch(() => {})
   }, [isAdmin])
 
@@ -41,32 +42,34 @@ export function OAuthClients() {
 
   return (
     <div data-testid="oauth-page">
-      <div className="page-header">
+      <div className={pageHeader}>
         <div>
-          <h1>OAuth clients</h1>
-          <p>Client-credentials for machine access (admin)</p>
+        <h1 className={pageTitle}>OAuth clients</h1>
+        <p className={pageDescription}>Client-credentials for machine access (admin)</p>
         </div>
       </div>
-      {error && <div className="alert error">{error}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
       {created && (
-        <div className="alert info">
+        <div className="mb-4 rounded-lg border border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 px-4 py-3 text-sm text-[var(--text)]" role="status">
           Client created — copy the secret now; it is not shown again.
-          <div className="secret-once">client_id: {created.client_id}</div>
-          <div className="secret-once" style={{ marginTop: 8 }}>client_secret: {created.client_secret}</div>
+          <div className="mt-2 break-all font-mono">client_id: {created.client_id}</div>
+          <div className="mt-2 break-all font-mono">client_secret: {created.client_secret}</div>
         </div>
       )}
 
-      <div className="card">
-        <h2>Create client</h2>
-        <form onSubmit={onCreate}>
-          <label>Tenant</label>
-          <select required value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
+      <div className={card}>
+        <h2 className="mb-3 text-base font-semibold">Create client</h2>
+        <form className="max-w-xl" onSubmit={onCreate}>
+          <label className={label}>Tenant</label>
+          <select className={control} required value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
             <option value="">Select</option>
             {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
-          <label>Name</label>
-          <input required value={name} onChange={(e) => setName(e.target.value)} />
-          <button className="btn primary" type="submit" disabled={busy || !tenantId}>{busy ? 'Creating…' : 'Create OAuth client'}</button>
+          <label className={label}>Name</label>
+          <input className={control} required value={name} onChange={(e) => setName(e.target.value)} />
+          <button className={`${primaryButton} mt-4`} type="submit" disabled={busy}>
+            {busy ? 'Creating…' : 'Create client'}
+          </button>
         </form>
       </div>
 

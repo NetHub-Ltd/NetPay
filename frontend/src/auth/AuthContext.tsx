@@ -1,46 +1,22 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
-import {
-  api,
-  clearSessionTokens,
-  getToken,
-  setIdToken,
-  setToken,
-  type User,
-} from '../api/client'
+import { api, clearSessionTokens, getToken, type User } from '../api/client'
 import { beginLogin, beginLogout, getIdTokenFromStorage, isOidcConfigured } from './oidcBridge'
-
-type AuthState = {
-  user: User | null
-  loading: boolean
-  /** Start Zitadel browser login (redirect). */
-  login: () => Promise<void>
-  logout: () => void
-  isAdmin: boolean
-  oidcReady: boolean
-}
-
-const AuthContext = createContext<AuthState | null>(null)
+import { AuthContext } from './authState'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => Boolean(getToken()))
   const oidcReady = isOidcConfigured()
 
   const refresh = useCallback(async () => {
     const token = getToken()
-    if (!token) {
-      setUser(null)
-      setLoading(false)
-      return
-    }
+    if (!token) return
     try {
       const me = await api.get<User>('/auth/me')
       setUser(me)
@@ -53,11 +29,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    void refresh()
+    void Promise.resolve().then(refresh)
   }, [refresh])
 
   const login = useCallback(async () => {
-    await beginLogin('/')
+    await beginLogin('/dashboard')
   }, [])
 
   const logout = useCallback(() => {
@@ -80,20 +56,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth outside AuthProvider')
-  return ctx
-}
-
-/** Called from /auth/callback after token exchange. */
-export async function applyAccessToken(
-  accessToken: string,
-  idToken?: string,
-): Promise<User> {
-  setToken(accessToken)
-  if (idToken) setIdToken(idToken)
-  return api.get<User>('/auth/me')
 }

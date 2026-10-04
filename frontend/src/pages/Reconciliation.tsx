@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/authState'
 import { EmptyState } from '../components/EmptyState'
 import { StatusBadge } from '../components/StatusBadge'
+import { button, dangerButton, errorAlert, pageDescription, pageHeader, pageTitle, primaryButton, successAlert, table, tableWrap } from '../components/ui'
 
 type ReconRow = {
   id: string
@@ -30,17 +31,17 @@ export function Reconciliation() {
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setItems(await api.get<ReconRow[]>('/v1/reconciliation/exceptions'))
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Could not load exceptions')
     }
-  }
+  }, [])
 
   useEffect(() => {
-    load()
-  }, [])
+    void Promise.resolve().then(load)
+  }, [load])
 
   async function scan() {
     setBusy(true)
@@ -77,25 +78,25 @@ export function Reconciliation() {
 
   return (
     <div data-testid="recon-page">
-      <div className="page-header">
+      <div className={pageHeader}>
         <div>
-          <h1>Needs attention</h1>
-          <p>Open items where money status and records may not line up. Resolve after you investigate.</p>
+          <h1 className={pageTitle}>Needs attention</h1>
+          <p className={pageDescription}>Open items where money status and records may not line up. Resolve after you investigate.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Link className="btn" to="/docs">
+        <div className="flex flex-wrap gap-2">
+          <Link className={button} to="/docs">
             How-to guides
           </Link>
           {isAdmin && (
-            <button className="btn primary" type="button" disabled={busy} onClick={scan}>
+            <button className={primaryButton} type="button" disabled={busy} onClick={scan}>
               {busy ? 'Scanning…' : 'Run scan'}
             </button>
           )}
         </div>
       </div>
 
-      {error && <div className="alert error">{error}</div>}
-      {msg && <div className="alert ok">{msg}</div>}
+      {error && <div className={errorAlert} role="alert">{error}</div>}
+      {msg && <div className={successAlert} role="status">{msg}</div>}
 
       {items.length === 0 ? (
         <EmptyState
@@ -103,8 +104,8 @@ export function Reconciliation() {
           hint="No open exceptions. Admins can run a scan after busy periods to double-check."
         />
       ) : (
-        <div className="table-wrap">
-          <table>
+        <div className={tableWrap}>
+          <table className={table}>
             <thead>
               <tr>
                 <th>Issue</th>
@@ -119,7 +120,7 @@ export function Reconciliation() {
                 <tr key={row.id}>
                   <td>
                     <StatusBadge value={row.status} />
-                    <div className="muted" style={{ fontSize: '0.85rem' }}>
+                    <div className="text-sm text-[var(--muted)]">
                       {KIND_LABEL[row.kind] || row.kind}
                     </div>
                   </td>
@@ -131,9 +132,9 @@ export function Reconciliation() {
                       '—'
                     )}
                   </td>
-                  <td className="muted">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                  <td className="text-[var(--muted)]">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
                   <td>
-                    <button className="btn" type="button" disabled={busy} onClick={() => resolve(row.id)}>
+                    <button className={dangerButton} type="button" disabled={busy} onClick={() => resolve(row.id)}>
                       Resolve
                     </button>
                   </td>
