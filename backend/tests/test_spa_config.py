@@ -53,3 +53,26 @@ async def test_config_json_reflects_runtime_env(monkeypatch):
     assert "openid" in body["oidc_scopes"]
 
     get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_auth_callback_serves_spa_index(tmp_path, monkeypatch):
+    """OIDC return URL must get index.html, not API Not Found."""
+    static = tmp_path / "static"
+    assets = static / "assets"
+    assets.mkdir(parents=True)
+    (static / "index.html").write_text("<!doctype html><title>spa</title>", encoding="utf-8")
+    monkeypatch.setenv("STATIC_DIR", str(static))
+
+    # Re-import main with new STATIC_DIR — app is constructed at import time.
+    import importlib
+    import app.main as main_mod
+
+    importlib.reload(main_mod)
+    app = main_mod.app
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        res = await ac.get("/auth/callback", params={"code": "x", "state": "y"})
+    assert res.status_code == 200
+    assert "spa" in res.text.lower() or "html" in res.headers.get("content-type", "").lower() or "<!doctype" in res.text.lower()
