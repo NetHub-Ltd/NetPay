@@ -66,7 +66,7 @@ export function Integrations() {
       setError(
         isAdmin
           ? 'Choose a business before saving.'
-          : 'Your account isn't linked to a business. Ask an admin to link you, then try again.',
+          : 'Your account isn\'t linked to a business. Ask an admin to link you, then try again.',
       )
       setBusy(false)
       return
@@ -111,7 +111,9 @@ export function Integrations() {
           <h1>Paybills &amp; tills</h1>
           <p>Your M-Pesa shortcodes — the numbers customers pay to.</p>
         </div>
-        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" type="button" onClick={() => setShowForm((v) => !v)}>
+        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-sm transition-all hover:shadow-md"
+          onClick={() => setShowForm(!showForm)}
+        >
           {showForm ? 'Cancel' : 'Add shortcode'}
         </button>
       </div>
@@ -171,7 +173,7 @@ export function Integrations() {
             )}
             {!isAdmin && !user?.tenant_id && (
               <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">
-                Your account isn’t linked to a business. Ask an admin to link you before adding a shortcode.
+                Your account isn't linked to a business. Ask an admin to link you before adding a shortcode.
               </div>
             )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -226,7 +228,7 @@ export function Integrations() {
               autoComplete="off"
             />
             <button
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-sm transition-all hover:shadow-md"
               type="submit"
               disabled={busy || (!isAdmin && !user?.tenant_id) || (isAdmin && !form.tenant_id)}
             >
@@ -270,7 +272,7 @@ export function Integrations() {
                     <Link to={`/integrations/${i.id}`} className="text-[var(--muted)] text-xs">Details</Link>
                     <button
                       type="button"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-sm transition-all hover:shadow-md"
                       disabled={busy}
                       onClick={() => onRetire(i.id, i.shortcode)}
                     >
