@@ -43,7 +43,7 @@ export function Layout() {
           </div>
 
           <nav className="flex min-h-0 flex-1 flex-row flex-wrap gap-1 overflow-x-hidden overflow-y-auto pr-1 lg:flex-col lg:flex-nowrap" aria-label="Main">
-            <NavLink to="/" end className={linkClass}><Home {...ico} /> Home</NavLink>
+            <NavLink to="/dashboard" end className={linkClass}><Home {...ico} /> Home</NavLink>
             <NavLink to="/intents" className={linkClass}><CreditCard {...ico} /> Payments</NavLink>
             <NavLink to="/integrations" className={linkClass}><Landmark {...ico} /> Shortcodes</NavLink>
             <NavLink to="/webhooks" className={linkClass}><Bell {...ico} /> App endpoints</NavLink>

@@ -19,7 +19,7 @@ export function AuthCallback() {
         const { tokens, returnTo } = await completeLogin(params)
         await applyAccessToken(tokens.access_token, tokens.id_token)
         if (!cancelled) {
-          navigate(returnTo || '/', { replace: true })
+          navigate(returnTo || '/dashboard', { replace: true })
         }
       } catch (e) {
         if (!cancelled) {
