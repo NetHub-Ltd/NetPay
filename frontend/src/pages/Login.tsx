@@ -8,7 +8,7 @@ import { useTheme } from '../theme/ThemeContext'
  * NetPay does not issue passwords. Paste an IdP (Zitadel) access token;
  * NetPay resolves the user via NetHub GET /users/me.
  */
-export default function Login() {
+export function Login() {
   const { user, setAccessToken } = useAuth()
   const { theme, toggle } = useTheme()
   const navigate = useNavigate()

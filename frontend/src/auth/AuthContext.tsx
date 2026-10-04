@@ -15,6 +15,7 @@ type AuthState = {
   /** Store an IdP access token; NetPay resolves identity via NetHub. */
   setAccessToken: (token: string) => Promise<void>
   logout: () => void
+  isAdmin: boolean
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -57,7 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, setAccessToken, logout }),
+    () => ({
+      user,
+      loading,
+      setAccessToken,
+      logout,
+      isAdmin: user?.role === 'admin',
+    }),
     [user, loading, setAccessToken, logout],
   )
 
