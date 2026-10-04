@@ -1,33 +1,34 @@
-import { type FormEvent, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { ApiError } from '../api/client'
 import { useTheme } from '../theme/ThemeContext'
 
 /**
- * NetPay does not issue passwords. Paste an IdP (Zitadel) access token;
- * NetPay resolves the user via NetHub GET /users/me.
+ * Browser login via Zitadel (OIDC + PKCE). No password, no token paste.
  */
 export function Login() {
-  const { user, setAccessToken } = useAuth()
+  const { user, login, loading, oidcReady } = useAuth()
   const { theme, toggle } = useTheme()
-  const navigate = useNavigate()
-  const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  if (loading) {
+    return (
+      <div className="login-page">
+        <p className="muted">Loading…</p>
+      </div>
+    )
+  }
   if (user) return <Navigate to="/" replace />
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
+  async function onSignIn() {
     setBusy(true)
     setError(null)
     try {
-      await setAccessToken(token)
-      navigate('/', { replace: true })
-    } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Could not verify session with NetHub')
-    } finally {
+      await login()
+      // redirect happens inside beginLogin
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not start sign-in')
       setBusy(false)
     }
   }
@@ -41,8 +42,9 @@ export function Login() {
           </div>
           <h1>Accept M-Pesa payments without the headache</h1>
           <p>
-            Sign in with your NetHub identity (Zitadel). NetPay never stores passwords — it asks
-            NetHub who you are using your access token.
+            Sign in with your NetHub account. You will be redirected to the secure NetHub
+            identity provider (Zitadel), then return here with an access token NetPay never
+            issues or stores as a password.
           </p>
         </div>
         <ul>
@@ -57,10 +59,9 @@ export function Login() {
         <div className="login-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h2>Continue with NetHub</h2>
+              <h2>Sign in</h2>
               <p className="muted tiny" style={{ margin: '0 0 1rem' }}>
-                Paste an access token from the IdP (or NetHub session). Production UX will use a
-                redirect login — token paste is for ops and early cutover.
+                Continue with NetHub (Zitadel). No NetPay password.
               </p>
             </div>
             <button type="button" className="btn ghost" onClick={toggle} title="Toggle appearance">
@@ -68,21 +69,21 @@ export function Login() {
             </button>
           </div>
           {error && <div className="alert error">{error}</div>}
-          <form onSubmit={onSubmit}>
-            <label htmlFor="access_token">Access token</label>
-            <textarea
-              id="access_token"
-              rows={4}
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="Bearer token value (without the word Bearer)"
-              required
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: 12 }}
-            />
-            <button type="submit" className="btn primary" disabled={busy || !token.trim()}>
-              {busy ? 'Verifying…' : 'Continue'}
-            </button>
-          </form>
+          {!oidcReady && (
+            <div className="alert error">
+              OIDC is not configured. Set <code>VITE_OIDC_ISSUER</code> and{' '}
+              <code>VITE_OIDC_CLIENT_ID</code> for this build.
+            </div>
+          )}
+          <button
+            type="button"
+            className="btn primary"
+            disabled={busy || !oidcReady}
+            onClick={() => void onSignIn()}
+            style={{ width: '100%' }}
+          >
+            {busy ? 'Redirecting…' : 'Continue with NetHub'}
+          </button>
         </div>
       </section>
     </div>

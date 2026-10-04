@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'nethub_token'
+const ID_TOKEN_KEY = 'nethub_id_token'
 
 export function getToken(): string | null {
   return sessionStorage.getItem(TOKEN_KEY)
@@ -7,6 +8,20 @@ export function getToken(): string | null {
 export function setToken(token: string | null) {
   if (token) sessionStorage.setItem(TOKEN_KEY, token)
   else sessionStorage.removeItem(TOKEN_KEY)
+}
+
+export function getIdToken(): string | null {
+  return sessionStorage.getItem(ID_TOKEN_KEY)
+}
+
+export function setIdToken(token: string | null) {
+  if (token) sessionStorage.setItem(ID_TOKEN_KEY, token)
+  else sessionStorage.removeItem(ID_TOKEN_KEY)
+}
+
+export function clearSessionTokens() {
+  sessionStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(ID_TOKEN_KEY)
 }
 
 export class ApiError extends Error {

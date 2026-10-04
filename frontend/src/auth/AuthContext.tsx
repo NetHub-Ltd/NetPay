@@ -7,15 +7,24 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { api, getToken, setToken, ApiError, type User } from '../api/client'
+import {
+  api,
+  clearSessionTokens,
+  getToken,
+  setIdToken,
+  setToken,
+  type User,
+} from '../api/client'
+import { beginLogin, beginLogout, getIdTokenFromStorage, isOidcConfigured } from './oidcBridge'
 
 type AuthState = {
   user: User | null
   loading: boolean
-  /** Store an IdP access token; NetPay resolves identity via NetHub. */
-  setAccessToken: (token: string) => Promise<void>
+  /** Start Zitadel browser login (redirect). */
+  login: () => Promise<void>
   logout: () => void
   isAdmin: boolean
+  oidcReady: boolean
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -23,6 +32,7 @@ const AuthContext = createContext<AuthState | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const oidcReady = isOidcConfigured()
 
   const refresh = useCallback(async () => {
     const token = getToken()
@@ -35,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await api.get<User>('/auth/me')
       setUser(me)
     } catch {
-      setToken(null)
+      clearSessionTokens()
       setUser(null)
     } finally {
       setLoading(false)
@@ -46,26 +56,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh()
   }, [refresh])
 
-  const setAccessToken = useCallback(async (token: string) => {
-    setToken(token.trim())
-    const me = await api.get<User>('/auth/me')
-    setUser(me)
+  const login = useCallback(async () => {
+    await beginLogin('/')
   }, [])
 
   const logout = useCallback(() => {
-    setToken(null)
+    const idToken = getIdTokenFromStorage()
+    clearSessionTokens()
     setUser(null)
+    void beginLogout(idToken)
   }, [])
 
   const value = useMemo(
     () => ({
       user,
       loading,
-      setAccessToken,
+      login,
       logout,
       isAdmin: user?.role === 'admin',
+      oidcReady,
     }),
-    [user, loading, setAccessToken, logout],
+    [user, loading, login, logout, oidcReady],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -77,4 +88,12 @@ export function useAuth(): AuthState {
   return ctx
 }
 
-export type { ApiError }
+/** Called from /auth/callback after token exchange. */
+export async function applyAccessToken(
+  accessToken: string,
+  idToken?: string,
+): Promise<User> {
+  setToken(accessToken)
+  if (idToken) setIdToken(idToken)
+  return api.get<User>('/auth/me')
+}
