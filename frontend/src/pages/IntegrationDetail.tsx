@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type Integration } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
-import { button, card, errorAlert, pageHeader, pageTitle, successAlert } from '../components/ui'
+import { PageHeader } from '../components/PageHeader'
+import { Button, PageLoader } from '../components/primitives'
+import { button, card, errorAlert, successAlert } from '../components/ui'
 
 type PublicConfig = {
   edge_public_base_url: string
@@ -123,7 +125,7 @@ export function IntegrationDetail() {
       </div>
     )
   }
-  if (!item) return <div data-testid="integration-detail-page">Loading…</div>
+  if (!item) return <div data-testid="integration-detail-page"><PageLoader label="Loading shortcode…" /></div>
 
   const urls = buildUrls(item.public_id)
 
@@ -132,19 +134,18 @@ export function IntegrationDetail() {
       <p className="mb-3 text-xs text-[var(--muted)]">
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </p>
-      <div className={pageHeader}>
-        <div>
-          <h1 className={pageTitle}>Shortcode {item.shortcode}</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            {item.type === 'till' ? 'Till' : 'Paybill'} · {' '}
-            {item.environment === 'production' ? 'Live' : 'Test'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <StatusBadge value={item.environment} />
-          <StatusBadge value={item.status} />
-        </div>
-      </div>
+      <PageHeader
+        title={`Shortcode ${item.shortcode}`}
+        description={`${item.type === 'till' ? 'Till' : 'Paybill'} · ${
+          item.environment === 'production' ? 'Live' : 'Test'
+        }`}
+        actions={
+          <div className="flex gap-2">
+            <StatusBadge value={item.environment} />
+            <StatusBadge value={item.status} />
+          </div>
+        }
+      />
       {error && <div className={errorAlert} role="alert">{error}</div>}
       {msg && <div className={successAlert} role="status">{msg}</div>}
 
@@ -170,9 +171,9 @@ export function IntegrationDetail() {
           One click tells the network where to send results for this shortcode so NetPay can mark payments Paid or
           Failed. You'll be asked to confirm before anything is sent.
         </p>
-        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white shadow-[var(--shadow-sm)] hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={connectPayments} disabled={busy}>
-          {busy ? 'Connecting…' : 'Connect this shortcode'}
-        </button>
+<Button type="button" onClick={() => void connectPayments()} loading={busy}>
+          {busy ? "Connecting…" : connectedOnce ? "Reconnect M-Pesa" : "Connect M-Pesa"}
+        </Button>
       </div>
 
       <div className={card}>

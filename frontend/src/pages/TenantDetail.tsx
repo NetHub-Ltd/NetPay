@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, type Tenant } from '../api/client'
+import { PageHeader } from '../components/PageHeader'
+import { PageLoader } from '../components/primitives'
 import { StatusBadge } from '../components/StatusBadge'
-import { button, card, errorAlert, mono, pageDescription, pageHeader, pageTitle } from '../components/ui'
+import { Button } from '../components/primitives'
+import { mono } from '../components/ui'
 
 export function TenantDetail() {
   const { id } = useParams()
@@ -10,35 +13,55 @@ export function TenantDetail() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.get<Tenant[]>('/v1/tenants')
+    api
+      .get<Tenant[]>('/v1/tenants')
       .then((list) => {
         const t = list.find((x) => x.id === id)
-        if (!t) setError('Tenant not found')
+        if (!t) setError('Business not found')
         else setTenant(t)
       })
       .catch((e) => setError(e.message))
   }, [id])
 
-  if (error) return <div className={errorAlert} role="alert" data-testid="tenant-detail-page">{error}</div>
-  if (!tenant) return <div data-testid="tenant-detail-page">Loading…</div>
+  if (error) {
+    return (
+      <div className="rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+        {error}
+      </div>
+    )
+  }
+  if (!tenant) return <PageLoader label="Loading business…" />
 
   return (
     <div data-testid="tenant-detail-page">
-      <div className={pageHeader}>
-        <div>
-          <h1 className={pageTitle}>{tenant.name}</h1>
-          <p className={`${pageDescription} ${mono}`}>{tenant.slug} · {tenant.id}</p>
-        </div>
-        <StatusBadge value={tenant.status} />
-      </div>
-      <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">Quick links</h2>
+      <PageHeader
+        title={tenant.name}
+        description={`${tenant.slug || ''} · ${tenant.id}`.trim()}
+        actions={<StatusBadge value={tenant.status} />}
+      />
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]">
+        <h2 className="mb-3 mt-0 text-base font-semibold">What you can do next</h2>
         <div className="flex flex-wrap gap-2">
-          <Link className={button} to={`/integrations?tenant_id=${tenant.id}`}>Integrations</Link>
-          <Link className={button} to={`/webhooks?tenant_id=${tenant.id}`}>Webhooks</Link>
-          <Link className={button} to={`/intents?tenant_id=${tenant.id}`}>Payment intents</Link>
-          <Link className={button} to={`/oauth-clients?tenant_id=${tenant.id}`}>OAuth clients</Link>
+          <Link to={`/integrations?tenant_id=${tenant.id}`} className="no-underline">
+            <Button size="sm">Shortcodes</Button>
+          </Link>
+          <Link to={`/webhooks?tenant_id=${tenant.id}`} className="no-underline">
+            <Button size="sm" variant="secondary">
+              Notifications
+            </Button>
+          </Link>
+          <Link to={`/intents`} className="no-underline">
+            <Button size="sm" variant="secondary">
+              Payments
+            </Button>
+          </Link>
+          <Link to={`/oauth-clients?tenant_id=${tenant.id}`} className="no-underline">
+            <Button size="sm" variant="secondary">
+              API clients
+            </Button>
+          </Link>
         </div>
+        <p className={`mb-0 mt-4 text-xs text-[var(--muted)] ${mono}`}>{tenant.id}</p>
       </div>
     </div>
   )

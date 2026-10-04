@@ -4,7 +4,9 @@ import { api, type Health as HealthT } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { DataTable } from '../components/DataTable'
 import { useLiveStatus } from '../hooks/liveEvents'
-import { button, card, errorAlert, pageDescription, pageHeader, pageTitle } from '../components/ui'
+import { PageHeader } from '../components/PageHeader'
+import { Button } from '../components/primitives'
+import { card, errorAlert } from '../components/ui'
 
 type EdgeConnection = {
   status: string
@@ -75,18 +77,19 @@ export function Health() {
 
   return (
     <div data-testid="health-page">
-      <div className={pageHeader}>
-        <div>
-          <h1 className={pageTitle}>System status</h1>
-          <p className={pageDescription}>
-            Service health, edge link, and recent calls to the payment network.
-            {connected ? ' Live updates on.' : ' Live channel reconnecting…'}
-          </p>
-        </div>
-        <button type="button" className={button} onClick={() => void load()}>
-          Refresh
-        </button>
-      </div>
+      <PageHeader
+        title="System status"
+        description={
+          connected
+            ? 'Service health, edge link, and recent network calls. Live updates on.'
+            : 'Service health, edge link, and recent network calls. Live channel reconnecting…'
+        }
+        actions={
+          <Button variant="secondary" onClick={() => void load()}>
+            Refresh
+          </Button>
+        }
+      />
       {error && <div className={errorAlert} role="alert">{error}</div>}
 
       {displayedEdge && (

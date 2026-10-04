@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { AlertTriangle } from 'lucide-react'
 import { api, ApiError } from '../api/client'
 import { useAuth } from '../auth/authState'
 import { EmptyState } from '../components/EmptyState'
+import { PageHeader } from '../components/PageHeader'
 import { StatusBadge } from '../components/StatusBadge'
-import { button, dangerButton, errorAlert, pageDescription, pageHeader, pageTitle, primaryButton, successAlert, table, tableWrap } from '../components/ui'
+import { Button } from '../components/primitives'
+import { table, tableWrap } from '../components/ui'
 
 type ReconRow = {
   id: string
@@ -34,8 +37,9 @@ export function Reconciliation() {
   const load = useCallback(async () => {
     try {
       setItems(await api.get<ReconRow[]>('/v1/reconciliation/exceptions'))
+      setError(null)
     } catch (e) {
-      setError(e instanceof ApiError ? e.detail : 'Could not load exceptions')
+      setError(e instanceof ApiError ? e.detail : 'Could not load items that need attention')
     }
   }, [])
 
@@ -48,7 +52,10 @@ export function Reconciliation() {
     setError(null)
     setMsg(null)
     try {
-      const res = await api.post<{ exceptions_created: number; notes: string[] }>('/v1/reconciliation/scan', {})
+      const res = await api.post<{ exceptions_created: number; notes: string[] }>(
+        '/v1/reconciliation/scan',
+        {},
+      )
       setMsg(
         `Scan finished. New items: ${res.exceptions_created}.` +
           (res.notes?.length ? ` Notes: ${res.notes.join('; ')}` : ''),
@@ -70,38 +77,51 @@ export function Reconciliation() {
       })
       await load()
     } catch (e) {
-      setError(e instanceof ApiError ? e.detail : 'Resolve failed')
+      setError(e instanceof ApiError ? e.detail : 'Could not resolve')
     } finally {
       setBusy(false)
     }
   }
 
+  const open = items.filter((r) => r.status !== 'resolved')
+
   return (
     <div data-testid="recon-page">
-      <div className={pageHeader}>
-        <div>
-          <h1 className={pageTitle}>Needs attention</h1>
-          <p className={pageDescription}>Open items where money status and records may not line up. Resolve after you investigate.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className={button} to="/docs">
-            How-to guides
-          </Link>
-          {isAdmin && (
-            <button className={primaryButton} type="button" disabled={busy} onClick={scan}>
+      <PageHeader
+        title="Needs attention"
+        description="Payments and matches that need a human look before you treat them as closed."
+        actions={
+          isAdmin ? (
+            <Button loading={busy} onClick={() => void scan()}>
               {busy ? 'Scanning…' : 'Run scan'}
-            </button>
-          )}
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+          {error}
         </div>
-      </div>
+      )}
+      {msg && (
+        <div className="mb-4 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-4 py-3 text-sm">
+          {msg}
+        </div>
+      )}
 
-      {error && <div className={errorAlert} role="alert">{error}</div>}
-      {msg && <div className={successAlert} role="status">{msg}</div>}
-
-      {items.length === 0 ? (
+      {open.length === 0 ? (
         <EmptyState
-          title="All clear"
-          hint="No open exceptions. Admins can run a scan after busy periods to double-check."
+          icon={<AlertTriangle size={22} />}
+          title="Nothing needs attention"
+          hint="When amounts or references don’t match, or a payment is stuck, it will show up here."
+          action={
+            isAdmin ? (
+              <Button variant="secondary" loading={busy} onClick={() => void scan()}>
+                Run scan
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <div className={tableWrap}>
@@ -109,6 +129,7 @@ export function Reconciliation() {
             <thead>
               <tr>
                 <th>Issue</th>
+                <th>Status</th>
                 <th>Message</th>
                 <th>Payment</th>
                 <th>When</th>
@@ -116,15 +137,15 @@ export function Reconciliation() {
               </tr>
             </thead>
             <tbody>
-              {items.map((row) => (
+              {open.map((row) => (
                 <tr key={row.id}>
+                  <td className="text-sm font-medium">
+                    {KIND_LABEL[row.kind] || row.kind}
+                  </td>
                   <td>
                     <StatusBadge value={row.status} />
-                    <div className="text-sm text-[var(--muted)]">
-                      {KIND_LABEL[row.kind] || row.kind}
-                    </div>
                   </td>
-                  <td>{row.message}</td>
+                  <td className="max-w-xs text-sm text-[var(--muted)]">{row.message}</td>
                   <td>
                     {row.payment_intent_id ? (
                       <Link to={`/intents/${row.payment_intent_id}`}>Open payment</Link>
@@ -132,11 +153,18 @@ export function Reconciliation() {
                       '—'
                     )}
                   </td>
-                  <td className="text-[var(--muted)]">{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                  <td className="text-xs text-[var(--muted)]">
+                    {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+                  </td>
                   <td>
-                    <button className={dangerButton} type="button" disabled={busy} onClick={() => resolve(row.id)}>
-                      Resolve
-                    </button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => void resolve(row.id)}
+                    >
+                      Mark resolved
+                    </Button>
                   </td>
                 </tr>
               ))}
