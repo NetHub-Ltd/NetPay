@@ -10,7 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import can_access_tenant, get_current_user, get_session
+from app.api.deps import get_current_user, get_session, user_can_access_tenant
 from app.api.routes.integrations import load_creds
 from app.crud.integration import integration_crud
 from app.crud.payment_intent import payment_intent_crud
@@ -66,7 +66,7 @@ async def get_intent(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     meta = None
     raw_meta = intent.metadata_json or intent.context_json
@@ -122,7 +122,7 @@ async def create_intent(
     integ = await integration_crud.get_by_public_id(session, body.integration_public_id)
     if not integ:
         raise HTTPException(status_code=404, detail="Integration not found")
-    if not can_access_tenant(user, integ.tenant_id):
+    if not await user_can_access_tenant(session, user, integ.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     existing = await payment_intent_crud.get_by_idempotency(
@@ -330,7 +330,7 @@ async def payment_timeline(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     # Gateway domain events for this intent
@@ -438,7 +438,7 @@ async def query_provider_status(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     if not intent.provider_checkout_id:
         raise HTTPException(status_code=400, detail="No network checkout id to query")
@@ -516,7 +516,7 @@ async def list_intent_ledger(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     return list(await ledger_entry_crud.list_for_intent(session, payment_intent_id=intent_id))
 
@@ -530,6 +530,6 @@ async def simulate_callback(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     return await apply_payment_result(session, intent, status="succeeded", transaction_id="SIMULATED")

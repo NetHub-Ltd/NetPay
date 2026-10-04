@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import can_access_tenant, get_current_user, get_session
+from app.api.deps import can_access_tenant, get_current_user, get_session, user_can_access_tenant
 from app.crud.integration import credential_crud, integration_crud
 from app.models.integration import Integration
 from app.schemas.principal import Principal
@@ -27,13 +27,35 @@ async def list_integrations(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> list[Integration]:
-    return list(
-        await integration_crud.list_active(
-            session,
-            tenant_id=user.tenant_id,
-            is_admin=user.role == "admin",
+    if user.is_admin:
+        return list(
+            await integration_crud.list_active(
+                session, tenant_id=None, is_admin=True
+            )
         )
+    # Collect tenant ids this principal can use (primary + owned)
+    from sqlmodel import col, or_, select
+    from app.models.tenant import Tenant
+
+    clauses = [col(Tenant.created_by) == user.id]
+    if user.tenant_id is not None:
+        clauses.append(col(Tenant.id) == user.tenant_id)
+    stmt = (
+        select(Tenant.id)
+        .where(col(Tenant.deleted_at).is_(None))
+        .where(or_(*clauses))
     )
+    tenant_ids = list((await session.exec(stmt)).all())
+    if not tenant_ids:
+        return []
+    items = []
+    for tid in tenant_ids:
+        items.extend(
+            await integration_crud.list_active(
+                session, tenant_id=tid, is_admin=False
+            )
+        )
+    return items
 
 
 @router.get("/{integration_id}", response_model=IntegrationOut)
@@ -45,7 +67,7 @@ async def get_integration(
     integ = await integration_crud.get(session, integration_id)
     if not integ or getattr(integ, "deleted_at", None) is not None:
         raise HTTPException(status_code=404, detail="Shortcode not found")
-    if not can_access_tenant(user, integ.tenant_id):
+    if not await user_can_access_tenant(session, user, integ.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     return integ
 
@@ -56,7 +78,7 @@ async def create_integration(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> Integration:
-    if not can_access_tenant(user, body.tenant_id):
+    if not await user_can_access_tenant(session, user, body.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     # Validate Daraja credentials for the chosen environment before persisting.
@@ -125,7 +147,7 @@ async def register_urls(
     integ = await integration_crud.get(session, integration_id)
     if not integ:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, integ.tenant_id):
+    if not await user_can_access_tenant(session, user, integ.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     creds = await load_creds(session, integ.id)
     if not creds.get("consumer_key") or not creds.get("consumer_secret"):
@@ -188,7 +210,7 @@ async def delete_integration(
     integ = await integration_crud.get(session, integration_id)
     if not integ or getattr(integ, "deleted_at", None) is not None:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, integ.tenant_id):
+    if not await user_can_access_tenant(session, user, integ.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     await integration_crud.soft_delete(session, id=integration_id)
     await session.commit()

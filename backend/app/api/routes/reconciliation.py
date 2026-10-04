@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import can_access_tenant, get_current_user, get_session, require_admin
+from app.api.deps import get_current_user, get_session, require_admin, user_can_access_tenant
 from app.crud.reconciliation import reconciliation_crud
 from app.schemas.principal import Principal
 from app.schemas.reconciliation import ReconciliationExceptionOut, ResolveBody
@@ -49,7 +49,7 @@ async def resolve_exception(
     row = await reconciliation_crud.get(session, exception_id)
     if not row:
         raise HTTPException(status_code=404, detail="Not found")
-    if row.tenant_id and not can_access_tenant(user, row.tenant_id):
+    if row.tenant_id and not await user_can_access_tenant(session, user, row.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     if user.role != "admin" and not row.tenant_id:
         raise HTTPException(status_code=403, detail="Forbidden")
