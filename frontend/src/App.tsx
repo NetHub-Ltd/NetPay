@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
+import { AuthCallback } from './pages/AuthCallback'
 import { Health } from './pages/Health'
 import { Home } from './pages/Home'
 import { Tenants } from './pages/Tenants'
@@ -29,6 +30,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
         path="/"
         element={
