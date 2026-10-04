@@ -1,9 +1,23 @@
 # syntax=docker/dockerfile:1
 
 # --- Frontend build (SPA → dist/) ---
+# OIDC_* build-args mirror NetHubKe naming; mapped to VITE_* for the SPA bundle.
+# Set in CI from GitHub vars/secrets (e.g. OIDC_ISSUER, OIDC_CLIENT_ID).
+# SPA is a public client (PKCE) — do NOT pass OIDC_CLIENT_SECRET into the browser build.
 FROM node:22-alpine AS frontend-build
 WORKDIR /fe
 ENV npm_config_registry=https://registry.npmjs.org/
+
+ARG OIDC_ISSUER=https://build-placeholder.invalid
+ARG OIDC_CLIENT_ID=build-placeholder-client
+ARG OIDC_REDIRECT_URI=
+ARG OIDC_SCOPES=openid profile email offline_access
+
+ENV VITE_OIDC_ISSUER=$OIDC_ISSUER \
+    VITE_OIDC_CLIENT_ID=$OIDC_CLIENT_ID \
+    VITE_OIDC_REDIRECT_URI=$OIDC_REDIRECT_URI \
+    VITE_OIDC_SCOPES=$OIDC_SCOPES
+
 COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 RUN npm ci
 COPY frontend/ ./

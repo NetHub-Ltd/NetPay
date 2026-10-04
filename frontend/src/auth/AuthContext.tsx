@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const idToken = getIdTokenFromStorage()
     clearSessionTokens()
     setUser(null)
-    beginLogout(idToken)
+    void beginLogout(idToken)
   }, [])
 
   const value = useMemo(

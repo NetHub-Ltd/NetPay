@@ -42,3 +42,25 @@ Client (IdP access token)
 - User self-registration
 - Password storage
 - JWT/JWKS validation inside NetPay
+
+## SPA browser login (Zitadel / NetHub IdP)
+
+NetPay dashboard is a **public SPA** (authorization code + PKCE). NetHubKe uses
+Next.js Auth.js with server-side env (`OIDC_ISSUER`, `OIDC_CLIENT_ID`, optional
+`OIDC_CLIENT_SECRET`). NetPay uses the **same variable names at image build**:
+
+| Build arg (Docker / CI) | Becomes in SPA bundle | Notes |
+|-------------------------|----------------------|--------|
+| `OIDC_ISSUER` | `VITE_OIDC_ISSUER` | e.g. `https://auth.nethub.co.ke` |
+| `OIDC_CLIENT_ID` | `VITE_OIDC_CLIENT_ID` | **SPA** app in Zitadel (PKCE) |
+| `OIDC_REDIRECT_URI` | `VITE_OIDC_REDIRECT_URI` | e.g. `https://gateway.nethub.co.ke/auth/callback` |
+| `OIDC_SCOPES` | `VITE_OIDC_SCOPES` | default `openid profile email offline_access` |
+
+**Do not** bake `OIDC_CLIENT_SECRET` into the SPA. NetHubKe may use a secret on
+the server; NetPay must not.
+
+CI (`release.yml`) reads GitHub Actions **variables**:
+`vars.OIDC_ISSUER`, `vars.OIDC_CLIENT_ID`, `vars.NETPAY_OIDC_REDIRECT_URI`,
+optional `vars.OIDC_SCOPES`.
+
+Runtime FastAPI still needs `NETHUB_API_BASE_URL` (identity via NetHub API).

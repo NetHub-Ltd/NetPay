@@ -194,6 +194,13 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
+          # Same names as NetHubKe — set as repo Variables (or Secrets).
+          # SPA public client: no OIDC_CLIENT_SECRET in the browser build.
+          build-args: |
+            OIDC_ISSUER=${{ vars.OIDC_ISSUER }}
+            OIDC_CLIENT_ID=${{ vars.OIDC_CLIENT_ID }}
+            OIDC_REDIRECT_URI=${{ vars.NETPAY_OIDC_REDIRECT_URI }}
+            OIDC_SCOPES=${{ vars.OIDC_SCOPES }}
           context: .
           file: backend/Dockerfile
           push: true

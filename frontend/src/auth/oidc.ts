@@ -1,7 +1,12 @@
 /**
- * Browser OIDC (Zitadel) with PKCE — public SPA client.
- * NetPay never validates the JWT; it stores the access_token and
- * calls NetHub /users/me with Authorization: Bearer.
+ * Browser OIDC (Zitadel / NetHub IdP) with PKCE — public SPA client.
+ *
+ * Aligned with NetHubKe env naming (OIDC_ISSUER, OIDC_CLIENT_ID) exposed to the
+ * SPA as VITE_OIDC_* at image build time. NetPay never validates the JWT; it
+ * stores the access_token and calls NetHub GET /users/me with Bearer.
+ *
+ * Unlike NetHubKe (Next.js Auth.js + optional client secret on the server),
+ * this SPA uses authorization-code + PKCE only — no client secret in the browser.
  */
 
 const STORAGE = {
@@ -10,6 +15,8 @@ const STORAGE = {
   returnTo: 'netpay_oidc_return',
 } as const
 
+const BUILD_PLACEHOLDER_ISSUER = 'https://build-placeholder.invalid'
+
 export type OidcConfig = {
   issuer: string
   clientId: string
@@ -17,10 +24,21 @@ export type OidcConfig = {
   scopes: string
 }
 
+type Discovery = {
+  authorization_endpoint?: string
+  token_endpoint?: string
+  end_session_endpoint?: string
+}
+
+let discoveryCache: { at: number; data: Discovery } | null = null
+
 export function getOidcConfig(): OidcConfig | null {
-  const issuer = (import.meta.env.VITE_OIDC_ISSUER as string | undefined)?.trim().replace(/\/$/, '')
+  const issuer = (import.meta.env.VITE_OIDC_ISSUER as string | undefined)
+    ?.trim()
+    .replace(/\/$/, '')
   const clientId = (import.meta.env.VITE_OIDC_CLIENT_ID as string | undefined)?.trim()
   if (!issuer || !clientId) return null
+  if (issuer === BUILD_PLACEHOLDER_ISSUER) return null
   const redirectUri =
     (import.meta.env.VITE_OIDC_REDIRECT_URI as string | undefined)?.trim() ||
     `${window.location.origin}/auth/callback`
@@ -28,6 +46,25 @@ export function getOidcConfig(): OidcConfig | null {
     (import.meta.env.VITE_OIDC_SCOPES as string | undefined)?.trim() ||
     'openid profile email offline_access'
   return { issuer, clientId, redirectUri, scopes }
+}
+
+export function isOidcConfigured(): boolean {
+  return getOidcConfig() !== null
+}
+
+async function oidcDiscovery(issuer: string): Promise<Discovery> {
+  const now = Date.now()
+  if (discoveryCache && now - discoveryCache.at < 3600_000) {
+    return discoveryCache.data
+  }
+  const url = `${issuer}/.well-known/openid-configuration`
+  const res = await fetch(url, { headers: { Accept: 'application/json' } })
+  if (!res.ok) {
+    throw new Error(`OIDC discovery failed: ${res.status} ${url}`)
+  }
+  const data = (await res.json()) as Discovery
+  discoveryCache = { at: now, data }
+  return data
 }
 
 function randomString(bytes = 32): string {
@@ -44,13 +81,11 @@ function base64Url(data: ArrayBuffer | Uint8Array): string {
 }
 
 async function sha256(plain: string): Promise<ArrayBuffer> {
-  const data = new TextEncoder().encode(plain)
-  return crypto.subtle.digest('SHA-256', data)
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(plain))
 }
 
 async function pkceChallenge(verifier: string): Promise<string> {
-  const hash = await sha256(verifier)
-  return base64Url(hash)
+  return base64Url(await sha256(verifier))
 }
 
 /** Begin authorization-code + PKCE login at the IdP. */
@@ -58,9 +93,13 @@ export async function beginLogin(returnTo = '/'): Promise<void> {
   const cfg = getOidcConfig()
   if (!cfg) {
     throw new Error(
-      'OIDC is not configured. Set VITE_OIDC_ISSUER and VITE_OIDC_CLIENT_ID.',
+      'OIDC is not configured. Set VITE_OIDC_ISSUER and VITE_OIDC_CLIENT_ID at image build.',
     )
   }
+  const discovery = await oidcDiscovery(cfg.issuer)
+  const authorize =
+    discovery.authorization_endpoint || `${cfg.issuer}/oauth/v2/authorize`
+
   const verifier = randomString(32)
   const state = randomString(16)
   const challenge = await pkceChallenge(verifier)
@@ -68,7 +107,7 @@ export async function beginLogin(returnTo = '/'): Promise<void> {
   sessionStorage.setItem(STORAGE.state, state)
   sessionStorage.setItem(STORAGE.returnTo, returnTo)
 
-  const url = new URL(`${cfg.issuer}/oauth/v2/authorize`)
+  const url = new URL(authorize)
   url.searchParams.set('client_id', cfg.clientId)
   url.searchParams.set('redirect_uri', cfg.redirectUri)
   url.searchParams.set('response_type', 'code')
@@ -97,8 +136,7 @@ export async function completeLogin(params: URLSearchParams): Promise<{
 
   const err = params.get('error')
   if (err) {
-    const desc = params.get('error_description') || err
-    throw new Error(desc)
+    throw new Error(params.get('error_description') || err)
   }
   const code = params.get('code')
   const state = params.get('state')
@@ -113,6 +151,9 @@ export async function completeLogin(params: URLSearchParams): Promise<{
     throw new Error('Invalid or expired login state. Try signing in again.')
   }
 
+  const discovery = await oidcDiscovery(cfg.issuer)
+  const tokenUrl = discovery.token_endpoint || `${cfg.issuer}/oauth/v2/token`
+
   const body = new URLSearchParams()
   body.set('grant_type', 'authorization_code')
   body.set('code', code)
@@ -120,7 +161,6 @@ export async function completeLogin(params: URLSearchParams): Promise<{
   body.set('client_id', cfg.clientId)
   body.set('code_verifier', verifier)
 
-  const tokenUrl = `${cfg.issuer}/oauth/v2/token`
   const res = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
@@ -139,20 +179,23 @@ export async function completeLogin(params: URLSearchParams): Promise<{
   return { tokens: data, returnTo }
 }
 
-/** Optional RP-initiated logout at Zitadel. */
-export function beginLogout(idToken?: string | null): void {
+/** RP-initiated logout (discovery end_session when available). */
+export async function beginLogout(idToken?: string | null): Promise<void> {
   const cfg = getOidcConfig()
   if (!cfg) {
     window.location.assign('/login')
     return
   }
-  const url = new URL(`${cfg.issuer}/oidc/v1/end_session`)
-  if (idToken) url.searchParams.set('id_token_hint', idToken)
-  url.searchParams.set('post_logout_redirect_uri', `${window.location.origin}/login`)
-  url.searchParams.set('client_id', cfg.clientId)
-  window.location.assign(url.toString())
-}
-
-export function isOidcConfigured(): boolean {
-  return getOidcConfig() !== null
+  try {
+    const discovery = await oidcDiscovery(cfg.issuer)
+    const endSession =
+      discovery.end_session_endpoint || `${cfg.issuer}/oidc/v1/end_session`
+    const url = new URL(endSession)
+    if (idToken) url.searchParams.set('id_token_hint', idToken)
+    url.searchParams.set('post_logout_redirect_uri', `${window.location.origin}/login`)
+    url.searchParams.set('client_id', cfg.clientId)
+    window.location.assign(url.toString())
+  } catch {
+    window.location.assign('/login')
+  }
 }
