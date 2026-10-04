@@ -2,15 +2,12 @@
 from __future__ import annotations
 
 import asyncio
-from uuid import UUID
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from app.core.db import AsyncSessionLocal
 from app.core.logging import logger
-from app.core.security import decode_token
-from app.crud.user import user_crud
 from app.services.live_hub import subscribe, unsubscribe
+from app.services.nethub_auth import NetHubAuthError, fetch_principal
 
 router = APIRouter(tags=["ws"])
 
@@ -21,22 +18,20 @@ async def ws_events(websocket: WebSocket, token: str | None = Query(default=None
         await websocket.close(code=4401)
         return
     try:
-        payload = decode_token(token)
-        uid = UUID(payload["sub"])
-    except Exception:  # noqa: BLE001
+        principal = await fetch_principal(token)
+    except NetHubAuthError:
+        await websocket.close(code=4401)
+        return
+    if not principal.is_active:
         await websocket.close(code=4401)
         return
 
-    async with AsyncSessionLocal() as session:
-        user = await user_crud.get_active_by_id(session, uid)
-        if not user:
-            await websocket.close(code=4401)
-            return
-        is_admin = user.role == "admin"
-        tenant_id = user.tenant_id
-
     await websocket.accept()
-    q = await subscribe(user_id=uid, tenant_id=tenant_id, is_admin=is_admin)
+    q = await subscribe(
+        user_id=principal.id,
+        tenant_id=principal.tenant_id,
+        is_admin=principal.is_admin,
+    )
 
     async def _drain_client() -> None:
         try:

@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api.deps import can_access_tenant, get_current_user, get_session
 from app.crud.integration import credential_crud, integration_crud
 from app.models.integration import Integration
-from app.models.user import User
+from app.schemas.principal import Principal
 from app.providers.mpesa import get_access_token, register_c2b_urls
 from app.schemas.integration import IntegrationCreate, IntegrationOut, RegisterUrlsRequest
 from app.services.events import record_event
@@ -25,7 +25,7 @@ async def load_creds(session: AsyncSession, integration_id: UUID) -> dict[str, s
 @router.get("", response_model=list[IntegrationOut])
 async def list_integrations(
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> list[Integration]:
     return list(
         await integration_crud.list_active(
@@ -40,7 +40,7 @@ async def list_integrations(
 async def get_integration(
     integration_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> Integration:
     integ = await integration_crud.get(session, integration_id)
     if not integ or getattr(integ, "deleted_at", None) is not None:
@@ -54,7 +54,7 @@ async def get_integration(
 async def create_integration(
     body: IntegrationCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> Integration:
     if not can_access_tenant(user, body.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -100,7 +100,7 @@ async def register_urls(
     integration_id: UUID,
     body: RegisterUrlsRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> dict[str, Any]:
     integ = await integration_crud.get(session, integration_id)
     if not integ:
@@ -161,7 +161,7 @@ async def register_urls(
 async def delete_integration(
     integration_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> None:
     """Retire a paybill/till setup (soft-delete). Callbacks for old checkouts may still settle."""
     integ = await integration_crud.get(session, integration_id)

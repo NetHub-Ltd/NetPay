@@ -11,38 +11,32 @@ from sqlalchemy import create_engine
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.security import hash_password
 from app.models.tenant import Tenant
-from app.models.user import User
 from tests.helpers import (
-    FIXTURE_USER_PASSWORD,
+    ADMIN_ID,
     internal_headers,
     login,
     seed_tenant_user_integration,
 )
+from uuid import UUID
+
+OTHER_TENANT_ID = UUID("00000000-0000-4000-8000-0000000000bb")
 
 
 def _seed_other_tenant() -> None:
     """Second tenant for isolation tests."""
     engine = create_engine(settings.sync_database_url)
     with Session(engine) as session:
-        admin = session.exec(select(User).where(User.email == "admin@nethub.test")).first()
-        assert admin
         other = session.exec(select(Tenant).where(Tenant.slug == "p0-other")).first()
         if not other:
-            other = Tenant(name="Other", slug="p0-other", status="active", created_by=admin.id)
-            session.add(other)
-            session.commit()
-            session.refresh(other)
-            session.add(
-                User(
-                    email="p0other@nethub.test",
-                    hashed_password=hash_password(FIXTURE_USER_PASSWORD),
-                    role="user",
-                    tenant_id=other.id,
-                    is_active=True,
-                )
+            other = Tenant(
+                id=OTHER_TENANT_ID,
+                name="Other",
+                slug="p0-other",
+                status="active",
+                created_by=ADMIN_ID,
             )
+            session.add(other)
             session.commit()
     engine.dispose()
 
@@ -55,7 +49,7 @@ async def p0_env(client: AsyncClient):
         public_id="gw_p0_test",
     )
     _seed_other_tenant()
-    token = await login(client, meta["email"], FIXTURE_USER_PASSWORD)
+    token = await login(client, meta["email"], "unused")
     return {**meta, "token": token}
 
 
@@ -234,12 +228,41 @@ async def test_tenant_isolation_forbidden(client: AsyncClient, p0_env):
         assert created.status_code == 201, created.text
         intent_id = created.json()["id"]
 
-    other_token = await login(client, "p0other@nethub.test", FIXTURE_USER_PASSWORD)
-    res = await client.get(
-        f"/v1/payment-intents/{intent_id}",
-        headers={"Authorization": f"Bearer {other_token}"},
-    )
-    assert res.status_code == 403
+    # Switch principal to another tenant (NetHub-shaped identity)
+    from app.api.deps import get_current_user
+    from app.main import app
+    from app.schemas.principal import Principal
+    from uuid import UUID
+
+    other_tid = UUID("00000000-0000-4000-8000-0000000000bb")
+
+    async def _other() -> Principal:
+        return Principal(
+            id=UUID("00000000-0000-4000-8000-000000000099"),
+            email="p0other@nethub.test",
+            is_active=True,
+            tenant_id=other_tid,
+            is_admin=False,
+        )
+
+    app.dependency_overrides[get_current_user] = _other
+    try:
+        res = await client.get(
+            f"/v1/payment-intents/{intent_id}",
+            headers={"Authorization": "Bearer other"},
+        )
+        assert res.status_code == 403
+    finally:
+        # restore admin principal for subsequent tests in session
+        async def _admin() -> Principal:
+            return Principal(
+                id=UUID("00000000-0000-4000-8000-000000000001"),
+                email="admin@nethub.test",
+                is_active=True,
+                tenant_id=UUID("00000000-0000-4000-8000-0000000000aa"),
+                is_admin=True,
+            )
+        app.dependency_overrides[get_current_user] = _admin
 
 
 @pytest.mark.asyncio

@@ -4,12 +4,15 @@ import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
 import { useTheme } from '../theme/ThemeContext'
 
-export function Login() {
-  const { user, login } = useAuth()
-  const navigate = useNavigate()
+/**
+ * NetPay does not issue passwords. Paste an IdP (Zitadel) access token;
+ * NetPay resolves the user via NetHub GET /users/me.
+ */
+export default function Login() {
+  const { user, setAccessToken } = useAuth()
   const { theme, toggle } = useTheme()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const navigate = useNavigate()
+  const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -20,10 +23,10 @@ export function Login() {
     setBusy(true)
     setError(null)
     try {
-      await login(email, password)
+      await setAccessToken(token)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Could not sign in')
+      setError(err instanceof ApiError ? err.detail : 'Could not verify session with NetHub')
     } finally {
       setBusy(false)
     }
@@ -38,8 +41,8 @@ export function Login() {
           </div>
           <h1>Accept M-Pesa payments without the headache</h1>
           <p>
-            Send a payment request to your customer’s phone, track whether they paid, and keep a clear record —
-            built for Kenyan paybills and tills.
+            Sign in with your NetHub identity (Zitadel). NetPay never stores passwords — it asks
+            NetHub who you are using your access token.
           </p>
         </div>
         <ul>
@@ -48,21 +51,16 @@ export function Login() {
           <li>Ledger trail for every successful collection</li>
           <li>Secure edge callbacks from M-Pesa into your account</li>
         </ul>
-        <div className="feature-pills">
-          <span>Paybill</span>
-          <span>Till</span>
-          <span>Shortcode</span>
-          <span>Real-time status</span>
-        </div>
       </section>
 
       <section className="login-panel">
         <div className="login-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h2>Sign in</h2>
+              <h2>Continue with NetHub</h2>
               <p className="muted tiny" style={{ margin: '0 0 1rem' }}>
-                Use your NetPay account to manage payments.
+                Paste an access token from the IdP (or NetHub session). Production UX will use a
+                redirect login — token paste is for ops and early cutover.
               </p>
             </div>
             <button type="button" className="btn ghost" onClick={toggle} title="Toggle appearance">
@@ -71,29 +69,19 @@ export function Login() {
           </div>
           {error && <div className="alert error">{error}</div>}
           <form onSubmit={onSubmit}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+            <label htmlFor="access_token">Access token</label>
+            <textarea
+              id="access_token"
+              rows={4}
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="Bearer token value (without the word Bearer)"
               required
+              style={{ width: '100%', fontFamily: 'monospace', fontSize: 12 }}
             />
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <div style={{ marginTop: '1rem' }}>
-              <button className="btn primary full" type="submit" disabled={busy}>
-                {busy ? 'Signing in…' : 'Sign in'}
-              </button>
-            </div>
+            <button type="submit" className="btn primary" disabled={busy || !token.trim()}>
+              {busy ? 'Verifying…' : 'Continue'}
+            </button>
           </form>
         </div>
       </section>

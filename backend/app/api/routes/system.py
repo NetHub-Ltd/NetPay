@@ -7,7 +7,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import get_current_user, get_session
 from app.core.config import settings
-from app.models.user import User
+from app.schemas.principal import Principal
 from app.services.edge_status import get_edge_connection_status
 
 router = APIRouter(prefix="/v1/system", tags=["system"])
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/v1/system", tags=["system"])
 @router.get("/edge-connection")
 async def edge_connection(
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> dict[str, Any]:
     """How recently the M-Pesa edge worker reached NetPay."""
     _ = user
@@ -25,7 +25,7 @@ async def edge_connection(
 
 @router.get("/public-config")
 async def public_config(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> dict[str, str]:
     """Non-secret values the SPA needs for setup copy."""
     _ = user
@@ -38,7 +38,7 @@ async def public_config(
 @router.get("/outbound-requests")
 async def list_outbound_requests(
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
     limit: int = 30,
 ) -> list[dict[str, Any]]:
     """Recent provider HTTP calls (register URLs, STK, OAuth) for diagnosis."""

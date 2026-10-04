@@ -20,6 +20,7 @@ class UserOut(BaseModel):
     role: str
     tenant_id: Optional[UUID] = None
     is_active: bool
+    display_name: Optional[str] = None
     model_config = {"from_attributes": True}
 
 class OAuthTokenRequest(BaseModel):

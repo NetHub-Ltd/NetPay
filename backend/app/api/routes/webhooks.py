@@ -10,7 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api.deps import can_access_tenant, get_current_user, get_session
 from app.core.config import settings
 from app.crud.webhook import webhook_crud
-from app.models.user import User
+from app.schemas.principal import Principal
 from app.models.webhook import Webhook
 from app.schemas.webhook import WebhookCreate, WebhookOut
 from app.services.events import record_event
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/v1/webhooks", tags=["webhooks"])
 async def list_webhooks(
     tenant_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> list[Webhook]:
     if not can_access_tenant(user, tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -35,7 +35,7 @@ async def list_webhooks(
 async def create_webhook(
     body: WebhookCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> Webhook:
     if not can_access_tenant(user, body.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -75,7 +75,7 @@ async def create_webhook(
 async def delete_webhook(
     webhook_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> dict:
     hook = await webhook_crud.get(session, webhook_id)
     if not hook:

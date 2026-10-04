@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api.deps import can_access_tenant, get_current_user, get_session
 from app.crud.event import event_crud
 from app.models.event import GatewayEvent
-from app.models.user import User
+from app.schemas.principal import Principal
 from app.schemas.event import EventOut
 from app.services.webhooks import fanout_webhooks
 
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/v1/events", tags=["events"])
 @router.get("", response_model=list[EventOut])
 async def list_events(
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> list[GatewayEvent]:
     return list(
         await event_crud.list_for_user(
@@ -34,7 +34,7 @@ async def list_events(
 async def replay_event(
     event_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[Principal, Depends(get_current_user)],
 ) -> dict:
     ev = await event_crud.get(session, event_id)
     if not ev:
