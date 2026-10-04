@@ -4,8 +4,10 @@ import type { User } from '../api/client'
 export type AuthState = {
   user: User | null
   loading: boolean
-  /** Start Zitadel browser login (redirect). */
+  /** Start browser login (redirect). */
   login: () => Promise<void>
+  /** Persist tokens, load /auth/me, set user (used by OIDC callback). */
+  establishSession: (accessToken: string, idToken?: string) => Promise<User>
   logout: () => void
   isAdmin: boolean
   oidcReady: boolean
