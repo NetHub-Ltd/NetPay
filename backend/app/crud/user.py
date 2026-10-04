@@ -12,7 +12,7 @@ from app.models.user import User
 
 class UserCreate(BaseModel):
     email: str
-    hashed_password: str
+    hashed_password: Optional[str] = None
     display_name: Optional[str] = None
     role: str = "user"
     tenant_id: Optional[UUID] = None

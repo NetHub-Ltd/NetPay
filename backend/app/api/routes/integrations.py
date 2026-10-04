@@ -70,6 +70,7 @@ async def create_integration(
             "confirmation_url": body.confirmation_url,
             "validation_url": body.validation_url,
             "stk_callback_url": body.stk_callback_url,
+            "status": "pending_setup",
         },
     )
     await session.commit()
@@ -143,6 +144,7 @@ async def register_urls(
         obj_in={
             "confirmation_url": body.confirmation_url,
             "validation_url": body.validation_url,
+            "status": "connected",
         },
     )
     await session.commit()

@@ -118,6 +118,19 @@ export type Tenant = {
 }
 
 
+export type Readiness = {
+  has_business: boolean
+  has_shortcode: boolean
+  has_connected_shortcode: boolean
+  has_notifications: boolean
+  ready_to_collect: boolean
+  next_step: 'create_business' | 'add_shortcode' | 'connect_mpesa' | 'take_payment' | 'done'
+  tenant_id?: string | null
+  primary_integration_id?: string | null
+  shortcode_count: number
+  connected_count: number
+}
+
 export type Integration = {
   id: string
   tenant_id: string

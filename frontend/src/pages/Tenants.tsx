@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { Building2, Plus } from 'lucide-react'
 import { api, ApiError, type Tenant } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
@@ -9,39 +9,54 @@ import { Button, Input, Modal } from '../components/primitives'
 import { mono, table, tableWrap } from '../components/ui'
 
 export function Tenants() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, user, establishSession } = useAuth()
+  const [params] = useSearchParams()
+  const wantSelf = params.get('self') === '1'
   const [items, setItems] = useState<Tenant[]>([])
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(wantSelf && !user?.tenant_id)
   const [busy, setBusy] = useState(false)
   const [name, setName] = useState('')
 
   const load = useCallback(async () => {
+    if (!isAdmin) return
     try {
       setItems(await api.get<Tenant[]>('/v1/tenants'))
       setError(null)
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Could not load businesses')
     }
-  }, [])
+  }, [isAdmin])
 
   useEffect(() => {
     if (isAdmin) void Promise.resolve().then(load)
   }, [isAdmin, load])
 
-  if (!isAdmin) return <Navigate to="/forbidden" replace />
+  // Non-admin with a business: no admin list — send home
+  if (!isAdmin && user?.tenant_id && !wantSelf) {
+    return <Navigate to="/dashboard" replace />
+  }
+  if (!isAdmin && user?.tenant_id && wantSelf) {
+    return <Navigate to="/dashboard" replace />
+  }
 
-  async function onCreate(e: FormEvent) {
+  async function onCreateAdmin(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
     setMsg(null)
     try {
-      await api.post<Tenant>('/v1/tenants', { name: name.trim() })
+      const slug = name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 40)
+      await api.post<Tenant>('/v1/tenants', { name: name.trim(), slug })
       setName('')
       setShowForm(false)
-      setMsg('Business created. You can add shortcodes for it next.')
+      setMsg('Business created.')
       await load()
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : 'Could not create business')
@@ -50,11 +65,95 @@ export function Tenants() {
     }
   }
 
+  async function onSelfRegister(e: FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    try {
+      await api.post<Tenant>('/v1/tenants/self', { name: name.trim() })
+      setMsg('Business created. You can add a shortcode next.')
+      setShowForm(false)
+      const token = sessionStorage.getItem('nethub_token')
+      if (token) {
+        try {
+          await establishSession(token)
+        } catch {
+          /* ignore */
+        }
+      }
+      window.location.assign('/integrations')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : 'Could not create business')
+      setBusy(false)
+    }
+  }
+
+  // Free-tier self-serve only
+  if (!isAdmin) {
+    return (
+      <div>
+        <PageHeader
+          title="Your business"
+          description="Free tier includes one business workspace linked to your account."
+        />
+        {error && (
+          <div
+            className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
+        {msg && (
+          <div className="mb-4 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-4 py-3 text-sm">
+            {msg}
+          </div>
+        )}
+        <EmptyState
+          icon={<Building2 size={22} />}
+          title="Create your business"
+          hint="One workspace on the free tier. You can add a shortcode right after."
+          action={
+            <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
+              Create business
+            </Button>
+          }
+        />
+        <Modal
+          open={showForm}
+          title="Create business"
+          onClose={() => !busy && setShowForm(false)}
+          footer={
+            <>
+              <Button variant="secondary" disabled={busy} onClick={() => setShowForm(false)}>
+                Cancel
+              </Button>
+              <Button form="np-self-biz" type="submit" loading={busy}>
+                Create
+              </Button>
+            </>
+          }
+        >
+          <form id="np-self-biz" onSubmit={(e) => void onSelfRegister(e)}>
+            <Input
+              label="Business name"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Acme Retail"
+            />
+          </form>
+        </Modal>
+      </div>
+    )
+  }
+
   return (
     <div>
       <PageHeader
         title="Businesses"
-        description="Organizations that own shortcodes and payment activity (admin only)."
+        description="Organizations that own shortcodes and payment activity (admin)."
         actions={
           <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
             Add business
@@ -63,7 +162,10 @@ export function Tenants() {
       />
 
       {error && (
-        <div className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+        <div
+          className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
+          role="alert"
+        >
           {error}
         </div>
       )}
@@ -77,7 +179,7 @@ export function Tenants() {
         <EmptyState
           icon={<Building2 size={22} />}
           title="No businesses yet"
-          hint="Create a business, then attach shortcodes and users to it."
+          hint="Create a business, then attach shortcodes."
           action={
             <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
               Add business
@@ -128,7 +230,7 @@ export function Tenants() {
           </>
         }
       >
-        <form id="np-tenant-form" onSubmit={(e) => void onCreate(e)}>
+        <form id="np-tenant-form" onSubmit={(e) => void onCreateAdmin(e)}>
           <Input
             label="Business name"
             required
