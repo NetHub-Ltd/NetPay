@@ -34,10 +34,10 @@ export function AuthCallback() {
 
   if (error) {
     return (
-      <div className="login-page" style={{ padding: '2rem', maxWidth: 480, margin: '0 auto' }}>
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]" style={{ padding: '2rem', maxWidth: 480, margin: '0 auto' }}>
         <h1>Sign-in failed</h1>
-        <p className="muted">{error}</p>
-        <a className="btn primary" href="/login">
+        <p className="text-[var(--muted)]">{error}</p>
+        <a className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" href="/login">
           Try again
         </a>
       </div>
@@ -45,8 +45,8 @@ export function AuthCallback() {
   }
 
   return (
-    <div className="login-page">
-      <p className="muted">Completing sign-in…</p>
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+      <p className="text-[var(--muted)]">Completing sign-in…</p>
     </div>
   )
 }

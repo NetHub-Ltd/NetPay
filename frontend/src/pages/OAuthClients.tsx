@@ -41,22 +41,22 @@ export function OAuthClients() {
 
   return (
     <div data-testid="oauth-page">
-      <div className="page-header">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1>OAuth clients</h1>
           <p>Client-credentials for machine access (admin)</p>
         </div>
       </div>
-      {error && <div className="alert error">{error}</div>}
+      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
       {created && (
-        <div className="alert info">
+        <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]">
           Client created — copy the secret now; it is not shown again.
-          <div className="secret-once">client_id: {created.client_id}</div>
-          <div className="secret-once" style={{ marginTop: 8 }}>client_secret: {created.client_secret}</div>
+          <div className="mt-1 break-all font-mono">client_id: {created.client_id}</div>
+          <div className="mt-1 break-all font-mono" style={{ marginTop: 8 }}>client_secret: {created.client_secret}</div>
         </div>
       )}
 
-      <div className="card">
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
         <h2>Create client</h2>
         <form onSubmit={onCreate}>
           <label>Tenant</label>
@@ -66,7 +66,9 @@ export function OAuthClients() {
           </select>
           <label>Name</label>
           <input required value={name} onChange={(e) => setName(e.target.value)} />
-          <button className="btn primary" type="submit" disabled={busy || !tenantId}>{busy ? 'Creating…' : 'Create OAuth client'}</button>
+          <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" type="submit" disabled={busy}>
+            {busy ? 'Creating…' : 'Create client'}
+          </button>
         </form>
       </div>
 

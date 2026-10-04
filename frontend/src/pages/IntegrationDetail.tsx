@@ -21,12 +21,12 @@ function CopyField({ label, value }: { label: string; value: string }) {
   }
   return (
     <div style={{ marginBottom: '0.75rem' }}>
-      <div className="muted tiny">{label}</div>
+      <div className="text-[var(--muted)] text-xs">{label}</div>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <code className="mono tiny" style={{ wordBreak: 'break-all' }}>
+        <code className="font-mono text-[0.85em] text-xs" style={{ wordBreak: 'break-all' }}>
           {value}
         </code>
-        <button type="button" className="btn" onClick={copy}>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" onClick={copy}>
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
@@ -79,11 +79,11 @@ export function IntegrationDetail() {
 
   async function connectPayments() {
     if (!item) return
-    const ok = window.confirm(
+    const confirmed = window.confirm(
       `Connect shortcode ${item.shortcode} so payment results can reach NetPay automatically?\n\n` +
         `You only need to do this once per shortcode. You can still copy the technical links below if your provider portal needs them.`,
     )
-    if (!ok) return
+    if (!confirmed) return
 
     setBusy(true)
     setError(null)
@@ -117,7 +117,7 @@ export function IntegrationDetail() {
   if (error && !item) {
     return (
       <div data-testid="integration-detail-page">
-        <div className="alert error">{error}</div>
+        <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </div>
     )
@@ -128,10 +128,10 @@ export function IntegrationDetail() {
 
   return (
     <div data-testid="integration-detail-page">
-      <p className="muted tiny">
+      <p className="text-[var(--muted)] text-xs">
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </p>
-      <div className="page-header">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1>Shortcode {item.shortcode}</h1>
           <p>
@@ -144,10 +144,10 @@ export function IntegrationDetail() {
           <StatusBadge value={item.status} />
         </div>
       </div>
-      {error && <div className="alert error">{error}</div>}
-      {msg && <div className="alert ok">{msg}</div>}
+      {error && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">{error}</div>}
+      {msg && <div className="mb-4 rounded-lg border px-4 py-3 text-sm border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-[var(--text)]">{msg}</div>}
 
-      <div className="card">
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
         <h2>Setup for this shortcode</h2>
         <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
           <li>
@@ -163,20 +163,20 @@ export function IntegrationDetail() {
         </ol>
       </div>
 
-      <div className="card">
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
         <h2>Connect payment updates</h2>
         <p style={{ marginTop: 0 }}>
           One click tells the network where to send results for this shortcode so NetPay can mark payments Paid or
           Failed. You’ll be asked to confirm before anything is sent.
         </p>
-        <button className="btn primary" type="button" disabled={busy} onClick={connectPayments}>
+        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-medium text-[var(--text)] no-underline shadow-[var(--shadow)]" type="button" onClick={connectPayments} disabled={busy}>
           {busy ? 'Connecting…' : 'Connect this shortcode'}
         </button>
       </div>
 
-      <div className="card">
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
         <h2>Links (if you need them)</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
+        <p className="text-[var(--muted)]" style={{ marginTop: 0 }}>
           Keep these for your records or if a portal asks you to paste addresses manually. You can return here anytime
           from <Link to="/integrations">Paybills &amp; tills</Link> → Open.
         </p>
@@ -185,10 +185,10 @@ export function IntegrationDetail() {
         <CopyField label="Paybill / till pre-check" value={urls.validation} />
       </div>
 
-      <div className="card">
+      <div className="mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
         <h2>Advanced</h2>
-        <div className="muted tiny">Routing id (support)</div>
-        <code className="mono">{item.public_id}</code>
+        <div className="text-[var(--muted)] text-xs">Routing id (support)</div>
+        <code className="font-mono text-[0.85em]">{item.public_id}</code>
       </div>
     </div>
   )
