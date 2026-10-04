@@ -67,8 +67,29 @@ if STATIC_DIR.is_dir():
 
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str, request: Request):
+        # OIDC browser return URL is a SPA route — must serve index.html.
+        # Backend auth API is only GET /auth/me (registered above the catch-all).
+        if full_path == "auth/callback" or full_path.startswith("auth/callback/"):
+            index = STATIC_DIR / "index.html"
+            if index.is_file():
+                return FileResponse(index)
+            return {"detail": "Not Found"}
+
         # Do not swallow API/docs paths
-        blocked = ("api", "v1", "auth", "oauth", "health", "internal", "ws", "docs", "redoc", "openapi.json", "assets", "config.json")
+        blocked = (
+            "api",
+            "v1",
+            "auth",
+            "oauth",
+            "health",
+            "internal",
+            "ws",
+            "docs",
+            "redoc",
+            "openapi.json",
+            "assets",
+            "config.json",
+        )
         first = full_path.split("/", 1)[0]
         if first in blocked:
             return {"detail": "Not Found"}
