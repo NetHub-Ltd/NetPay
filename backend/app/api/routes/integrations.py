@@ -10,7 +10,7 @@ from app.api.deps import can_access_tenant, get_current_user, get_session, user_
 from app.crud.integration import credential_crud, integration_crud
 from app.models.integration import Integration
 from app.schemas.principal import Principal
-from app.providers.mpesa import get_access_token, register_c2b_urls
+from app.providers.mpesa import get_access_token_meta, redact_token, register_c2b_urls
 from app.schemas.integration import IntegrationCreate, IntegrationOut, RegisterUrlsRequest
 from app.services.events import record_event
 from app.services.ids import new_id
@@ -101,12 +101,20 @@ async def create_integration(
 
     # Validate Daraja credentials for the chosen environment before persisting.
     try:
-        await get_access_token(
+        _token, expires_in = await get_access_token_meta(
             body.consumer_key.strip(),
             body.consumer_secret.strip(),
             body.environment,  # type: ignore[arg-type]
             session=session,
             tenant_id=body.tenant_id,
+            skip_cache=True,  # always hit Daraja when saving credentials
+        )
+        from app.core.logging import logger
+        logger.info(
+            "Credential check before shortcode save env={} token_redacted={} expires_in={}",
+            body.environment,
+            redact_token(_token),
+            expires_in,
         )
     except RuntimeError as exc:
         raise HTTPException(
@@ -174,13 +182,22 @@ async def register_urls(
             detail="Missing Daraja consumer key/secret for this shortcode. Edit credentials and try again.",
         )
     try:
-        token = await get_access_token(
+        token, expires_in = await get_access_token_meta(
             creds["consumer_key"],
             creds["consumer_secret"],
             integ.environment,  # type: ignore[arg-type]
             session=session,
             tenant_id=integ.tenant_id,
             integration_id=integ.id,
+            skip_cache=True,
+        )
+        from app.core.logging import logger
+        logger.info(
+            "C2B register pre-flight OAuth env={} integration={} token_redacted={} expires_in={}",
+            integ.environment,
+            integration_id,
+            redact_token(token),
+            expires_in,
         )
         result = await register_c2b_urls(
             shortcode=integ.shortcode,
@@ -215,8 +232,70 @@ async def register_urls(
         action="c2b.urls_registered",
         message="Daraja C2B URLs registered",
     )
-    return {"ok": True, "daraja": result}
+    return {
+        "ok": True,
+        "message": "C2B confirmation and validation URLs registered with Daraja.",
+        "daraja": result,
+        "oauth": {
+            "token_redacted": redact_token(token),
+            "expires_in": expires_in,
+            "environment": integ.environment,
+        },
+        "urls": {
+            "confirmation_url": body.confirmation_url,
+            "validation_url": body.validation_url,
+            "response_type": body.response_type,
+        },
+    }
 
+
+
+
+@router.post("/{integration_id}/disconnect", response_model=dict)
+async def disconnect_urls(
+    integration_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[Principal, Depends(get_current_user)],
+) -> dict[str, Any]:
+    """
+    Clear NetPay's record of C2B URL registration (status → pending_setup).
+
+    Daraja has no public unregister API. In sandbox you can re-register new URLs.
+    In production, changing registered URLs requires Safaricom support.
+    This only updates NetPay state so the product no longer treats the shortcode as connected.
+    """
+    integ = await integration_crud.get(session, integration_id)
+    if not integ or getattr(integ, "deleted_at", None) is not None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not await user_can_access_tenant(session, user, integ.tenant_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    await integration_crud.update(
+        session,
+        db_obj=integ,
+        obj_in={
+            "confirmation_url": None,
+            "validation_url": None,
+            "status": "pending_setup",
+        },
+    )
+    await session.commit()
+    await record_event(
+        session,
+        tenant_id=integ.tenant_id,
+        integration_id=integ.id,
+        category="integration",
+        action="c2b.urls_disconnected",
+        message="Local C2B URL registration cleared (Daraja may still hold previous URLs)",
+    )
+    return {
+        "ok": True,
+        "message": (
+            "NetPay no longer treats this shortcode as connected. "
+            "Sandbox: re-register anytime. Production: Daraja may still send to old URLs "
+            "until Safaricom clears them."
+        ),
+        "environment": integ.environment,
+    }
 
 @router.delete("/{integration_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_integration(
