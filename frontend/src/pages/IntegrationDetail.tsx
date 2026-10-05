@@ -45,6 +45,11 @@ export function IntegrationDetail() {
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pathCheck, setPathCheck] = useState<{
+    ok?: boolean
+    message?: string
+    steps?: Array<Record<string, unknown>>
+  } | null>(null)
   const [lastOauth, setLastOauth] = useState<{
     token_redacted?: string
     expires_in?: number
@@ -145,6 +150,28 @@ export function IntegrationDetail() {
     }
   }
 
+
+  async function runPathCheck() {
+    if (!item) return
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    setPathCheck(null)
+    try {
+      const res = await api.post<{
+        ok: boolean
+        message?: string
+        steps?: Array<Record<string, unknown>>
+      }>(`/v1/integrations/${item.id}/path-check`, {})
+      setPathCheck(res)
+      setMsg(res.message || (res.ok ? 'Path check finished.' : 'Path check found issues.'))
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Path check failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (error && !item) {
     return (
       <div data-testid="integration-detail-page">
@@ -218,7 +245,39 @@ export function IntegrationDetail() {
             </Button>
           )}
         </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => void runPathCheck()}>
+            Run path check
+          </Button>
+        </div>
+        <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
+          Path check verifies OAuth, callback URLs, edge reachability, and sends a live toast — without depending on
+          Daraja registerurl uptime.
+        </p>
+        {pathCheck && (
+          <div className="mt-3 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-xs">
+            <div className="font-semibold">
+              {pathCheck.ok ? 'Checks look healthy' : 'Issues found'} — {pathCheck.message}
+            </div>
+            {(pathCheck.steps || []).map((s: Record<string, unknown>) => (
+              <div key={String(s.id)} className="border-t border-[var(--border)] pt-2">
+                <span className={s.ok ? 'text-[var(--accent)]' : 'text-[var(--danger)]'}>{s.ok ? '✓' : '✗'}</span>{' '}
+                <strong>{String(s.label)}</strong>
+                {s.source ? <span className="text-[var(--muted)]"> · {String(s.source)}</span> : null}
+                {s.error ? <div className="text-[var(--danger)]">{String(s.error)}</div> : null}
+                {s.hint ? <div className="text-[var(--muted)]">{String(s.hint)}</div> : null}
+                {s.token_redacted ? (
+                  <div className="text-[var(--muted)]">
+                    token {String(s.token_redacted)}
+                    {s.expires_in != null && Number(s.expires_in) > 0 ? ` · expires_in ${String(s.expires_in)}s` : ''}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
         {lastOauth && (
+
           <p className="mb-0 mt-3 text-xs text-[var(--muted)]">
             Last OAuth check: token {lastOauth.token_redacted}
             {lastOauth.expires_in != null && lastOauth.expires_in > 0
