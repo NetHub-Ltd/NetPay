@@ -46,6 +46,15 @@ def normalize_msisdn(phone: str) -> str:
     return digits
 
 
+def redact_token(token: str) -> str:
+    """Never log a full OAuth token — prefix only."""
+    if not token:
+        return "(empty)"
+    if len(token) <= 10:
+        return token[:2] + "…"
+    return f"{token[:6]}…{token[-4:]} (len={len(token)})"
+
+
 async def get_access_token(
     consumer_key: str,
     consumer_secret: str,
@@ -55,12 +64,26 @@ async def get_access_token(
     tenant_id: UUID | None = None,
     integration_id: UUID | None = None,
     payment_intent_id: UUID | None = None,
-) -> str:
+    skip_cache: bool = False,
+) -> tuple[str, int]:
+    """
+    Exchange consumer key/secret for a Daraja bearer token.
+
+    Returns (access_token, expires_in_seconds).
+    Logs only a redacted token prefix and expires_in — never the full token.
+    """
     cache_key = f"daraja:token:{env}:{consumer_key[:8]}"
-    cached = await cache_get(cache_key)
-    if cached:
-        logger.debug("Daraja OAuth cache hit env={} key_prefix={}", env, consumer_key[:8])
-        return cached
+    if not skip_cache:
+        cached = await cache_get(cache_key)
+        if cached:
+            logger.info(
+                "Daraja OAuth cache hit env={} key_prefix={} token_redacted={}",
+                env,
+                consumer_key[:8],
+                redact_token(cached),
+            )
+            return cached, 0  # expires_in unknown from cache
+
     basic = base64.b64encode(f"{consumer_key}:{consumer_secret}".encode()).decode()
     url = f"{daraja_base(env)}/oauth/v1/generate?grant_type=client_credentials"
     res = await provider_request(
@@ -80,8 +103,16 @@ async def get_access_token(
     token = data.get("access_token")
     if not token:
         raise RuntimeError(f"Daraja OAuth: missing access_token body={res.text[:300]}")
-    await cache_set(cache_key, token, ttl=int(data.get("expires_in", 3500)))
-    return token
+    expires_in = int(data.get("expires_in") or 3599)
+    await cache_set(cache_key, token, ttl=max(60, expires_in - 60))
+    logger.info(
+        "Daraja OAuth ok env={} key_prefix={} token_redacted={} expires_in={}",
+        env,
+        consumer_key[:8],
+        redact_token(token),
+        expires_in,
+    )
+    return token, expires_in
 
 
 async def stk_push(
@@ -200,6 +231,14 @@ async def stk_query(
     return result
 
 
+def _assert_callback_url(url: str, *, env: MpesaEnv, label: str) -> None:
+    u = (url or "").strip()
+    if not u.startswith("http://") and not u.startswith("https://"):
+        raise RuntimeError(f"{label} must be an absolute http(s) URL")
+    if env == "production" and not u.startswith("https://"):
+        raise RuntimeError(f"{label} must use HTTPS in production (Daraja requirement)")
+
+
 async def register_c2b_urls(
     *,
     shortcode: str,
@@ -212,19 +251,35 @@ async def register_c2b_urls(
     tenant_id: UUID | None = None,
     integration_id: UUID | None = None,
 ) -> dict[str, Any]:
+    """
+    POST /mpesa/c2b/v1/registerurl
+
+    Tells Daraja where to POST C2B validation + confirmation for this ShortCode.
+    ResponseType Completed|Cancelled: what to do if validation URL is unreachable.
+    There is no public Daraja API to unregister — only re-register (sandbox) or
+    Safaricom support letter (production).
+    """
+    rt = (response_type or "Completed").strip()
+    if rt not in ("Completed", "Cancelled"):
+        raise RuntimeError("ResponseType must be Completed or Cancelled")
+    _assert_callback_url(confirmation_url, env=env, label="ConfirmationURL")
+    _assert_callback_url(validation_url, env=env, label="ValidationURL")
+
     body = {
-        "ShortCode": shortcode,
-        "ResponseType": response_type,
-        "ConfirmationURL": confirmation_url,
-        "ValidationURL": validation_url,
+        "ShortCode": str(shortcode).strip(),
+        "ResponseType": rt,
+        "ConfirmationURL": confirmation_url.strip(),
+        "ValidationURL": validation_url.strip(),
     }
     url = f"{daraja_base(env)}/mpesa/c2b/v1/registerurl"
     logger.info(
-        "C2B registerurl env={} shortcode={} confirmation={} validation={}",
+        "C2B registerurl env={} shortcode={} response_type={} confirmation={} validation={} token_redacted={}",
         env,
-        shortcode,
-        confirmation_url,
-        validation_url,
+        body["ShortCode"],
+        rt,
+        body["ConfirmationURL"],
+        body["ValidationURL"],
+        redact_token(token),
     )
     res = await provider_request(
         session,
@@ -244,5 +299,17 @@ async def register_c2b_urls(
         raise RuntimeError(
             f"C2B register rejected: {data.get('errorCode')} {data.get('errorMessage')} raw={data}"
         )
-    logger.info("C2B register response: {}", data)
+    # Success is typically ResponseCode "0" (string) — also accept missing with ResponseDescription
+    code = str(data.get("ResponseCode") or data.get("responseCode") or "")
+    if code and code not in ("0", "00000000"):
+        raise RuntimeError(
+            f"C2B register unexpected ResponseCode={code!r} body={data}"
+        )
+    logger.info(
+        "C2B register ok env={} shortcode={} response_code={} description={}",
+        env,
+        body["ShortCode"],
+        code or "(none)",
+        data.get("ResponseDescription") or data.get("responseDescription"),
+    )
     return data

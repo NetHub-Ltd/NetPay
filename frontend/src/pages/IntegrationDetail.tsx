@@ -45,7 +45,11 @@ export function IntegrationDetail() {
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [connectedOnce, setConnectedOnce] = useState(false)
+  const [lastOauth, setLastOauth] = useState<{
+    token_redacted?: string
+    expires_in?: number
+    environment?: string
+  } | null>(null)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -93,18 +97,19 @@ export function IntegrationDetail() {
     setMsg(null)
     try {
       const urls = buildUrls(item.public_id)
-      const res = await api.post<{ message?: string; detail?: string }>(
-        `/v1/integrations/${item.id}/register-urls`,
-        {
-          confirmation_url: urls.confirmation,
-          validation_url: urls.validation,
-          response_type: 'Completed',
-        },
-      )
-      setConnectedOnce(true)
+      const res = await api.post<{
+        message?: string
+        detail?: string
+        oauth?: { token_redacted?: string; expires_in?: number; environment?: string }
+      }>(`/v1/integrations/${item.id}/register-urls`, {
+        confirmation_url: urls.confirmation,
+        validation_url: urls.validation,
+        response_type: 'Completed',
+      })
+      if (res.oauth) setLastOauth(res.oauth)
       setMsg(
         res.message ||
-          `Shortcode ${item.shortcode} is connected. Payment results for this number can reach NetPay. Links below stay available if you need them later.`,
+          `Shortcode ${item.shortcode} is connected. Payment results for this number can reach NetPay.`,
       )
       await load()
     } catch (e) {
@@ -112,6 +117,29 @@ export function IntegrationDetail() {
       setError(
         `${detail}. You can still copy the links below and paste them in your provider portal, then try again.`,
       )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function disconnectPayments() {
+    if (!item) return
+    const confirmed = window.confirm(
+      `Disconnect shortcode ${item.shortcode} in NetPay?\n\n` +
+        `This clears NetPay's "connected" state. Daraja has no public unregister API — ` +
+        `in sandbox you can re-register; in production Safaricom may still use previous URLs until they clear them.`,
+    )
+    if (!confirmed) return
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    try {
+      const res = await api.post<{ message?: string }>(`/v1/integrations/${item.id}/disconnect`, {})
+      setLastOauth(null)
+      setMsg(res.message || 'Disconnected in NetPay.')
+      await load()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Could not disconnect')
     } finally {
       setBusy(false)
     }
@@ -157,7 +185,7 @@ export function IntegrationDetail() {
           </li>
           <li>
             <strong>Connect payment updates</strong>
-            {connectedOnce ? ' — done' : ' — use the button below'}
+            {item.connected || item.status === 'connected' ? ' — done' : ' — use the button below'}
           </li>
           <li>
             <strong>Notify your app</strong> — <Link to="/webhooks">Payment notifications</Link>
@@ -168,12 +196,37 @@ export function IntegrationDetail() {
       <div className={card}>
         <h2 className="mb-2 text-base font-semibold">Connect payment updates</h2>
         <p className="mb-4 text-sm text-[var(--muted)]">
-          One click tells the network where to send results for this shortcode so NetPay can mark payments Paid or
-          Failed. You'll be asked to confirm before anything is sent.
+          Registers Confirmation and Validation URLs with Daraja (C2B registerurl) so paybill/till results
+          reach NetPay. You will be asked to confirm. Production URLs must be HTTPS and publicly reachable.
         </p>
-<Button type="button" onClick={() => void connectPayments()} loading={busy}>
-          {busy ? "Connecting…" : connectedOnce ? "Reconnect M-Pesa" : "Connect M-Pesa"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={() => void connectPayments()} loading={busy}>
+            {busy
+              ? 'Working…'
+              : item.connected || item.status === 'connected'
+                ? 'Re-register with Daraja'
+                : 'Connect M-Pesa'}
+          </Button>
+          {(item.connected || item.status === 'connected') && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void disconnectPayments()}
+            >
+              Disconnect in NetPay
+            </Button>
+          )}
+        </div>
+        {lastOauth && (
+          <p className="mb-0 mt-3 text-xs text-[var(--muted)]">
+            Last OAuth check: token {lastOauth.token_redacted}
+            {lastOauth.expires_in != null && lastOauth.expires_in > 0
+              ? ` · expires_in ${lastOauth.expires_in}s`
+              : ''}
+            {lastOauth.environment ? ` · ${lastOauth.environment}` : ''}
+          </p>
+        )}
       </div>
 
       <div className={card}>
