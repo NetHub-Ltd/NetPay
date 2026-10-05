@@ -55,7 +55,7 @@ def redact_token(token: str) -> str:
     return f"{token[:6]}…{token[-4:]} (len={len(token)})"
 
 
-async def get_access_token(
+async def get_access_token_meta(
     consumer_key: str,
     consumer_secret: str,
     env: MpesaEnv,
@@ -69,8 +69,7 @@ async def get_access_token(
     """
     Exchange consumer key/secret for a Daraja bearer token.
 
-    Returns (access_token, expires_in_seconds).
-    Logs only a redacted token prefix and expires_in — never the full token.
+    Returns (access_token, expires_in_seconds). Logs redacted token only.
     """
     cache_key = f"daraja:token:{env}:{consumer_key[:8]}"
     if not skip_cache:
@@ -82,7 +81,7 @@ async def get_access_token(
                 consumer_key[:8],
                 redact_token(cached),
             )
-            return cached, 0  # expires_in unknown from cache
+            return cached, 0
 
     basic = base64.b64encode(f"{consumer_key}:{consumer_secret}".encode()).decode()
     url = f"{daraja_base(env)}/oauth/v1/generate?grant_type=client_credentials"
@@ -113,6 +112,31 @@ async def get_access_token(
         expires_in,
     )
     return token, expires_in
+
+
+async def get_access_token(
+    consumer_key: str,
+    consumer_secret: str,
+    env: MpesaEnv,
+    *,
+    session: Optional[AsyncSession] = None,
+    tenant_id: UUID | None = None,
+    integration_id: UUID | None = None,
+    payment_intent_id: UUID | None = None,
+    skip_cache: bool = False,
+) -> str:
+    """Bearer token only (backward compatible for STK/tests). Prefer get_access_token_meta for expires_in."""
+    token, _expires = await get_access_token_meta(
+        consumer_key,
+        consumer_secret,
+        env,
+        session=session,
+        tenant_id=tenant_id,
+        integration_id=integration_id,
+        payment_intent_id=payment_intent_id,
+        skip_cache=skip_cache,
+    )
+    return token
 
 
 async def stk_push(

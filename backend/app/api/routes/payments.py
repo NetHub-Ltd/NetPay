@@ -192,7 +192,7 @@ async def create_intent(
         else "CustomerPayBillOnline"
     )
     try:
-        token, _expires = await get_access_token(
+        token = await get_access_token(
             creds["consumer_key"],
             creds["consumer_secret"],
             integ.environment,  # type: ignore[arg-type]
@@ -451,7 +451,7 @@ async def query_provider_status(
         raise HTTPException(status_code=404, detail="Integration not found")
     creds = await load_creds(session, integ.id)
     try:
-        token, _expires = await get_access_token(
+        token = await get_access_token(
             creds["consumer_key"],
             creds["consumer_secret"],
             integ.environment,  # type: ignore[arg-type]

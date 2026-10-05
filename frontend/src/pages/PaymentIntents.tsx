@@ -85,14 +85,22 @@ export function PaymentIntents() {
         typeof crypto !== 'undefined' && 'randomUUID' in crypto
           ? crypto.randomUUID()
           : `pay-${Date.now()}`
-      const created = await api.post<PaymentIntent>('/v1/payment-intents', {
-        integration_public_id: form.integration_public_id,
-        phone: form.phone.trim(),
-        amount_minor,
-        account_reference: form.account_reference || 'PAY',
-        description: form.description || 'Payment',
-        idempotency_key: idempotencyKey,
-      })
+      const created = await api.post<PaymentIntent>(
+        '/v1/payment-intents',
+        {
+          integration_public_id: form.integration_public_id,
+          phone: form.phone.trim(),
+          amount_minor,
+          account_reference: form.account_reference || 'PAY',
+          description: form.description || 'Payment',
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
+        },
+      )
       setShowForm(false)
       setLastCreatedId(created.id)
       setSuccess('Payment prompt sent. Watch the list for the result.')

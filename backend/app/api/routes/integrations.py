@@ -10,7 +10,7 @@ from app.api.deps import can_access_tenant, get_current_user, get_session, user_
 from app.crud.integration import credential_crud, integration_crud
 from app.models.integration import Integration
 from app.schemas.principal import Principal
-from app.providers.mpesa import get_access_token, register_c2b_urls
+from app.providers.mpesa import get_access_token_meta, redact_token, register_c2b_urls
 from app.schemas.integration import IntegrationCreate, IntegrationOut, RegisterUrlsRequest
 from app.services.events import record_event
 from app.services.ids import new_id
@@ -101,7 +101,7 @@ async def create_integration(
 
     # Validate Daraja credentials for the chosen environment before persisting.
     try:
-        _token, expires_in = await get_access_token(
+        _token, expires_in = await get_access_token_meta(
             body.consumer_key.strip(),
             body.consumer_secret.strip(),
             body.environment,  # type: ignore[arg-type]
@@ -109,7 +109,6 @@ async def create_integration(
             tenant_id=body.tenant_id,
             skip_cache=True,  # always hit Daraja when saving credentials
         )
-        from app.providers.mpesa import redact_token
         from app.core.logging import logger
         logger.info(
             "Credential check before shortcode save env={} token_redacted={} expires_in={}",
@@ -183,7 +182,7 @@ async def register_urls(
             detail="Missing Daraja consumer key/secret for this shortcode. Edit credentials and try again.",
         )
     try:
-        token, expires_in = await get_access_token(
+        token, expires_in = await get_access_token_meta(
             creds["consumer_key"],
             creds["consumer_secret"],
             integ.environment,  # type: ignore[arg-type]
@@ -192,7 +191,6 @@ async def register_urls(
             integration_id=integ.id,
             skip_cache=True,
         )
-        from app.providers.mpesa import redact_token
         from app.core.logging import logger
         logger.info(
             "C2B register pre-flight OAuth env={} integration={} token_redacted={} expires_in={}",
