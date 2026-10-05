@@ -46,8 +46,9 @@ def _visible_to(sub: Subscriber, payload: dict[str, Any]) -> bool:
     tid = payload.get("tenant_id")
     if tid is None:
         return True
+    # Multi-business users may have no NetHub tenant_id — still need payment toasts.
     if sub.tenant_id is None:
-        return False
+        return True
     return str(sub.tenant_id) == str(tid)
 
 

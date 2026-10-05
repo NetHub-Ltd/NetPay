@@ -34,6 +34,24 @@ export class ApiError extends Error {
   }
 }
 
+/** Flatten FastAPI detail (string | object) for UI. */
+export function formatApiDetail(detail: unknown): string {
+  if (detail == null) return 'Request failed'
+  if (typeof detail === 'string') return detail
+  if (typeof detail === 'object' && detail !== null) {
+    const d = detail as Record<string, unknown>
+    if (typeof d.message === 'string') {
+      const parts = [d.message]
+      if (d.source) parts.push(`Source: ${String(d.source)}`)
+      if (d.stage) parts.push(`Stage: ${String(d.stage)}`)
+      if (d.hint) parts.push(String(d.hint))
+      return parts.join(' · ')
+    }
+    return JSON.stringify(detail)
+  }
+  return String(detail)
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {})
   if (!headers.has('Content-Type') && options.body) {
@@ -57,7 +75,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     let detail = res.statusText || 'Request failed'
     if (typeof data === 'object' && data && 'detail' in data) {
       const d = (data as { detail: unknown }).detail
-      detail = typeof d === 'string' ? d : JSON.stringify(d)
+      detail = formatApiDetail(d)
     }
     throw new ApiError(res.status, detail)
   }

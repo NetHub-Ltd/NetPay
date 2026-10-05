@@ -212,8 +212,32 @@ async def register_urls(
         )
     except RuntimeError as exc:
         from app.core.logging import logger
-        logger.exception("register-urls failed integration={} err={}", integration_id, exc)
-        raise HTTPException(status_code=502, detail=str(exc)[:800]) from exc
+        msg = str(exc)
+        logger.exception("register-urls failed integration={} err={}", integration_id, msg)
+        source = "daraja"
+        stage = "c2b_registerurl"
+        if "OAuth" in msg or "oauth" in msg.lower():
+            stage = "oauth"
+        elif "must use HTTPS" in msg or "must be an absolute" in msg or "ResponseType must" in msg:
+            source = "netpay"
+            stage = "preflight"
+        elif "HTTP" in msg and "failed" in msg.lower():
+            source = "network"
+        detail = {
+            "message": msg[:600],
+            "source": source,
+            "stage": stage,
+            "hint": (
+                "NetPay rejected the request before calling Daraja."
+                if source == "netpay"
+                else "HTTP/transport problem reaching Safaricom — often sandbox outage."
+                if source == "network"
+                else "Safaricom/Daraja rejected or errored. Sandbox is often unstable; retry later."
+            ),
+            "environment": integ.environment,
+            "shortcode": integ.shortcode,
+        }
+        raise HTTPException(status_code=502, detail=detail) from exc
     await integration_crud.update(
         session,
         db_obj=integ,
@@ -250,6 +274,144 @@ async def register_urls(
 
 
 
+
+
+
+@router.post("/{integration_id}/path-check", response_model=dict)
+async def path_check(
+    integration_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[Principal, Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Prove NetPay side without relying on Daraja registerurl uptime."""
+    import httpx
+    from app.core.config import settings
+    from app.core.logging import logger
+    from app.services.edge_status import get_edge_connection_status
+    from app.services.edge_urls import integration_callback_urls
+    from app.services.live_hub import publish_notification
+
+    integ = await integration_crud.get(session, integration_id)
+    if not integ or getattr(integ, "deleted_at", None) is not None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not await user_can_access_tenant(session, user, integ.tenant_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    steps: list[dict[str, Any]] = []
+    overall_ok = True
+
+    oauth_step: dict[str, Any] = {"id": "oauth", "label": "Daraja login (OAuth)"}
+    try:
+        creds = await load_creds(session, integ.id)
+        token, expires_in = await get_access_token_meta(
+            creds["consumer_key"],
+            creds["consumer_secret"],
+            integ.environment,  # type: ignore[arg-type]
+            session=session,
+            tenant_id=integ.tenant_id,
+            integration_id=integ.id,
+            skip_cache=True,
+        )
+        oauth_step.update(
+            {
+                "ok": True,
+                "source": "daraja",
+                "token_redacted": redact_token(token),
+                "expires_in": expires_in,
+                "environment": integ.environment,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        overall_ok = False
+        oauth_step.update(
+            {
+                "ok": False,
+                "source": "daraja",
+                "error": str(exc)[:400],
+                "hint": "Credentials or Daraja OAuth failed — not NetPay business logic.",
+            }
+        )
+    steps.append(oauth_step)
+
+    urls = integration_callback_urls(integ.public_id)
+    steps.append(
+        {
+            "id": "urls",
+            "label": "Callback URLs NetPay would send to Daraja",
+            "ok": True,
+            "source": "netpay",
+            "urls": urls,
+            "edge_base": settings.edge_public_base_url.rstrip("/"),
+        }
+    )
+
+    edge = await get_edge_connection_status(session)
+    edge_ok = edge.get("status") in ("connected", "quiet", "never")
+    if edge.get("status") == "errors":
+        overall_ok = False
+        edge_ok = False
+    steps.append(
+        {
+            "id": "edge_inbound",
+            "label": "Edge → NetPay (recent inbound)",
+            "ok": edge_ok,
+            "source": "netpay",
+            "edge": edge,
+            "hint": edge.get("label"),
+        }
+    )
+
+    probe: dict[str, Any] = {"id": "edge_http", "label": "HTTP reach edge public base", "source": "network"}
+    try:
+        base = settings.edge_public_base_url.rstrip("/")
+        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+            res = await client.get(base)
+        probe.update({"ok": res.status_code < 500, "status_code": res.status_code, "url": base})
+        if res.status_code >= 500:
+            overall_ok = False
+    except Exception as exc:  # noqa: BLE001
+        overall_ok = False
+        probe.update({"ok": False, "error": str(exc)[:300], "url": settings.edge_public_base_url})
+    steps.append(probe)
+
+    try:
+        await publish_notification(
+            title="Path check",
+            body=f"Live channel OK for shortcode {integ.shortcode}. If you see this toast, NetPay → browser works.",
+            level="success" if overall_ok else "info",
+            tenant_id=integ.tenant_id,
+            intent_id=None,
+            href=f"/integrations/{integ.id}",
+            status="path_check",
+        )
+        steps.append(
+            {
+                "id": "live_toast",
+                "label": "Live notification to this session",
+                "ok": True,
+                "source": "netpay",
+                "hint": "You should see a toast now. If not, WebSocket may be offline.",
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        overall_ok = False
+        steps.append({"id": "live_toast", "label": "Live notification", "ok": False, "source": "netpay", "error": str(exc)[:200]})
+
+    logger.info("path-check integration={} overall_ok={}", integration_id, overall_ok)
+    return {
+        "ok": overall_ok,
+        "message": (
+            "NetPay-side checks look healthy. Daraja registerurl can still fail when sandbox is down."
+            if overall_ok
+            else "One or more checks failed — see steps for source (netpay vs daraja vs network)."
+        ),
+        "steps": steps,
+        "how_to_read": {
+            "netpay": "Our validation or infrastructure",
+            "daraja": "Safaricom OAuth or registerurl response",
+            "network": "Transport/DNS/TLS to edge or Safaricom",
+        },
+    }
 
 @router.post("/{integration_id}/disconnect", response_model=dict)
 async def disconnect_urls(

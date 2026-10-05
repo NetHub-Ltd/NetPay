@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../auth/authState'
 import { NotificationBell } from './NotificationBell'
 import { LiveProvider } from '../hooks/useWebSocket'
+import { useLiveStatus } from '../hooks/liveEvents'
 import { ToastHost } from './ToastHost'
 import { Button } from './primitives'
 
@@ -37,6 +38,23 @@ function displayLabel(user: {
   const name = (user.full_name || user.display_name || '').trim()
   if (name) return name.split(/\s+/)[0]
   return user.email?.split('@')[0] || 'Account'
+}
+
+function LiveIndicator() {
+  const { connected } = useLiveStatus()
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+        connected
+          ? 'border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--accent)]'
+          : 'border-[var(--border)] bg-[var(--panel-2)] text-[var(--muted)]'
+      }`}
+      title={connected ? 'Live updates connected' : 'Live updates offline'}
+    >
+      <span className={`size-1.5 rounded-full ${connected ? 'bg-[var(--accent)]' : 'bg-[var(--muted)]'}`} aria-hidden />
+      {connected ? 'Live' : 'Offline'}
+    </span>
+  )
 }
 
 export function Layout() {
@@ -120,7 +138,8 @@ export function Layout() {
                 <Plus size={16} strokeWidth={2} aria-hidden />
                 <span className="hidden sm:inline">New payment</span>
               </Link>
-              <NotificationBell />
+              <LiveIndicator />
+            <NotificationBell />
               <div className="hidden items-center gap-2 md:flex" title={user?.email || ''}>
                 <span className="text-xs font-medium text-[var(--text)]">{shortName}</span>
                 {isAdmin && (
