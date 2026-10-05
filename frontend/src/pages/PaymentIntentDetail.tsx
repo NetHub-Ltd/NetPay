@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { emitNotification, subscribeLiveMessages } from '../hooks/liveEvents'
 import { api, ApiError, type PaymentIntent } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatKes, statusHint } from '../components/statusUtils'
@@ -98,8 +99,32 @@ export function PaymentIntentDetail() {
   const [showTech, setShowTech] = useState(false)
 
   const load = useCallback(async () => {
+    if (!id) return null
     try {
-      setItem(await api.get<PaymentIntent>(`/v1/payment-intents/${id}`))
+      const next = await api.get<PaymentIntent>(`/v1/payment-intents/${id}`)
+      setItem((prev) => {
+        if (prev && prev.status !== next.status) {
+          const terminal = next.status === 'succeeded' || next.status === 'failed' || next.status === 'expired'
+          if (terminal) {
+            emitNotification({
+              id: `local-${next.id}-${next.status}`,
+              title:
+                next.status === 'succeeded'
+                  ? 'Payment successful'
+                  : next.status === 'expired'
+                    ? 'Payment expired'
+                    : 'Payment failed',
+              body: `${formatKes(next.amount_minor, next.amount, next.currency)} · ${next.phone || ''}`.trim(),
+              level: next.status === 'succeeded' ? 'success' : 'error',
+              href: `/intents/${next.id}`,
+              status: next.status,
+              intent_id: next.id,
+              ts: new Date().toISOString(),
+            })
+          }
+        }
+        return next
+      })
       try {
         setLedger(await api.get<LedgerRow[]>(`/v1/payment-intents/${id}/ledger`))
       } catch {
@@ -110,14 +135,66 @@ export function PaymentIntentDetail() {
       } catch {
         setTimeline(null)
       }
+      setError(null)
+      return next
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Not found')
+      return null
     }
   }, [id])
 
+  // Initial load
   useEffect(() => {
     void Promise.resolve().then(load)
   }, [load])
+
+  // Live bus: any payment.update for this intent → reload
+  useEffect(() => {
+    if (!id) return
+    return subscribeLiveMessages((m) => {
+      const payload = m.payload || {}
+      const intentId = String(payload.intent_id || '')
+      if (m.type === 'payment.update' || m.type === 'notification') {
+        if (!intentId || intentId === id) void load()
+      }
+    })
+  }, [id, load])
+
+  const status = item?.status
+  const checkoutId = item?.provider_checkout_id
+
+  // Poll while waiting for customer / network (STK ResponseCode 0 is not "paid")
+  useEffect(() => {
+    const waiting = status === 'created' || status === 'provider_requested'
+    if (!waiting) return
+    const poll = window.setInterval(() => {
+      void load()
+    }, 4000)
+    return () => window.clearInterval(poll)
+  }, [status, load])
+
+  // Periodically ask Daraja STK query while still processing (callback may be delayed)
+  useEffect(() => {
+    if (!checkoutId || !id) return
+    const waiting = status === 'created' || status === 'provider_requested'
+    if (!waiting) return
+    let cancelled = false
+    const tick = async () => {
+      try {
+        await api.post(`/v1/payment-intents/${id}/query-provider`, {})
+        if (!cancelled) await load()
+      } catch {
+        /* keep polling; network may be flaky */
+      }
+    }
+    const first = window.setTimeout(() => void tick(), 8000)
+    const every = window.setInterval(() => void tick(), 20000)
+    return () => {
+      cancelled = true
+      window.clearTimeout(first)
+      window.clearInterval(every)
+    }
+  }, [status, checkoutId, id, load])
 
   async function queryNetwork() {
     setBusy(true)
@@ -182,9 +259,17 @@ export function PaymentIntentDetail() {
       )}
       {msg && <div className={successAlert} role="status">{msg}</div>}
       {hint && !item.failure_reason && (
-        <p className="m-0 text-sm text-[var(--muted)]">
-          {hint}
-        </p>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 text-sm shadow-[var(--shadow-sm)]">
+          <p className="m-0 font-medium text-[var(--text)]">{hint}</p>
+          {(item.status === 'created' || item.status === 'provider_requested') && (
+            <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
+              This page updates automatically (live + poll). The STK reply{' '}
+              <em>Success. Request accepted for processing</em> only means the phone prompt was accepted — not that
+              money moved. Status becomes Paid/Failed after the customer responds, a callback arrives, or you use{' '}
+              <strong>Check with network</strong>.
+            </p>
+          )}
+        </div>
       )}
 
       <div className="grid items-start gap-4 lg:grid-cols-[1.4fr_1fr]">
