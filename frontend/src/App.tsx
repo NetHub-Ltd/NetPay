@@ -10,6 +10,7 @@ import { Tenants } from './pages/Tenants'
 import { TenantDetail } from './pages/TenantDetail'
 import { Integrations } from './pages/Integrations'
 import { IntegrationDetail } from './pages/IntegrationDetail'
+import { IntegrationCreate } from './pages/IntegrationCreate'
 import { Webhooks } from './pages/Webhooks'
 import { PaymentIntents } from './pages/PaymentIntents'
 import { Docs } from './pages/Docs'
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="tenants" element={<Tenants />} />
         <Route path="tenants/:id" element={<TenantDetail />} />
         <Route path="integrations" element={<Integrations />} />
+        <Route path="integrations/new" element={<IntegrationCreate />} />
         <Route path="integrations/:id" element={<IntegrationDetail />} />
         <Route path="webhooks" element={<Webhooks />} />
         <Route path="intents" element={<PaymentIntents />} />

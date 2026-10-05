@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Landmark, Plus } from 'lucide-react'
 import { api, ApiError, type Integration, type Tenant } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
@@ -14,12 +14,12 @@ const selectClass =
 
 export function TenantDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [shortcodes, setShortcodes] = useState<Integration[]>([])
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
-  const [scOpen, setScOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState({
     name: '',
@@ -27,14 +27,6 @@ export function TenantDetail() {
     email: '',
     phone_number: '',
     status: 'active' as 'active' | 'inactive',
-  })
-  const [scForm, setScForm] = useState({
-    shortcode: '',
-    type: 'paybill',
-    environment: 'sandbox',
-    consumer_key: '',
-    consumer_secret: '',
-    passkey: '',
   })
 
   const load = useCallback(async () => {
@@ -113,35 +105,6 @@ export function TenantDetail() {
     }
   }
 
-  async function onCreateShortcode(e: FormEvent) {
-    e.preventDefault()
-    if (!id) return
-    setBusy(true)
-    setError(null)
-    try {
-      const created = await api.post<Integration>('/v1/integrations', {
-        tenant_id: id,
-        ...scForm,
-      })
-      setScOpen(false)
-      setScForm({
-        shortcode: '',
-        type: 'paybill',
-        environment: 'sandbox',
-        consumer_key: '',
-        consumer_secret: '',
-        passkey: '',
-      })
-      setMsg('Shortcode saved. Connect M-Pesa next so results reach NetPay.')
-      await load()
-      if (created?.id) window.location.assign(`/integrations/${created.id}`)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Could not save shortcode')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function onRetireSc(sc: Integration) {
     if (!window.confirm(`Retire shortcode ${sc.shortcode}?`)) return
     setBusy(true)
@@ -213,7 +176,9 @@ export function TenantDetail() {
             leftIcon={<Plus size={16} />}
             disabled={tenant.status !== 'active'}
             title={tenant.status !== 'active' ? 'Activate the business first' : undefined}
-            onClick={() => setScOpen(true)}
+            onClick={() => {
+              navigate(`/integrations/new?tenant_id=${tenant.id}`)
+            }}
           >
             Add shortcode
           </Button>
@@ -225,7 +190,12 @@ export function TenantDetail() {
             hint="Add a paybill or till. Credentials are verified with Safaricom before saving."
             action={
               tenant.status === 'active' ? (
-                <Button leftIcon={<Plus size={16} />} onClick={() => setScOpen(true)}>
+                <Button
+                  leftIcon={<Plus size={16} />}
+                  onClick={() => {
+                    navigate(`/integrations/new?tenant_id=${tenant.id}`)
+                  }}
+                >
                   Add shortcode
                 </Button>
               ) : undefined
@@ -319,50 +289,6 @@ export function TenantDetail() {
               <option value="inactive">Inactive</option>
             </select>
           </label>
-        </form>
-      </Modal>
-
-      <Modal
-        open={scOpen}
-        title="Add shortcode"
-        onClose={() => !busy && setScOpen(false)}
-        footer={
-          <>
-            <Button variant="secondary" disabled={busy} onClick={() => setScOpen(false)}>
-              Cancel
-            </Button>
-            <Button form="np-sc-create" type="submit" loading={busy}>
-              Save shortcode
-            </Button>
-          </>
-        }
-      >
-        <p className="mb-3 mt-0 text-xs text-[var(--muted)]">
-          Pinned to <strong>{tenant.name}</strong>. Keys are verified with Safaricom before saving.
-        </p>
-        <form id="np-sc-create" className="flex flex-col gap-3" onSubmit={(e) => void onCreateShortcode(e)}>
-          <Input label="Shortcode" required value={scForm.shortcode} onChange={(e) => setScForm({ ...scForm, shortcode: e.target.value })} />
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Type</span>
-            <select className={selectClass} value={scForm.type} onChange={(e) => setScForm({ ...scForm, type: e.target.value })}>
-              <option value="paybill">Paybill</option>
-              <option value="till">Till</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Environment</span>
-            <select
-              className={selectClass}
-              value={scForm.environment}
-              onChange={(e) => setScForm({ ...scForm, environment: e.target.value })}
-            >
-              <option value="sandbox">Test (sandbox)</option>
-              <option value="production">Live</option>
-            </select>
-          </label>
-          <Input label="Consumer key" required value={scForm.consumer_key} onChange={(e) => setScForm({ ...scForm, consumer_key: e.target.value })} autoComplete="off" />
-          <Input label="Consumer secret" required type="password" value={scForm.consumer_secret} onChange={(e) => setScForm({ ...scForm, consumer_secret: e.target.value })} autoComplete="off" />
-          <Input label="Passkey" required type="password" value={scForm.passkey} onChange={(e) => setScForm({ ...scForm, passkey: e.target.value })} autoComplete="off" />
         </form>
       </Modal>
     </div>
