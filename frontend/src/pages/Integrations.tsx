@@ -1,11 +1,11 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Landmark, Plus } from 'lucide-react'
 import { api, ApiError, type Integration, type Tenant } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
 import { StatusBadge } from '../components/StatusBadge'
-import { Button, Input, Modal } from '../components/primitives'
+import { Button } from '../components/primitives'
 import { mono, table, tableWrap } from '../components/ui'
 
 const selectClass =
@@ -18,20 +18,9 @@ export function Integrations() {
   const [items, setItems] = useState<Integration[]>([])
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const selectedTenant = params.get('tenant_id') || ''
-
-  const [form, setForm] = useState({
-    tenant_id: selectedTenant,
-    shortcode: '',
-    type: 'paybill',
-    environment: 'sandbox',
-    consumer_key: '',
-    consumer_secret: '',
-    passkey: '',
-  })
 
   const activeBusinesses = useMemo(
     () => businesses.filter((b) => b.status === 'active'),
@@ -46,10 +35,6 @@ export function Integrations() {
       const path = tid ? `/v1/integrations?tenant_id=${tid}` : '/v1/integrations'
       setItems(await api.get<Integration[]>(path))
       setError(null)
-      setForm((f) => ({
-        ...f,
-        tenant_id: tid || f.tenant_id || tenants.find((t) => t.status === 'active')?.id || '',
-      }))
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Could not load shortcodes')
     }
@@ -64,36 +49,6 @@ export function Integrations() {
     if (tenantId) next.set('tenant_id', tenantId)
     else next.delete('tenant_id')
     setParams(next)
-  }
-
-  async function onCreate(e: FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
-    setMsg(null)
-    if (!form.tenant_id) {
-      setError('Choose a business for this shortcode.')
-      setBusy(false)
-      return
-    }
-    try {
-      const created = await api.post<Integration>('/v1/integrations', { ...form })
-      setShowForm(false)
-      setMsg('Shortcode saved. Open it to connect M-Pesa.')
-      setForm((f) => ({
-        ...f,
-        shortcode: '',
-        consumer_key: '',
-        consumer_secret: '',
-        passkey: '',
-      }))
-      await load()
-      if (created?.id) navigate(`/integrations/${created.id}`)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Could not save shortcode')
-    } finally {
-      setBusy(false)
-    }
   }
 
   async function onRetire(id: string, shortcode: string) {
@@ -123,8 +78,8 @@ export function Integrations() {
             disabled={activeBusinesses.length === 0}
             title={activeBusinesses.length === 0 ? 'Create an active business first' : undefined}
             onClick={() => {
-              setError(null)
-              setShowForm(true)
+              const q = selectedTenant ? `?tenant_id=${selectedTenant}` : ''
+              navigate(`/integrations/new${q}`)
             }}
           >
             Add shortcode
@@ -178,7 +133,13 @@ export function Integrations() {
           hint="Add a shortcode and pin it to a business. Credentials are verified before save."
           action={
             activeBusinesses.length > 0 ? (
-              <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
+              <Button
+                leftIcon={<Plus size={16} />}
+                onClick={() => {
+                  const q = selectedTenant ? `?tenant_id=${selectedTenant}` : ''
+                  navigate(`/integrations/new${q}`)
+                }}
+              >
                 Add shortcode
               </Button>
             ) : (
@@ -232,69 +193,6 @@ export function Integrations() {
           </table>
         </div>
       )}
-
-      <Modal
-        open={showForm}
-        title="Add shortcode"
-        onClose={() => !busy && setShowForm(false)}
-        footer={
-          <>
-            <Button variant="secondary" disabled={busy} onClick={() => setShowForm(false)}>
-              Cancel
-            </Button>
-            <Button form="np-sc-mgmt" type="submit" loading={busy}>
-              Save shortcode
-            </Button>
-          </>
-        }
-      >
-        <form id="np-sc-mgmt" className="flex flex-col gap-3" onSubmit={(e) => void onCreate(e)}>
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Business</span>
-            <select
-              className={selectClass}
-              required
-              value={form.tenant_id}
-              onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}
-            >
-              <option value="">Select…</option>
-              {activeBusinesses.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Input
-            label="Shortcode"
-            required
-            value={form.shortcode}
-            onChange={(e) => setForm({ ...form, shortcode: e.target.value })}
-            placeholder="e.g. 174379"
-          />
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Type</span>
-            <select className={selectClass} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-              <option value="paybill">Paybill</option>
-              <option value="till">Till number</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Environment</span>
-            <select
-              className={selectClass}
-              value={form.environment}
-              onChange={(e) => setForm({ ...form, environment: e.target.value })}
-            >
-              <option value="sandbox">Test (sandbox)</option>
-              <option value="production">Live</option>
-            </select>
-          </label>
-          <Input label="Consumer key" required value={form.consumer_key} onChange={(e) => setForm({ ...form, consumer_key: e.target.value })} autoComplete="off" />
-          <Input label="Consumer secret" required type="password" value={form.consumer_secret} onChange={(e) => setForm({ ...form, consumer_secret: e.target.value })} autoComplete="off" />
-          <Input label="Passkey (Lipa Na M-Pesa)" required type="password" value={form.passkey} onChange={(e) => setForm({ ...form, passkey: e.target.value })} autoComplete="off" />
-        </form>
-      </Modal>
     </div>
   )
 }
