@@ -26,14 +26,23 @@ async def load_creds(session: AsyncSession, integration_id: UUID) -> dict[str, s
 async def list_integrations(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
+    tenant_id: UUID | None = None,
 ) -> list[Integration]:
+    """Optional tenant_id scopes shortcodes to one business."""
+    if tenant_id is not None:
+        if not await user_can_access_tenant(session, user, tenant_id):
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return list(
+            await integration_crud.list_active(
+                session, tenant_id=tenant_id, is_admin=False
+            )
+        )
     if user.is_admin:
         return list(
             await integration_crud.list_active(
                 session, tenant_id=None, is_admin=True
             )
         )
-    # Collect tenant ids this principal can use (primary + owned)
     from sqlmodel import col, or_, select
     from app.models.tenant import Tenant
 
@@ -48,7 +57,7 @@ async def list_integrations(
     tenant_ids = list((await session.exec(stmt)).all())
     if not tenant_ids:
         return []
-    items = []
+    items: list[Integration] = []
     for tid in tenant_ids:
         items.extend(
             await integration_crud.list_active(
@@ -80,6 +89,15 @@ async def create_integration(
 ) -> Integration:
     if not await user_can_access_tenant(session, user, body.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
+    from app.crud.tenant import tenant_crud
+    biz = await tenant_crud.get(session, body.tenant_id)
+    if not biz or getattr(biz, "deleted_at", None) is not None:
+        raise HTTPException(status_code=404, detail="Business not found")
+    if (biz.status or "").lower() != "active":
+        raise HTTPException(
+            status_code=400,
+            detail="This business is inactive. Activate it before adding shortcodes.",
+        )
 
     # Validate Daraja credentials for the chosen environment before persisting.
     try:

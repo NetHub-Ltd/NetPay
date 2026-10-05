@@ -76,6 +76,11 @@ export const api = {
         ...(init?.headers || {}),
       },
     }),
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: 'PATCH',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 
@@ -114,7 +119,10 @@ export type Tenant = {
   name: string
   slug: string
   status: string
-  created_at: string
+  category?: string | null
+  email?: string | null
+  phone_number?: string | null
+  created_at?: string
 }
 
 
@@ -139,10 +147,11 @@ export type Integration = {
   type: string
   environment: string
   status: string
+  connected?: boolean
   confirmation_url?: string | null
   validation_url?: string | null
   stk_callback_url?: string | null
-  created_at: string
+  created_at?: string
 }
 
 export type Webhook = {
