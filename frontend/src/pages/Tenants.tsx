@@ -4,9 +4,14 @@ import { Building2, Plus } from 'lucide-react'
 import { api, ApiError, type Tenant } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
+import { StatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth/authState'
 import { Button, Input, Modal } from '../components/primitives'
+import { BUSINESS_CATEGORIES } from '../lib/businessCategories'
 import { mono, table, tableWrap } from '../components/ui'
+
+const selectClass =
+  'w-full rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3.5 py-2.5 text-sm shadow-[var(--shadow-sm)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/25'
 
 export function Tenants() {
   const { establishSession } = useAuth()
@@ -15,7 +20,12 @@ export function Tenants() {
   const [msg, setMsg] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [name, setName] = useState('')
+  const [form, setForm] = useState({
+    name: '',
+    category: 'retail',
+    email: '',
+    phone_number: '',
+  })
 
   const load = useCallback(async () => {
     try {
@@ -36,8 +46,14 @@ export function Tenants() {
     setError(null)
     setMsg(null)
     try {
-      await api.post<Tenant>('/v1/tenants', { name: name.trim() })
-      setName('')
+      await api.post<Tenant>('/v1/tenants', {
+        name: form.name.trim(),
+        category: form.category || null,
+        email: form.email.trim() || null,
+        phone_number: form.phone_number.trim() || null,
+        status: 'active',
+      })
+      setForm({ name: '', category: 'retail', email: '', phone_number: '' })
       setShowForm(false)
       setMsg('Business created.')
       const token = sessionStorage.getItem('nethub_token')
@@ -56,11 +72,24 @@ export function Tenants() {
     }
   }
 
+  async function toggleStatus(t: Tenant) {
+    const next = t.status === 'active' ? 'inactive' : 'active'
+    setBusy(true)
+    try {
+      await api.patch<Tenant>(`/v1/tenants/${t.id}`, { status: next })
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : 'Could not update status')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div>
       <PageHeader
         title="Businesses"
-        description="Workspaces that own shortcodes and payment activity. You can create more than one."
+        description="Workspaces that own shortcodes and payments. Open a business to manage its shortcodes."
         actions={
           <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
             Add business
@@ -86,7 +115,7 @@ export function Tenants() {
         <EmptyState
           icon={<Building2 size={22} />}
           title="No businesses yet"
-          hint="Create a business, then add a shortcode to start collecting."
+          hint="Create a business with contact details, then add shortcodes inside it."
           action={
             <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
               Add business
@@ -99,21 +128,44 @@ export function Tenants() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Id</th>
+                <th>Category</th>
+                <th>Contact</th>
+                <th>Status</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {items.map((t) => (
                 <tr key={t.id}>
-                  <td className="font-semibold">{t.name}</td>
-                  <td className={`${mono} text-xs text-[var(--muted)]`}>{t.id}</td>
                   <td>
-                    <Link to={`/tenants/${t.id}`} className="no-underline">
-                      <Button size="sm" variant="secondary">
-                        Open
-                      </Button>
+                    <Link to={`/tenants/${t.id}`} className="font-semibold text-[var(--text)]">
+                      {t.name}
                     </Link>
+                    <div className={`${mono} text-xs text-[var(--muted)]`}>{t.slug}</div>
+                  </td>
+                  <td className="text-sm capitalize text-[var(--muted)]">
+                    {t.category || '—'}
+                  </td>
+                  <td className="text-sm text-[var(--muted)]">
+                    {[t.email, t.phone_number].filter(Boolean).join(' · ') || '—'}
+                  </td>
+                  <td>
+                    <StatusBadge value={t.status} />
+                  </td>
+                  <td>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Link to={`/tenants/${t.id}`} className="no-underline">
+                        <Button size="sm">Open</Button>
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() => void toggleStatus(t)}
+                      >
+                        {t.status === 'active' ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -137,13 +189,41 @@ export function Tenants() {
           </>
         }
       >
-        <form id="np-tenant-form" onSubmit={(e) => void onCreate(e)}>
+        <form id="np-tenant-form" className="flex flex-col gap-3" onSubmit={(e) => void onCreate(e)}>
           <Input
             label="Business name"
             required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="e.g. Acme Retail"
+          />
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-medium">Category</span>
+            <select
+              className={selectClass}
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            >
+              {BUSINESS_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Input
+            label="Email"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="billing@business.co.ke"
+          />
+          <Input
+            label="Phone"
+            type="tel"
+            value={form.phone_number}
+            onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
+            placeholder="2547…"
           />
         </form>
       </Modal>

@@ -13,7 +13,7 @@ from app.crud.tenant import tenant_crud
 from app.crud.user import user_crud
 from app.models.tenant import Tenant
 from app.schemas.principal import Principal
-from app.schemas.tenant import TenantCreate, TenantOut
+from app.schemas.tenant import TenantCreate, TenantOut, TenantUpdate
 
 router = APIRouter(prefix="/v1/tenants", tags=["tenants"])
 
@@ -29,7 +29,6 @@ async def list_tenants(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> list[Tenant]:
-    """Admins see all; others see businesses they own or are linked to."""
     if user.is_admin:
         stmt = (
             select(Tenant)
@@ -71,7 +70,6 @@ async def create_tenant(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> Tenant:
-    """Any signed-in user may create a business (multiple allowed)."""
     slug = (body.slug or _slugify(body.name)).lower()
     existing = await tenant_crud.get_by_slug(session, slug)
     if existing:
@@ -88,9 +86,12 @@ async def create_tenant(
         slug=slug,
         created_by=user.id,
         id=body.id,
+        category=(body.category or None),
+        email=(body.email or None),
+        phone_number=(body.phone_number or None),
+        status=body.status,
     )
 
-    # Ensure a local user row exists for mapping; set primary tenant if unset.
     local = await user_crud.get_active_by_id(session, user.id)
     if local is None:
         local = await user_crud.get_by_email(session, user.email)
@@ -115,11 +116,53 @@ async def create_tenant(
     return t
 
 
+@router.patch("/{tenant_id}", response_model=TenantOut)
+async def update_tenant(
+    tenant_id: UUID,
+    body: TenantUpdate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[Principal, Depends(get_current_user)],
+) -> Tenant:
+    t = await tenant_crud.get(session, tenant_id)
+    if not t or getattr(t, "deleted_at", None) is not None:
+        raise HTTPException(status_code=404, detail="Business not found")
+    if not await user_can_access_tenant(session, user, t.id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    data = body.model_dump(exclude_unset=True)
+    if not data:
+        return t
+    t = await tenant_crud.update(session, db_obj=t, obj_in=data)
+    await session.commit()
+    await session.refresh(t)
+    return t
+
+
+@router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tenant(
+    tenant_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[Principal, Depends(get_current_user)],
+) -> None:
+    """Soft-delete a business (sets deleted_at). Prefer deactivate when keeping history."""
+    t = await tenant_crud.get(session, tenant_id)
+    if not t or getattr(t, "deleted_at", None) is not None:
+        raise HTTPException(status_code=404, detail="Business not found")
+    if not await user_can_access_tenant(session, user, t.id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    from datetime import datetime, timezone
+
+    await tenant_crud.update(
+        session,
+        db_obj=t,
+        obj_in={"deleted_at": datetime.now(timezone.utc), "status": "inactive"},
+    )
+    await session.commit()
+
+
 @router.post("/self", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
 async def self_register_business(
     body: TenantCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> Tenant:
-    """Alias of POST /v1/tenants — kept for existing clients."""
     return await create_tenant(body, session, user)

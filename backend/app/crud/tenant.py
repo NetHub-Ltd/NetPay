@@ -3,17 +3,11 @@ from __future__ import annotations
 from typing import Optional, Sequence, Type
 from uuid import UUID
 
-from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.crud.base import BaseCRUD
 from app.models.tenant import Tenant
-from app.schemas.tenant import TenantCreate
-
-
-class TenantUpdate(BaseModel):
-    name: Optional[str] = None
-    status: Optional[str] = None
+from app.schemas.tenant import TenantCreate, TenantUpdate
 
 
 class TenantCRUD(BaseCRUD[Tenant, TenantCreate, TenantUpdate]):
@@ -38,8 +32,20 @@ class TenantCRUD(BaseCRUD[Tenant, TenantCreate, TenantUpdate]):
         slug: str,
         created_by: UUID,
         id: Optional[UUID] = None,
+        category: Optional[str] = None,
+        email: Optional[str] = None,
+        phone_number: Optional[str] = None,
+        status: str = "active",
     ) -> Tenant:
-        payload = {"name": name, "slug": slug, "created_by": created_by}
+        payload = {
+            "name": name,
+            "slug": slug,
+            "created_by": created_by,
+            "status": status,
+            "category": category,
+            "email": email,
+            "phone_number": phone_number,
+        }
         if id is not None:
             payload["id"] = id
         return await self.create(db, obj_in=payload)
