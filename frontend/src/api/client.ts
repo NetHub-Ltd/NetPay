@@ -22,6 +22,11 @@ export function setIdToken(token: string | null) {
 export function clearSessionTokens() {
   sessionStorage.removeItem(TOKEN_KEY)
   sessionStorage.removeItem(ID_TOKEN_KEY)
+  try {
+    sessionStorage.removeItem('netpay_active_tenant_id')
+  } catch {
+    /* ignore */
+  }
 }
 
 export class ApiError extends Error {

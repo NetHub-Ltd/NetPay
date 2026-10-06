@@ -10,6 +10,7 @@ import {
 import { api, type Tenant } from '../api/client'
 import { useAuth } from '../auth/authState'
 
+/** Set only when the user explicitly chooses a business (or resumes a stored choice). */
 const STORAGE_KEY = 'netpay_active_tenant_id'
 
 type WorkspaceCtx = {
@@ -18,6 +19,7 @@ type WorkspaceCtx = {
   activeTenantId: string | null
   activeBusiness: Tenant | null
   setActiveTenantId: (id: string | null) => void
+  clearActiveTenant: () => void
   refreshBusinesses: () => Promise<Tenant[]>
   needsSelection: boolean
 }
@@ -41,19 +43,20 @@ function writeStored(id: string | null) {
   }
 }
 
-function pickActive(list: Tenant[], userTenantId: string | null | undefined, prev: string | null): string | null {
+/** Export for logout — clear workspace with auth tokens. */
+export function clearStoredWorkspace() {
+  writeStored(null)
+}
+
+/**
+ * Only keep a previously explicit selection if it still exists.
+ * Do NOT auto-pick single business or NetHub primary tenant on login.
+ */
+function restoreIfValid(list: Tenant[], prev: string | null): string | null {
   const stored = prev || readStored()
   if (stored && list.some((b) => b.id === stored)) {
     writeStored(stored)
     return stored
-  }
-  if (userTenantId && list.some((b) => b.id === userTenantId)) {
-    writeStored(userTenantId)
-    return userTenantId
-  }
-  if (list.length === 1) {
-    writeStored(list[0].id)
-    return list[0].id
   }
   writeStored(null)
   return null
@@ -74,7 +77,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     try {
       const list = await api.get<Tenant[]>('/v1/tenants')
       setBusinesses(list)
-      setActiveId((prev) => pickActive(list, user.tenant_id, prev))
+      setActiveId((prev) => restoreIfValid(list, prev))
       return list
     } catch {
       setBusinesses([])
@@ -92,6 +95,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setBusinesses([])
           setActiveId(null)
+          writeStored(null)
           setLoading(false)
         }
         return
@@ -108,6 +112,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setActiveId(id)
   }, [])
 
+  const clearActiveTenant = useCallback(() => {
+    writeStored(null)
+    setActiveId(null)
+  }, [])
+
   const activeBusiness = useMemo(
     () => businesses.find((b) => b.id === activeTenantId) || null,
     [businesses, activeTenantId],
@@ -122,6 +131,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       activeTenantId,
       activeBusiness,
       setActiveTenantId,
+      clearActiveTenant,
       refreshBusinesses,
       needsSelection,
     }),
@@ -132,6 +142,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       activeTenantId,
       activeBusiness,
       setActiveTenantId,
+      clearActiveTenant,
       refreshBusinesses,
       needsSelection,
     ],
@@ -139,4 +150,3 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>
 }
-

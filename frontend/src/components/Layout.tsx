@@ -2,7 +2,6 @@ import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
   History,
   AlertTriangle,
-  Building2,
   CircleHelp,
   CreditCard,
   Home,
@@ -15,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../auth/authState'
 import { useWorkspace } from '../workspace/useWorkspace'
+import { useNavigate } from 'react-router-dom'
 import { NotificationBell } from './NotificationBell'
 import { LiveProvider } from '../hooks/useWebSocket'
 import { useLiveStatus } from '../hooks/liveEvents'
@@ -60,7 +60,8 @@ function LiveIndicator() {
 
 export function Layout() {
   const { user, logout, isAdmin } = useAuth()
-  const { businesses, activeBusiness, activeTenantId, setActiveTenantId } = useWorkspace()
+  const navigate = useNavigate()
+  const { businesses, activeBusiness, activeTenantId, setActiveTenantId, clearActiveTenant } = useWorkspace()
   const shortName = displayLabel(user)
   const tenantLabel = activeBusiness?.name || user?.tenant_name?.trim() || null
 
@@ -102,6 +103,16 @@ export function Layout() {
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                className="mt-1 text-left text-xs font-medium text-[var(--accent)] hover:underline"
+                onClick={() => {
+                  clearActiveTenant()
+                  navigate('/select-business?switch=1')
+                }}
+              >
+                Switch or manage businesses
+              </button>
             </label>
           )}
 
@@ -120,9 +131,6 @@ export function Layout() {
             </NavLink>
             <NavLink to="/oauth-clients" className={linkClass}>
               <KeyRound {...ico} /> Connect your system
-            </NavLink>
-            <NavLink to="/tenants" className={linkClass}>
-              <Building2 {...ico} /> Manage businesses
             </NavLink>
             <NavLink to="/docs" className={linkClass}>
               <CircleHelp {...ico} /> Help

@@ -10,7 +10,7 @@ export function Login() {
   const [busy, setBusy] = useState(false)
 
   if (loading) return <PageLoader label="Loading…" />
-  if (user) return <Navigate to="/dashboard" replace />
+  if (user) return <Navigate to="/select-business" replace />
 
   async function onSignIn() {
     setBusy(true)
