@@ -47,12 +47,20 @@ def _daraja_error_message(exc: Exception) -> str:
 async def list_intents(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
+    tenant_id: UUID | None = None,
 ) -> list[PaymentIntent]:
+    """Optional tenant_id scopes to the active business workspace."""
+    scope = tenant_id
+    if scope is not None:
+        if not await user_can_access_tenant(session, user, scope):
+            raise HTTPException(status_code=403, detail="Forbidden")
+    elif not user.is_admin:
+        scope = user.tenant_id
     return list(
         await payment_intent_crud.list_for_user(
             session,
-            tenant_id=user.tenant_id,
-            is_admin=user.role == "admin",
+            tenant_id=scope,
+            is_admin=user.is_admin and scope is None,
         )
     )
 

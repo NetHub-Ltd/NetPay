@@ -160,41 +160,6 @@ export function PaymentIntentDetail() {
     })
   }, [id, load])
 
-  const status = item?.status
-  const checkoutId = item?.provider_checkout_id
-
-  // Poll while waiting for customer / network (STK ResponseCode 0 is not "paid")
-  useEffect(() => {
-    const waiting = status === 'created' || status === 'provider_requested'
-    if (!waiting) return
-    const poll = window.setInterval(() => {
-      void load()
-    }, 4000)
-    return () => window.clearInterval(poll)
-  }, [status, load])
-
-  // Periodically ask Daraja STK query while still processing (callback may be delayed)
-  useEffect(() => {
-    if (!checkoutId || !id) return
-    const waiting = status === 'created' || status === 'provider_requested'
-    if (!waiting) return
-    let cancelled = false
-    const tick = async () => {
-      try {
-        await api.post(`/v1/payment-intents/${id}/query-provider`, {})
-        if (!cancelled) await load()
-      } catch {
-        /* keep polling; network may be flaky */
-      }
-    }
-    const first = window.setTimeout(() => void tick(), 8000)
-    const every = window.setInterval(() => void tick(), 20000)
-    return () => {
-      cancelled = true
-      window.clearTimeout(first)
-      window.clearInterval(every)
-    }
-  }, [status, checkoutId, id, load])
 
   async function queryNetwork() {
     setBusy(true)
@@ -263,7 +228,7 @@ export function PaymentIntentDetail() {
           <p className="m-0 font-medium text-[var(--text)]">{hint}</p>
           {(item.status === 'created' || item.status === 'provider_requested') && (
             <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
-              This page updates automatically (live + poll). The STK reply{' '}
+              This page updates live when the network reports a result. The STK reply{' '}
               <em>Success. Request accepted for processing</em> only means the phone prompt was accepted — not that
               money moved. Status becomes Paid/Failed after the customer responds, a callback arrives, or you use{' '}
               <strong>Check with network</strong>.

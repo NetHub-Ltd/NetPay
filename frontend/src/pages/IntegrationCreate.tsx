@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useWorkspace } from '../workspace/useWorkspace'
 import { api, ApiError, type Integration, type Tenant } from '../api/client'
 import { PageHeader } from '../components/PageHeader'
 import { Button, Input } from '../components/primitives'
@@ -12,7 +13,8 @@ const fieldGrid = 'grid gap-4 sm:grid-cols-2'
 export function IntegrationCreate() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const presetTenant = params.get('tenant_id') || ''
+  const { activeTenantId } = useWorkspace()
+  const presetTenant = params.get('tenant_id') || activeTenantId || ''
 
   const [businesses, setBusinesses] = useState<Tenant[]>([])
   const [error, setError] = useState<string | null>(null)

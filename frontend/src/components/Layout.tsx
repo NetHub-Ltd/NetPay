@@ -14,6 +14,7 @@ import {
   Webhook,
 } from 'lucide-react'
 import { useAuth } from '../auth/authState'
+import { useWorkspace } from '../workspace/useWorkspace'
 import { NotificationBell } from './NotificationBell'
 import { LiveProvider } from '../hooks/useWebSocket'
 import { useLiveStatus } from '../hooks/liveEvents'
@@ -59,8 +60,9 @@ function LiveIndicator() {
 
 export function Layout() {
   const { user, logout, isAdmin } = useAuth()
+  const { businesses, activeBusiness, activeTenantId, setActiveTenantId } = useWorkspace()
   const shortName = displayLabel(user)
-  const tenantLabel = user?.tenant_name?.trim() || null
+  const tenantLabel = activeBusiness?.name || user?.tenant_name?.trim() || null
 
   return (
     <LiveProvider>
@@ -81,6 +83,27 @@ export function Layout() {
               </div>
             </div>
           </Link>
+          {businesses.length > 0 && (
+            <label className="mt-3 flex flex-col gap-1 text-xs">
+              <span className="font-medium text-[var(--muted)]">Working in</span>
+              <select
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2.5 py-2 text-sm text-[var(--text)] shadow-[var(--shadow-sm)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/25"
+                value={activeTenantId || ''}
+                onChange={(e) => {
+                  const id = e.target.value
+                  if (id) setActiveTenantId(id)
+                }}
+                aria-label="Switch business"
+              >
+                {businesses.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                    {b.status !== 'active' ? ' (inactive)' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto py-2" aria-label="Main">
             <NavLink to="/dashboard" className={linkClass} end>
