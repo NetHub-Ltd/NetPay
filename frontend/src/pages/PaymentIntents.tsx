@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CreditCard, Plus } from 'lucide-react'
 import { subscribeLiveMessages } from '../hooks/liveEvents'
+import { useWorkspace } from '../workspace/useWorkspace'
 import { api, ApiError, type Integration, type PaymentIntent } from '../api/client'
 import { DataTable } from '../components/DataTable'
 import { EmptyState } from '../components/EmptyState'
@@ -13,6 +14,7 @@ import { mono } from '../components/ui'
 
 export function PaymentIntents() {
   const navigate = useNavigate()
+  const { activeTenantId } = useWorkspace()
   const [items, setItems] = useState<PaymentIntent[]>([])
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,8 +35,16 @@ export function PaymentIntents() {
   const load = useCallback(async () => {
     try {
       const [payments, integ] = await Promise.all([
-        api.get<PaymentIntent[]>('/v1/payment-intents'),
-        api.get<Integration[]>('/v1/integrations'),
+        api.get<PaymentIntent[]>(
+          activeTenantId
+            ? `/v1/payment-intents?tenant_id=${activeTenantId}`
+            : '/v1/payment-intents',
+        ),
+        api.get<Integration[]>(
+          activeTenantId
+            ? `/v1/integrations?tenant_id=${activeTenantId}`
+            : '/v1/integrations',
+        ),
       ])
       setItems(payments)
       setIntegrations(integ)
@@ -49,7 +59,7 @@ export function PaymentIntents() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [activeTenantId])
 
   useEffect(() => {
     void Promise.resolve().then(load)

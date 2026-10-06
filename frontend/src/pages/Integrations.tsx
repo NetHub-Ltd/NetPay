@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useWorkspace } from '../workspace/useWorkspace'
 import { Landmark, Plus } from 'lucide-react'
 import { api, ApiError, type Integration, type Tenant } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
@@ -13,6 +14,7 @@ const selectClass =
 
 export function Integrations() {
   const navigate = useNavigate()
+  const { activeTenantId } = useWorkspace()
   const [params, setParams] = useSearchParams()
   const [businesses, setBusinesses] = useState<Tenant[]>([])
   const [items, setItems] = useState<Integration[]>([])
@@ -20,7 +22,7 @@ export function Integrations() {
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const selectedTenant = params.get('tenant_id') || ''
+  const selectedTenant = params.get('tenant_id') || activeTenantId || ''
 
   const activeBusinesses = useMemo(
     () => businesses.filter((b) => b.status === 'active'),
@@ -78,8 +80,7 @@ export function Integrations() {
             disabled={activeBusinesses.length === 0}
             title={activeBusinesses.length === 0 ? 'Create an active business first' : undefined}
             onClick={() => {
-              const q = selectedTenant ? `?tenant_id=${selectedTenant}` : ''
-              navigate(`/integrations/new${q}`)
+              navigate(`/integrations/new?tenant_id=${selectedTenant || activeTenantId || ''}`)
             }}
           >
             Add shortcode
@@ -136,8 +137,7 @@ export function Integrations() {
               <Button
                 leftIcon={<Plus size={16} />}
                 onClick={() => {
-                  const q = selectedTenant ? `?tenant_id=${selectedTenant}` : ''
-                  navigate(`/integrations/new${q}`)
+                  navigate(`/integrations/new?tenant_id=${selectedTenant || activeTenantId || ''}`)
                 }}
               >
                 Add shortcode
