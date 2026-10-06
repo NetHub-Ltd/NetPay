@@ -48,7 +48,7 @@ const NEXT_COPY: Record<
     title: 'Create your business',
     detail: 'Free tier includes one business workspace.',
     cta: 'Create business',
-    to: '/tenants?self=1',
+    to: '/select-business',
   },
   add_shortcode: {
     title: 'Add a shortcode',
@@ -136,7 +136,7 @@ export function Home() {
 
   const heroCta =
     step === 'create_business'
-      ? { to: '/tenants?self=1', label: 'Create business', icon: Landmark }
+      ? { to: '/select-business', label: 'Create business', icon: Landmark }
       : step === 'add_shortcode'
         ? { to: '/integrations', label: 'Add shortcode', icon: Landmark }
         : step === 'connect_mpesa'

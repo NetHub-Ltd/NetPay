@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async () => {
     await ensureOidcConfig()
-    await beginLogin('/dashboard')
+    await beginLogin('/select-business')
   }, [])
 
   const logout = useCallback(() => {
