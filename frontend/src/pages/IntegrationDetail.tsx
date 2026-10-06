@@ -131,8 +131,8 @@ export function IntegrationDetail() {
     if (!item) return
     const confirmed = window.confirm(
       `Disconnect shortcode ${item.shortcode} in NetPay?\n\n` +
-        `This clears NetPay's "connected" state. Daraja has no public unregister API — ` +
-        `in sandbox you can re-register; in production Safaricom may still use previous URLs until they clear them.`,
+        `This clears NetPay's connected state for this shortcode. ` +
+        `You can reconnect later. In live mode Safaricom may keep old callback URLs until they are updated.`,
     )
     if (!confirmed) return
     setBusy(true)
@@ -223,7 +223,7 @@ export function IntegrationDetail() {
       <div className={card}>
         <h2 className="mb-2 text-base font-semibold">Connect payment updates</h2>
         <p className="mb-4 text-sm text-[var(--muted)]">
-          Registers Confirmation and Validation URLs with Daraja (C2B registerurl) so paybill/till results
+          Connects this shortcode so paybill and till results
           reach NetPay. You will be asked to confirm. Production URLs must be HTTPS and publicly reachable.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -231,7 +231,7 @@ export function IntegrationDetail() {
             {busy
               ? 'Working…'
               : item.connected || item.status === 'connected'
-                ? 'Re-register with Daraja'
+                ? 'Reconnect to M-Pesa'
                 : 'Connect M-Pesa'}
           </Button>
           {(item.connected || item.status === 'connected') && (
@@ -251,8 +251,7 @@ export function IntegrationDetail() {
           </Button>
         </div>
         <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
-          Path check verifies OAuth, callback URLs, edge reachability, and sends a live toast — without depending on
-          Daraja registerurl uptime.
+          Path check verifies network login, callback URLs, edge reachability, and sends a live toast — without depending on M-Pesa registration uptime.
         </p>
         {pathCheck && (
           <div className="mt-3 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-xs">
@@ -279,7 +278,7 @@ export function IntegrationDetail() {
         {lastOauth && (
 
           <p className="mb-0 mt-3 text-xs text-[var(--muted)]">
-            Last OAuth check: token {lastOauth.token_redacted}
+            Last network login check: token {lastOauth.token_redacted}
             {lastOauth.expires_in != null && lastOauth.expires_in > 0
               ? ` · expires_in ${lastOauth.expires_in}s`
               : ''}

@@ -1,56 +1,81 @@
-import { type FormEvent, useEffect, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { KeyRound } from 'lucide-react'
-import { api, ApiError, type Tenant } from '../api/client'
+import { api, ApiError } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
 import { useAuth } from '../auth/authState'
+import { useWorkspace } from '../workspace/useWorkspace'
 import { Button, Input, Modal } from '../components/primitives'
 import { mono } from '../components/ui'
 
-type OAuthClientOut = {
+type OAuthClientCreated = {
   client_id: string
   client_secret: string
   name: string
   tenant_id: string
 }
 
+type OAuthClientRow = {
+  client_id: string
+  name: string
+  tenant_id: string
+  is_active: boolean
+  created_at?: string | null
+}
+
 export function OAuthClients() {
   const { isAdmin } = useAuth()
-  const [params] = useSearchParams()
-  const [tenants, setTenants] = useState<Tenant[]>([])
-  const [tenantId, setTenantId] = useState(params.get('tenant_id') || '')
+  const { activeTenantId, activeBusiness } = useWorkspace()
+  const [items, setItems] = useState<OAuthClientRow[]>([])
   const [name, setName] = useState('Default API client')
-  const [created, setCreated] = useState<OAuthClientOut | null>(null)
+  const [created, setCreated] = useState<OAuthClientCreated | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!activeTenantId) return
+    setLoading(true)
+    try {
+      const rows = await api.get<OAuthClientRow[]>(
+        `/v1/oauth/clients?tenant_id=${activeTenantId}`,
+      )
+      setItems(rows)
+      setError(null)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Could not load API clients')
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
+  }, [activeTenantId])
 
   useEffect(() => {
     if (!isAdmin) return
-    api
-      .get<Tenant[]>('/v1/tenants')
-      .then((t) => {
-        setTenants(t)
-        setTenantId((current) => current || t[0]?.id || '')
-      })
-      .catch(() => {})
-  }, [isAdmin])
+    void Promise.resolve().then(load)
+  }, [isAdmin, load])
 
   if (!isAdmin) return <Navigate to="/forbidden" replace />
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()
+    if (!activeTenantId) {
+      setError('Select a business in the sidebar first.')
+      return
+    }
     setBusy(true)
     setError(null)
     setCreated(null)
     try {
-      const res = await api.post<OAuthClientOut>('/v1/oauth/clients', {
-        tenant_id: tenantId,
-        name: name.trim(),
+      const res = await api.post<OAuthClientCreated>('/v1/oauth/clients', {
+        tenant_id: activeTenantId,
+        name: name.trim() || 'API client',
       })
       setCreated(res)
       setShowForm(false)
+      await load()
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : 'Could not create API client')
     } finally {
@@ -58,14 +83,16 @@ export function OAuthClients() {
     }
   }
 
+  const biz = activeBusiness?.name || 'this business'
+
   return (
     <div>
       <PageHeader
-        title="Apps & API access"
-        description="Machine credentials for systems that call NetPay on behalf of a business (admin only)."
+        title="API keys"
+        description={`Credentials for systems that call NetPay on behalf of ${biz}. Shown once at creation — store them safely.`}
         actions={
           <Button
-            disabled={!tenantId}
+            disabled={!activeTenantId}
             onClick={() => {
               setError(null)
               setShowForm(true)
@@ -77,78 +104,90 @@ export function OAuthClients() {
       />
 
       {error && (
-        <div className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+        <div
+          className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
+          role="alert"
+        >
           {error}
         </div>
       )}
 
       {created && (
-        <div className="mb-4 rounded-xl border border-[var(--warn)]/30 bg-[var(--warn-soft)] px-4 py-3 text-sm">
-          <p className="m-0 font-semibold">Copy the secret now — it will not be shown again.</p>
-          <p className="mb-1 mt-3 text-xs text-[var(--muted)]">Client ID</p>
-          <code className={`${mono} break-all`}>{created.client_id}</code>
-          <p className="mb-1 mt-3 text-xs text-[var(--muted)]">Client secret</p>
-          <code className={`${mono} break-all`}>{created.client_secret}</code>
-          <div className="mt-3">
-            <Button size="sm" variant="secondary" onClick={() => setCreated(null)}>
-              Dismiss
-            </Button>
+        <div
+          className="mb-4 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-4 py-3 text-sm"
+          role="status"
+        >
+          <p className="m-0 font-semibold text-[var(--text)]">Client created — copy the secret now</p>
+          <p className="mb-2 mt-1 text-xs text-[var(--muted)]">
+            The secret is not shown again. Name: {created.name}
+          </p>
+          <div className="space-y-1 font-mono text-xs">
+            <div>
+              <span className="text-[var(--muted)]">client_id </span>
+              <span className={mono}>{created.client_id}</span>
+            </div>
+            <div>
+              <span className="text-[var(--muted)]">client_secret </span>
+              <span className={mono}>{created.client_secret}</span>
+            </div>
           </div>
+          <Button className="mt-3" variant="secondary" size="sm" onClick={() => setCreated(null)}>
+            Dismiss
+          </Button>
         </div>
       )}
 
-      {!tenantId && tenants.length === 0 ? (
+      {loading ? (
+        <p className="text-sm text-[var(--muted)]">Loading…</p>
+      ) : items.length === 0 ? (
         <EmptyState
           icon={<KeyRound size={22} />}
-          title="No businesses yet"
-          hint="Create a business first, then issue API credentials for it."
+          title="No API clients yet"
+          hint={`Create a client so your backend can request payments for ${biz}.`}
+          action={
+            <Button disabled={!activeTenantId} onClick={() => setShowForm(true)}>
+              Create client
+            </Button>
+          }
         />
       ) : (
-        <p className="text-sm text-[var(--muted)]">
-          Choose a business and create a client when your backend needs to call NetPay with
-          client-credentials.
-        </p>
+        <ul className="m-0 list-none space-y-2 p-0">
+          {items.map((c) => (
+            <li
+              key={c.client_id}
+              className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-[var(--shadow-sm)]"
+            >
+              <div className="font-semibold text-[var(--text)]">{c.name}</div>
+              <div className={`mt-1 text-xs text-[var(--muted)] ${mono}`}>{c.client_id}</div>
+              <div className="mt-1 text-xs text-[var(--muted)]">
+                {c.is_active ? 'Active' : 'Inactive'}
+                {c.created_at ? ` · ${new Date(c.created_at).toLocaleString()}` : ''}
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
-      <Modal
-        open={showForm}
-        title="Create API client"
-        onClose={() => !busy && setShowForm(false)}
-        footer={
-          <>
-            <Button variant="secondary" disabled={busy} onClick={() => setShowForm(false)}>
-              Cancel
-            </Button>
-            <Button form="np-oauth-form" type="submit" loading={busy} disabled={!tenantId}>
-              Create
-            </Button>
-          </>
-        }
-      >
-        <form id="np-oauth-form" className="flex flex-col gap-3" onSubmit={(e) => void onCreate(e)}>
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Business</span>
-            <select
-              className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3.5 py-2.5 text-sm"
-              required
-              value={tenantId}
-              onChange={(e) => setTenantId(e.target.value)}
-            >
-              <option value="">Select…</option>
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
+      <Modal open={showForm} onClose={() => !busy && setShowForm(false)} title="Create API client">
+        <form className="space-y-4" onSubmit={(e) => void onCreate(e)}>
+          <p className="m-0 text-sm text-[var(--muted)]">
+            Client will be created for <strong className="text-[var(--text)]">{biz}</strong>. Switch business in
+            the sidebar if you need a different one.
+          </p>
           <Input
             label="Name"
-            required
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Production backend"
           />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => setShowForm(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={busy}>
+              Create
+            </Button>
+          </div>
         </form>
       </Modal>
     </div>

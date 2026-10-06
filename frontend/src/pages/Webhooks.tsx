@@ -1,19 +1,17 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bell, Plus } from 'lucide-react'
-import { api, ApiError, type Tenant, type Webhook } from '../api/client'
+import { api, ApiError, type Webhook } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
-import { useAuth } from '../auth/authState'
+import { useWorkspace } from '../workspace/useWorkspace'
 import { Button, Input, Modal } from '../components/primitives'
 import { mono, table, tableWrap } from '../components/ui'
 
 export function Webhooks() {
-  const { isAdmin, user } = useAuth()
+  const { activeTenantId, activeBusiness } = useWorkspace()
   const [items, setItems] = useState<Webhook[]>([])
-  const [tenants, setTenants] = useState<Tenant[]>([])
-  const [selectedTenantId, setSelectedTenantId] = useState(user?.tenant_id || '')
-  const tenantId = isAdmin ? selectedTenantId : user?.tenant_id || ''
+  const tenantId = activeTenantId || ''
   const [url, setUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -32,11 +30,6 @@ export function Webhooks() {
     }
   }, [tenantId])
 
-  useEffect(() => {
-    if (isAdmin) {
-      api.get<Tenant[]>('/v1/tenants').then(setTenants).catch(() => {})
-    }
-  }, [isAdmin])
 
   useEffect(() => {
     void Promise.resolve().then(load)
@@ -90,8 +83,8 @@ export function Webhooks() {
   return (
     <div>
       <PageHeader
-        title="Notifications"
-        description="Tell your own app when a payment succeeds, fails, or is still waiting."
+        title="Payment alerts"
+        description={`Tell your app when a payment for ${activeBusiness?.name || "this business"} succeeds, fails, or is still waiting.`}
         actions={
           <Button
             leftIcon={<Plus size={16} />}
@@ -105,24 +98,6 @@ export function Webhooks() {
           </Button>
         }
       />
-
-      {isAdmin && (
-        <label className="mb-4 flex max-w-sm flex-col gap-1.5 text-sm">
-          <span className="font-medium">Business</span>
-          <select
-            className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3.5 py-2.5 text-sm"
-            value={tenantId}
-            onChange={(e) => setSelectedTenantId(e.target.value)}
-          >
-            <option value="">Select…</option>
-            {tenants.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
 
       {error && (
         <div className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
@@ -153,8 +128,8 @@ export function Webhooks() {
       {!tenantId ? (
         <EmptyState
           icon={<Bell size={22} />}
-          title="Choose a business"
-          hint="Notification URLs belong to a business. Select one above, or ask an admin to link your account."
+          title="No business selected"
+          hint="Pick a business in the sidebar, then add payment alert URLs."
         />
       ) : items.length === 0 ? (
         <EmptyState
