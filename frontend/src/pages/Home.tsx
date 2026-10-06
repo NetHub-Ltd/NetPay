@@ -64,13 +64,13 @@ const NEXT_COPY: Record<
   },
   take_payment: {
     title: 'Take a payment',
-    detail: 'You’re set to collect — send a phone prompt when ready.',
+    detail: 'Collect from the app, or connect your system under Connect your system. Set After payment URLs so your app is notified.',
     cta: 'Take a payment',
     to: '/intents',
   },
   done: {
     title: 'You’re set up',
-    detail: 'Shortcode connected. Collect or review activity anytime.',
+    detail: 'Shortcode connected. Review payments, set After payment notifications, or connect your backend.',
     cta: 'Take a payment',
     to: '/intents',
   },

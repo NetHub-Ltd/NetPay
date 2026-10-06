@@ -176,20 +176,6 @@ export function PaymentIntentDetail() {
     }
   }
 
-  async function simulate() {
-    setBusy(true)
-    setError(null)
-    setMsg(null)
-    try {
-      await api.post(`/v1/payment-intents/${id}/simulate`, {})
-      setMsg('Simulated success applied.')
-      await load()
-    } catch (e) {
-      setError(e instanceof ApiError ? e.detail : 'Simulate failed')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   const req = useMemo(() => parseJson(item?.stk_request_json), [item?.stk_request_json])
   const res = useMemo(() => parseJson(item?.stk_response_json), [item?.stk_response_json])
@@ -291,12 +277,7 @@ export function PaymentIntentDetail() {
                   {busy ? 'Checking…' : 'Check with network'}
                 </button>
               )}
-              {(item.status === 'created' || item.status === 'provider_requested') && (
-                <button className={button} type="button" disabled={busy} onClick={simulate}>
-                  {busy ? 'Working…' : 'Simulate success (dev)'}
-                </button>
-              )}
-              {(item.status === 'failed' || item.status === 'expired') && (
+{(item.status === 'failed' || item.status === 'expired') && (
                 <Link className={primaryButton} to="/intents">
                   Start a new payment
                 </Link>

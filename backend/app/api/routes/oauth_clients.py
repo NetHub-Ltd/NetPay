@@ -17,11 +17,6 @@ from app.services.ids import new_client_id, new_client_secret
 router = APIRouter(prefix="/v1/oauth/clients", tags=["oauth-clients"])
 
 
-def _require_admin(user: Principal) -> None:
-    if not user.is_admin:
-        raise HTTPException(status_code=403, detail="Admin only")
-
-
 @router.get("")
 async def list_oauth_clients(
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -29,7 +24,6 @@ async def list_oauth_clients(
     tenant_id: Optional[UUID] = Query(default=None),
 ) -> list[dict]:
     """List clients for a business (secrets never returned)."""
-    _require_admin(user)
     if tenant_id is None:
         raise HTTPException(status_code=400, detail="tenant_id is required")
     if not await user_can_access_tenant(session, user, tenant_id):
@@ -63,7 +57,6 @@ async def create_oauth_client(
     user: Annotated[Principal, Depends(get_current_user)],
 ) -> OAuthClientOut:
     """Create a client; secret is returned once."""
-    _require_admin(user)
     if not await user_can_access_tenant(session, user, body.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     plain = new_client_secret()
