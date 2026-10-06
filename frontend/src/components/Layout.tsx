@@ -1,6 +1,6 @@
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
-  Activity,
+  History,
   AlertTriangle,
   Building2,
   CircleHelp,
@@ -116,13 +116,13 @@ export function Layout() {
               <Landmark {...ico} /> Shortcodes
             </NavLink>
             <NavLink to="/webhooks" className={linkClass}>
-              <Webhook {...ico} /> Notifications
+              <Webhook {...ico} /> Payment alerts
             </NavLink>
             <NavLink to="/reconciliation" className={linkClass}>
-              <AlertTriangle {...ico} /> Needs attention
+              <AlertTriangle {...ico} /> Unresolved
             </NavLink>
             <NavLink to="/events" className={linkClass}>
-              <Activity {...ico} /> Activity
+              <History {...ico} /> History
             </NavLink>
             <NavLink to="/docs" className={linkClass}>
               <CircleHelp {...ico} /> Help
@@ -134,7 +134,7 @@ export function Layout() {
             )}
             {isAdmin && (
               <NavLink to="/oauth-clients" className={linkClass}>
-                <KeyRound {...ico} /> Apps &amp; API access
+                <KeyRound {...ico} /> API keys
               </NavLink>
             )}
             <NavLink to="/status" className={linkClass}>
