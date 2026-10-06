@@ -264,7 +264,9 @@ export async function beginLogout(idToken?: string | null): Promise<void> {
       discovery.end_session_endpoint || `${cfg.issuer}/oidc/v1/end_session`
     const url = new URL(endSession)
     if (idToken) url.searchParams.set('id_token_hint', idToken)
-    url.searchParams.set('post_logout_redirect_uri', `${window.location.origin}/login`)
+    // Must match a Post Logout URI in Zitadel (e.g. https://pay.nethub.co.ke/).
+    // /login is not registered → invalid_request: post_logout_redirect_uri invalid
+    url.searchParams.set('post_logout_redirect_uri', `${window.location.origin}/`)
     url.searchParams.set('client_id', cfg.clientId)
     window.location.assign(url.toString())
   } catch {
