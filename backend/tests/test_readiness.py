@@ -24,3 +24,5 @@ async def test_readiness_shape_for_admin(client):
     assert "next_step" in body
     assert "has_shortcode" in body
     assert "has_connected_shortcode" in body
+    assert "has_api_client" in body
+    assert "has_notifications" in body

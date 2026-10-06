@@ -18,6 +18,7 @@ import {
   type Readiness,
 } from '../api/client'
 import { useAuth } from '../auth/authState'
+import { useWorkspace } from '../workspace/useWorkspace'
 import { paymentLifecycleBucket } from '../components/statusUtils'
 import { subscribeLiveMessages } from '../hooks/liveEvents'
 import { Button } from '../components/primitives'
@@ -54,7 +55,7 @@ const NEXT_COPY: Record<
     title: 'Add a shortcode',
     detail: 'Paybill or till so customers know where to pay.',
     cta: 'Add shortcode',
-    to: '/integrations',
+    to: '/integrations/new',
   },
   connect_mpesa: {
     title: 'Connect M-Pesa',
@@ -62,15 +63,27 @@ const NEXT_COPY: Record<
     cta: 'Continue setup',
     to: '/integrations',
   },
+  add_notification: {
+    title: 'Set after-payment notifications',
+    detail: 'Tell your system when a payment succeeds or fails.',
+    cta: 'Add notification URL',
+    to: '/webhooks',
+  },
+  connect_system: {
+    title: 'Connect your system',
+    detail: 'Create API credentials so your backend can start payments.',
+    cta: 'Create API client',
+    to: '/oauth-clients',
+  },
   take_payment: {
     title: 'Take a payment',
-    detail: 'Collect from the app, or connect your system under Connect your system. Set After payment URLs so your app is notified.',
+    detail: 'You’re ready to collect — from the app or via your backend.',
     cta: 'Take a payment',
     to: '/intents',
   },
   done: {
     title: 'You’re set up',
-    detail: 'Shortcode connected. Review payments, set After payment notifications, or connect your backend.',
+    detail: 'Shortcode, notifications, and API access are in place. Collect anytime.',
     cta: 'Take a payment',
     to: '/intents',
   },
@@ -78,6 +91,7 @@ const NEXT_COPY: Record<
 
 export function Home() {
   const { user, establishSession } = useAuth()
+  const { activeTenantId, activeBusiness } = useWorkspace()
   const [readiness, setReadiness] = useState<Readiness | null>(null)
   const [payments, setPayments] = useState<PaymentIntent[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -87,8 +101,14 @@ export function Home() {
     if (!quiet) setLoading(true)
     try {
       const [ready, paymentRows] = await Promise.all([
-        api.get<Readiness>('/v1/readiness'),
-        api.get<PaymentIntent[]>('/v1/payment-intents'),
+        api.get<Readiness>(
+          activeTenantId ? `/v1/readiness?tenant_id=${activeTenantId}` : '/v1/readiness',
+        ),
+        api.get<PaymentIntent[]>(
+          activeTenantId
+            ? `/v1/payment-intents?tenant_id=${activeTenantId}`
+            : '/v1/payment-intents',
+        ),
       ])
       setReadiness(ready)
       setPayments(paymentRows || [])
@@ -98,7 +118,7 @@ export function Home() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [activeTenantId])
 
   useEffect(() => {
     void Promise.resolve().then(() => load())
@@ -194,6 +214,74 @@ export function Home() {
           </div>
         </div>
       </section>
+
+
+      {/* Goal checklist */}
+      {readiness && (
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]">
+          <h2 className="m-0 text-base font-semibold text-[var(--text)]">
+            Setup for {activeBusiness?.name || 'this business'}
+          </h2>
+          <p className="mb-4 mt-1 text-sm text-[var(--muted)]">
+            Complete these so you can collect in the app and from your own systems.
+          </p>
+          <ul className="m-0 list-none space-y-3 p-0">
+            {[
+              {
+                ok: readiness.has_shortcode,
+                label: 'Shortcode added',
+                hint: 'Paybill or till for this business',
+                to: '/integrations/new',
+                cta: 'Add shortcode',
+              },
+              {
+                ok: readiness.has_connected_shortcode,
+                label: 'M-Pesa connected',
+                hint: 'Results can reach NetPay automatically',
+                to: '/integrations',
+                cta: 'Connect',
+              },
+              {
+                ok: readiness.has_notifications,
+                label: 'After-payment notification',
+                hint: 'Your app is told when money moves',
+                to: '/webhooks',
+                cta: 'Add URL',
+              },
+              {
+                ok: readiness.has_api_client,
+                label: 'System connected (API client)',
+                hint: 'Your backend can start payments',
+                to: '/oauth-clients',
+                cta: 'Create client',
+              },
+            ].map((row) => (
+              <li
+                key={row.label}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-[var(--text)]">
+                    <span className={row.ok ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}>
+                      {row.ok ? '✓' : '○'}
+                    </span>{' '}
+                    {row.label}
+                  </div>
+                  <div className="text-xs text-[var(--muted)]">{row.hint}</div>
+                </div>
+                {!row.ok && (
+                  <Link
+                    to={row.to}
+                    className="shrink-0 text-sm font-semibold text-[var(--accent)] no-underline hover:underline"
+                  >
+                    {row.cta} →
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {error && (
         <div

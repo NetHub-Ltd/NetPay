@@ -149,12 +149,22 @@ export type Readiness = {
   has_shortcode: boolean
   has_connected_shortcode: boolean
   has_notifications: boolean
+  has_api_client: boolean
   ready_to_collect: boolean
-  next_step: 'create_business' | 'add_shortcode' | 'connect_mpesa' | 'take_payment' | 'done'
+  next_step:
+    | 'create_business'
+    | 'add_shortcode'
+    | 'connect_mpesa'
+    | 'add_notification'
+    | 'connect_system'
+    | 'take_payment'
+    | 'done'
   tenant_id?: string | null
   primary_integration_id?: string | null
   shortcode_count: number
   connected_count: number
+  notification_count?: number
+  api_client_count?: number
 }
 
 export type Integration = {
