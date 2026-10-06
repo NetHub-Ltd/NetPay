@@ -125,6 +125,23 @@ export function OAuthClients() {
               <span className={mono}>{created.client_secret}</span>
             </div>
           </div>
+          <p className="mb-1 mt-3 text-xs font-semibold text-[var(--text)]">Get a token</p>
+          <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 font-mono text-[11px] leading-5">
+{`curl -s -X POST "${window.location.origin}/v1/oauth/token" \
+  -H "Content-Type: application/json" \
+  -d '{"grant_type":"client_credentials","client_id":"${created.client_id}","client_secret":"${created.client_secret}"}'`}
+          </pre>
+          <p className="mb-1 mt-3 text-xs font-semibold text-[var(--text)]">Start a payment (after token)</p>
+          <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 font-mono text-[11px] leading-5">
+{`curl -s -X POST "${window.location.origin}/v1/payment-intents" \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -H "Content-Type: application/json" \
+  -d '{"integration_public_id":"YOUR_SHORTCODE_PUBLIC_ID","phone":"2547XXXXXXXX","amount_minor":100,"status_callback_url":"https://your.app/hooks/pay"}'`}
+          </pre>
+          <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
+            Full walkthrough in <a href="/docs">Help</a>.
+          </p>
           <Button className="mt-3" variant="secondary" size="sm" onClick={() => setCreated(null)}>
             Dismiss
           </Button>
