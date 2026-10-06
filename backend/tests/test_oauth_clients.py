@@ -54,10 +54,11 @@ async def test_create_and_list_oauth_client(client):
 
 
 @pytest.mark.asyncio
-async def test_oauth_client_non_admin_forbidden(user_client):
+async def test_oauth_client_non_admin_forbidden_other_tenant(user_client):
+    """Non-admin cannot create a client on a business they do not access."""
     res = await user_client.post(
         "/v1/oauth/clients",
-        json={"tenant_id": "00000000-0000-4000-8000-0000000000aa", "name": "Nope"},
+        json={"tenant_id": "00000000-0000-4000-8000-0000000000ff", "name": "Nope"},
     )
     assert res.status_code == 403
 
