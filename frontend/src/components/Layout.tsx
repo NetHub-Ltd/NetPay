@@ -129,7 +129,7 @@ export function Layout() {
             </NavLink>
             {isAdmin && (
               <NavLink to="/tenants" className={linkClass}>
-                <Building2 {...ico} /> Businesses
+                <Building2 {...ico} /> Manage businesses
               </NavLink>
             )}
             {isAdmin && (
