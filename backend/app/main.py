@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from app.api.routes import auth, events, health, integrations, internal, oauth_clients, payments, readiness, reconciliation, system, tenants, webhooks, ws
+from app.api.routes import auth, events, health, integrations, internal, oauth_clients, oauth_token, payments, readiness, reconciliation, system, tenants, webhooks, ws
 from app.core.config import settings
 from app.core.db import engine
 from app.core.logging import logger, setup_logging
@@ -46,6 +46,7 @@ app.include_router(readiness.router)
 app.include_router(system.router)
 app.include_router(auth.router)
 app.include_router(oauth_clients.router)
+app.include_router(oauth_token.router)
 app.include_router(tenants.router)
 app.include_router(integrations.router)
 app.include_router(webhooks.router)

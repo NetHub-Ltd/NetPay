@@ -88,8 +88,8 @@ export function Tenants() {
   return (
     <div>
       <PageHeader
-        title="Businesses"
-        description="Workspaces that own shortcodes and payments. Open a business to manage its shortcodes."
+        title="Manage businesses"
+        description="Create or update businesses. Day-to-day work uses Working in on the sidebar — this page is for managing the list."
         actions={
           <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
             Add business

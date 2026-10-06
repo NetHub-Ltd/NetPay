@@ -91,3 +91,17 @@ async def user_client():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def app_client():
+    """ASGI client without auth override — real Bearer resolution (human or machine)."""
+    from app.main import app
+    from app.services.bootstrap import startup_sequence
+
+    await startup_sequence()
+    app.dependency_overrides.clear()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()

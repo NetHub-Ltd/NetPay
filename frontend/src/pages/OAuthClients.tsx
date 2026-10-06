@@ -89,7 +89,7 @@ export function OAuthClients() {
     <div>
       <PageHeader
         title="API keys"
-        description={`Credentials for systems that call NetPay on behalf of ${biz}. Shown once at creation — store them safely.`}
+        description={`Credentials for systems that call NetPay on behalf of ${biz}. Exchange client_id + secret at POST /v1/oauth/token (client_credentials), then call payment APIs with the Bearer token. Secret is shown once.`}
         actions={
           <Button
             disabled={!activeTenantId}
