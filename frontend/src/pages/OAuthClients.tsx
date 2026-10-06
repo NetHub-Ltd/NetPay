@@ -1,10 +1,8 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
 import { KeyRound } from 'lucide-react'
 import { api, ApiError } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
-import { useAuth } from '../auth/authState'
 import { useWorkspace } from '../workspace/useWorkspace'
 import { Button, Input, Modal } from '../components/primitives'
 import { mono } from '../components/ui'
@@ -25,7 +23,6 @@ type OAuthClientRow = {
 }
 
 export function OAuthClients() {
-  const { isAdmin } = useAuth()
   const { activeTenantId, activeBusiness } = useWorkspace()
   const [items, setItems] = useState<OAuthClientRow[]>([])
   const [name, setName] = useState('Default API client')
@@ -53,11 +50,8 @@ export function OAuthClients() {
   }, [activeTenantId])
 
   useEffect(() => {
-    if (!isAdmin) return
     void Promise.resolve().then(load)
-  }, [isAdmin, load])
-
-  if (!isAdmin) return <Navigate to="/forbidden" replace />
+  }, [load])
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()
@@ -88,8 +82,8 @@ export function OAuthClients() {
   return (
     <div>
       <PageHeader
-        title="API keys"
-        description={`Credentials for systems that call NetPay on behalf of ${biz}. Exchange client_id + secret at POST /v1/oauth/token (client_credentials), then call payment APIs with the Bearer token. Secret is shown once.`}
+        title="Connect your system"
+        description={`Let your backend start payments for ${biz} and receive results. Create a client, exchange it for a token, then call the payment API. Secret is shown only once.`}
         actions={
           <Button
             disabled={!activeTenantId}

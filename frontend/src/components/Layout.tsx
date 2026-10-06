@@ -116,30 +116,33 @@ export function Layout() {
               <Landmark {...ico} /> Shortcodes
             </NavLink>
             <NavLink to="/webhooks" className={linkClass}>
-              <Webhook {...ico} /> Payment alerts
+              <Webhook {...ico} /> After payment
             </NavLink>
-            <NavLink to="/reconciliation" className={linkClass}>
-              <AlertTriangle {...ico} /> Unresolved
+            <NavLink to="/oauth-clients" className={linkClass}>
+              <KeyRound {...ico} /> Connect your system
             </NavLink>
-            <NavLink to="/events" className={linkClass}>
-              <History {...ico} /> History
+            <NavLink to="/tenants" className={linkClass}>
+              <Building2 {...ico} /> Manage businesses
             </NavLink>
             <NavLink to="/docs" className={linkClass}>
               <CircleHelp {...ico} /> Help
             </NavLink>
             {isAdmin && (
-              <NavLink to="/tenants" className={linkClass}>
-                <Building2 {...ico} /> Manage businesses
-              </NavLink>
+              <>
+                <div className="mb-1 mt-3 px-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  Admin
+                </div>
+                <NavLink to="/reconciliation" className={linkClass}>
+                  <AlertTriangle {...ico} /> Unresolved
+                </NavLink>
+                <NavLink to="/events" className={linkClass}>
+                  <History {...ico} /> History
+                </NavLink>
+                <NavLink to="/status" className={linkClass}>
+                  <Radio {...ico} /> System status
+                </NavLink>
+              </>
             )}
-            {isAdmin && (
-              <NavLink to="/oauth-clients" className={linkClass}>
-                <KeyRound {...ico} /> API keys
-              </NavLink>
-            )}
-            <NavLink to="/status" className={linkClass}>
-              <Radio {...ico} /> System status
-            </NavLink>
           </nav>
         </aside>
 

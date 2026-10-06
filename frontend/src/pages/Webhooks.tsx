@@ -83,8 +83,8 @@ export function Webhooks() {
   return (
     <div>
       <PageHeader
-        title="Payment alerts"
-        description={`Tell your app when a payment for ${activeBusiness?.name || "this business"} succeeds, fails, or is still waiting.`}
+        title="After payment"
+        description={`Where should we notify when a payment for ${activeBusiness?.name || "this business"} succeeds or fails? Add HTTPS endpoints your system owns.`}
         actions={
           <Button
             leftIcon={<Plus size={16} />}

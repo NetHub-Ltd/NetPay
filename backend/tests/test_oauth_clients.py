@@ -88,7 +88,8 @@ async def test_client_credentials_token(client):
 
     headers = {"Authorization": f"Bearer {body['access_token']}"}
     listed = await client.get(f"/v1/oauth/clients?tenant_id={tenant_id}", headers=headers)
-    assert listed.status_code == 403
+    # Machine may list clients for its own tenant
+    assert listed.status_code == 200
 
     bad = await client.post(
         "/v1/oauth/token",
