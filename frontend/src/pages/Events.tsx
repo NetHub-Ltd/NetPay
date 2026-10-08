@@ -63,8 +63,16 @@ export function Events() {
       />
 
       {error && (
-        <div className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+        <div
+          className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
+          role="alert"
+        >
           {error}
+          <div className="mt-2">
+            <Button variant="secondary" size="sm" onClick={() => void load()}>
+              Retry
+            </Button>
+          </div>
         </div>
       )}
       {msg && (

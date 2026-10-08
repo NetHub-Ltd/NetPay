@@ -76,12 +76,22 @@ async def get_access_token_meta(
         cached = await cache_get(cache_key)
         if cached:
             logger.info(
-                "Daraja OAuth cache hit env={} key_prefix={} token_redacted={}",
+                "daraja_oauth_cache event=hit env={} key_prefix={}",
                 env,
                 consumer_key[:8],
-                redact_token(cached),
             )
             return cached, 0
+        logger.info(
+            "daraja_oauth_cache event=miss env={} key_prefix={}",
+            env,
+            consumer_key[:8],
+        )
+    else:
+        logger.info(
+            "daraja_oauth_cache event=skip env={} key_prefix={}",
+            env,
+            consumer_key[:8],
+        )
 
     basic = base64.b64encode(f"{consumer_key}:{consumer_secret}".encode()).decode()
     url = f"{daraja_base(env)}/oauth/v1/generate?grant_type=client_credentials"
@@ -103,12 +113,13 @@ async def get_access_token_meta(
     if not token:
         raise RuntimeError(f"Daraja OAuth: missing access_token body={res.text[:300]}")
     expires_in = int(data.get("expires_in") or 3599)
-    await cache_set(cache_key, token, ttl=max(60, expires_in - 60))
+    ttl = max(60, expires_in - 60)
+    await cache_set(cache_key, token, ttl=ttl)
     logger.info(
-        "Daraja OAuth ok env={} key_prefix={} token_redacted={} expires_in={}",
+        "daraja_oauth_cache event=set env={} key_prefix={} ttl={} expires_in={}",
         env,
         consumer_key[:8],
-        redact_token(token),
+        ttl,
         expires_in,
     )
     return token, expires_in

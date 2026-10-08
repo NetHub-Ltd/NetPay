@@ -1,6 +1,9 @@
-"""Simple rate limiter — Redis when available, in-process fallback otherwise.
+"""Rate limiter for M2M surfaces (token + payment-intent create).
 
-Used for M2M surfaces (token + payment-intent create). Not a general WAF.
+- Prefer Redis (shared across replicas).
+- When REDIS_REQUIRED is true (or environment=production): do **not** silently
+  fall back to in-process memory — return 503 so under-limiting cannot hide.
+- When Redis is optional (local/dev): memory fallback is allowed.
 """
 from __future__ import annotations
 
@@ -16,6 +19,10 @@ from app.core.logging import logger
 
 _buckets: dict[str, list[float]] = defaultdict(list)
 _lock = Lock()
+
+
+def _redis_required() -> bool:
+    return bool(settings.redis_required) or settings.environment == "production"
 
 
 def _client_ip(request: Request) -> str:
@@ -65,7 +72,7 @@ async def _redis_hit(key: str, limit: int, window: int) -> Optional[tuple[bool, 
             return False, retry
         return True, 0
     except Exception as exc:  # noqa: BLE001
-        logger.warning("rate_limit redis error, falling back to memory: {}", exp if False else exc)
+        logger.warning("rate_limit redis error: {}", exc)
         return None
 
 
@@ -85,7 +92,19 @@ async def enforce_rate_limit(
 
     result = await _redis_hit(key, limit, window)
     if result is None:
+        if _redis_required():
+            logger.error(
+                "rate_limit unavailable (Redis required) bucket={} key_suffix={}",
+                bucket,
+                identity or ip,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="rate_limit_unavailable",
+                headers={"Retry-After": "5"},
+            )
         result = _memory_hit(key, limit, window)
+
     allowed, retry = result
     if not allowed:
         raise HTTPException(
