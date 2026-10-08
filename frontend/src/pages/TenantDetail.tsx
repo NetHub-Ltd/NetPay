@@ -5,7 +5,7 @@ import { api, ApiError, type Integration, type Tenant } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
 import { StatusBadge } from '../components/StatusBadge'
-import { Button, Input, Modal, PageLoader } from '../components/primitives'
+import { Button, ConfirmModal, Input, Modal, PageLoader } from '../components/primitives'
 import { BUSINESS_CATEGORIES } from '../lib/businessCategories'
 import { mono, table, tableWrap } from '../components/ui'
 
@@ -21,6 +21,7 @@ export function TenantDetail() {
   const [msg, setMsg] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [pendingConfirm, setPendingConfirm] = useState<{ type: 'delete' | 'retire'; id?: string; name?: string } | null>(null)
   const [form, setForm] = useState({
     name: '',
     category: 'retail',
@@ -94,7 +95,7 @@ export function TenantDetail() {
 
   async function onDelete() {
     if (!tenant) return
-    if (!window.confirm(`Remove business “${tenant.name}”? This hides it from your workspace.`)) return
+    setPendingConfirm(null)
     setBusy(true)
     try {
       await api.delete(`/v1/tenants/${tenant.id}`)
@@ -106,7 +107,7 @@ export function TenantDetail() {
   }
 
   async function onRetireSc(sc: Integration) {
-    if (!window.confirm(`Retire shortcode ${sc.shortcode}?`)) return
+    setPendingConfirm(null)
     setBusy(true)
     try {
       await api.delete(`/v1/integrations/${sc.id}`)
@@ -230,7 +231,7 @@ export function TenantDetail() {
                         <Link to={`/integrations/${s.id}`} className="no-underline">
                           <Button size="sm">Open</Button>
                         </Link>
-                        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void onRetireSc(s)}>
+                        <Button size="sm" variant="secondary" disabled={busy} onClick={() => setPendingConfirm({ type: 'retire', id: s.id, name: s.shortcode })}>
                           Retire
                         </Button>
                       </div>
@@ -244,7 +245,7 @@ export function TenantDetail() {
       </section>
 
       <div className="flex flex-wrap gap-2 border-t border-[var(--border)] pt-4">
-        <Button size="sm" variant="danger" disabled={busy} onClick={() => void onDelete()}>
+        <Button size="sm" variant="danger" disabled={busy} onClick={() => setPendingConfirm({ type: 'delete' })}>
           Remove business
         </Button>
       </div>
@@ -291,6 +292,30 @@ export function TenantDetail() {
           </label>
         </form>
       </Modal>
+
+      <ConfirmModal
+        open={pendingConfirm?.type === 'delete'}
+        title="Remove this business?"
+        body={tenant ? `Remove “${tenant.name}”? This hides it from your workspace.` : ''}
+        confirmLabel="Remove"
+        danger
+        busy={busy}
+        onCancel={() => !busy && setPendingConfirm(null)}
+        onConfirm={() => void onDelete()}
+      />
+      <ConfirmModal
+        open={pendingConfirm?.type === 'retire'}
+        title="Retire shortcode?"
+        body={pendingConfirm?.name ? `Retire shortcode ${pendingConfirm.name}?` : ''}
+        confirmLabel="Retire"
+        danger
+        busy={busy}
+        onCancel={() => !busy && setPendingConfirm(null)}
+        onConfirm={() => {
+          if (!pendingConfirm?.id) return
+          void onRetireSc({ id: pendingConfirm.id, shortcode: pendingConfirm.name || '' } as Integration)
+        }}
+      />
     </div>
   )
 }

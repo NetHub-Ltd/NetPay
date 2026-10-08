@@ -39,22 +39,32 @@ export class ApiError extends Error {
   }
 }
 
-/** Flatten FastAPI detail (string | object) for UI. */
+/** Operator-facing API error text. Prefer user_message; never show Source/Stage. */
 export function formatApiDetail(detail: unknown): string {
-  if (detail == null) return 'Request failed'
-  if (typeof detail === 'string') return detail
+  if (detail == null) return 'Something went wrong. Please try again.'
+  if (typeof detail === 'string') {
+    // Soften obvious internal dumps if a plain string was returned
+    if (/c2b_register|errorCode|Stage:|Source:/i.test(detail)) {
+      return 'We couldn’t complete that request. Please try again in a few minutes.'
+    }
+    return detail
+  }
   if (typeof detail === 'object' && detail !== null) {
     const d = detail as Record<string, unknown>
-    if (typeof d.message === 'string') {
-      const parts = [d.message]
-      if (d.source) parts.push(`Source: ${String(d.source)}`)
-      if (d.stage) parts.push(`Stage: ${String(d.stage)}`)
-      if (d.hint) parts.push(String(d.hint))
-      return parts.join(' · ')
+    if (typeof d.user_message === 'string' && d.user_message.trim()) {
+      const action = typeof d.user_action === 'string' ? d.user_action.trim() : ''
+      return action ? `${d.user_message.trim()} ${action}` : d.user_message.trim()
     }
-    return JSON.stringify(detail)
+    if (typeof d.message === 'string' && d.message.trim()) {
+      // Legacy structured errors: show message only if it does not look like a provider dump
+      const m = d.message.trim()
+      if (!/errorCode|requestId|c2b_register|HTTP\s*\d{3}/i.test(m)) {
+        return m
+      }
+    }
+    return 'Something went wrong. Please try again.'
   }
-  return String(detail)
+  return 'Something went wrong. Please try again.'
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {

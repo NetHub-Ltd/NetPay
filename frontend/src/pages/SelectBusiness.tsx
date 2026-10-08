@@ -4,7 +4,7 @@ import { Building2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { api, ApiError, type Tenant } from '../api/client'
 import { useAuth } from '../auth/authState'
 import { useWorkspace } from '../workspace/useWorkspace'
-import { Button, Input, Modal } from '../components/primitives'
+import { Button, ConfirmModal, Input, Modal } from '../components/primitives'
 import { BUSINESS_CATEGORIES } from '../lib/businessCategories'
 
 const selectClass =
@@ -34,6 +34,7 @@ export function SelectBusiness() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Tenant | null>(null)
   const [busy, setBusy] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Tenant | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
 
@@ -114,12 +115,8 @@ export function SelectBusiness() {
     }
   }
 
-  async function onDelete(b: Tenant, e: MouseEvent) {
-    e.stopPropagation()
-    const ok = window.confirm(
-      `Delete “${b.name}”? This cannot be undone from the app. Prefer deactivating if you may need history.`,
-    )
-    if (!ok) return
+  async function onDelete(b: Tenant) {
+    setDeleteTarget(null)
     setBusy(true)
     setError(null)
     try {
@@ -190,7 +187,7 @@ export function SelectBusiness() {
                       className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
                       aria-label={`Delete ${b.name}`}
                       disabled={busy}
-                      onClick={(e) => void onDelete(b, e)}
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(b) }}
                     >
                       <Trash2 size={16} strokeWidth={1.75} />
                     </button>
@@ -280,6 +277,21 @@ export function SelectBusiness() {
           </form>
         </Modal>
       </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete this business?"
+        body={
+          deleteTarget
+            ? `Delete “${deleteTarget.name}”? This cannot be undone from the app. Prefer deactivating if you may need history.`
+            : ''
+        }
+        confirmLabel="Delete"
+        danger
+        busy={busy}
+        onCancel={() => !busy && setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && void onDelete(deleteTarget)}
+      />
     </div>
   )
 }
