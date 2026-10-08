@@ -17,7 +17,7 @@ class IntegrationCreateIn(BaseModel):
     shortcode: str
     type: str = "paybill"
     environment: str = "sandbox"
-    status: str = "active"
+    status: str = "pending_setup"
     confirmation_url: Optional[str] = None
     validation_url: Optional[str] = None
     stk_callback_url: Optional[str] = None

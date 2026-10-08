@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from app.core.config import settings
+from app.core.rate_limit import enforce_rate_limit
 from app.services.edge_urls import integration_callback_urls
 import json
 from decimal import Decimal
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import can_access_tenant, get_current_user, get_session
+from app.api.deps import get_current_user, get_session, user_can_access_tenant
 from app.api.routes.integrations import load_creds
 from app.crud.integration import integration_crud
 from app.crud.payment_intent import payment_intent_crud
@@ -47,12 +48,20 @@ def _daraja_error_message(exc: Exception) -> str:
 async def list_intents(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
+    tenant_id: UUID | None = None,
 ) -> list[PaymentIntent]:
+    """Optional tenant_id scopes to the active business workspace."""
+    scope = tenant_id
+    if scope is not None:
+        if not await user_can_access_tenant(session, user, scope):
+            raise HTTPException(status_code=403, detail="Forbidden")
+    elif not user.is_admin:
+        scope = user.tenant_id
     return list(
         await payment_intent_crud.list_for_user(
             session,
-            tenant_id=user.tenant_id,
-            is_admin=user.role == "admin",
+            tenant_id=scope,
+            is_admin=user.is_admin and scope is None,
         )
     )
 
@@ -66,7 +75,7 @@ async def get_intent(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     meta = None
     raw_meta = intent.metadata_json or intent.context_json
@@ -99,8 +108,14 @@ async def get_intent(
     )
 
 
-@router.post("", response_model=IntentCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=IntentCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={429: {"description": "Rate limit exceeded"}},
+)
 async def create_intent(
+    request: Request,
     body: IntentCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
@@ -111,7 +126,15 @@ async def create_intent(
 
     Requires header Idempotency-Key. Replaying the same key for the same tenant
     returns the original intent without a second provider call.
+    Rate-limited per machine client_id or IP (RATE_LIMIT_PAYMENT_PER_MINUTE).
     """
+    identity = getattr(user, "client_id", None) or (str(user.tenant_id) if user.tenant_id else None)
+    await enforce_rate_limit(
+        request,
+        bucket="payment_intent",
+        limit=settings.rate_limit_payment_per_minute,
+        identity=identity,
+    )
     if not idempotency_key or not idempotency_key.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -122,7 +145,7 @@ async def create_intent(
     integ = await integration_crud.get_by_public_id(session, body.integration_public_id)
     if not integ:
         raise HTTPException(status_code=404, detail="Integration not found")
-    if not can_access_tenant(user, integ.tenant_id):
+    if not await user_can_access_tenant(session, user, integ.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     existing = await payment_intent_crud.get_by_idempotency(
@@ -330,7 +353,7 @@ async def payment_timeline(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     # Gateway domain events for this intent
@@ -438,7 +461,7 @@ async def query_provider_status(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     if not intent.provider_checkout_id:
         raise HTTPException(status_code=400, detail="No network checkout id to query")
@@ -516,7 +539,7 @@ async def list_intent_ledger(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     return list(await ledger_entry_crud.list_for_intent(session, payment_intent_id=intent_id))
 
@@ -530,6 +553,6 @@ async def simulate_callback(
     intent = await payment_intent_crud.get(session, intent_id)
     if not intent:
         raise HTTPException(status_code=404, detail="Not found")
-    if not can_access_tenant(user, intent.tenant_id):
+    if not await user_can_access_tenant(session, user, intent.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     return await apply_payment_result(session, intent, status="succeeded", transaction_id="SIMULATED")

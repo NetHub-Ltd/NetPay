@@ -15,12 +15,17 @@ class TokenResponse(BaseModel):
     tenant_id: Optional[UUID] = None
 
 class UserOut(BaseModel):
+    """NetHub identity surface for the SPA (from Principal)."""
     id: UUID
     email: str
     role: str
     tenant_id: Optional[UUID] = None
     is_active: bool
     display_name: Optional[str] = None
+    full_name: Optional[str] = None
+    username: Optional[str] = None
+    tenant_name: Optional[str] = None
+    tenant_tier: Optional[str] = None
     model_config = {"from_attributes": True}
 
 class OAuthTokenRequest(BaseModel):

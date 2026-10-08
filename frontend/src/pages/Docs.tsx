@@ -1,142 +1,118 @@
 import { Link } from 'react-router-dom'
-import { card, pageDescription, pageHeader, pageTitle } from '../components/ui'
+import { PageHeader } from '../components/PageHeader'
+
+const card =
+  'mb-4 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]'
+const pre =
+  'overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 font-mono text-xs leading-5 text-[var(--text)]'
 
 export function Docs() {
   return (
     <div data-testid="docs-page">
-      <div className={pageHeader}>
-        <div>
-          <h1 className={pageTitle}>Help</h1>
-          <p className={pageDescription}>How to collect payments with NetPay.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Help"
+        description="Collect in the app, or from your own system — in the order that works."
+      />
 
       <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">1. First-time setup</h2>
-        <ol>
+        <h2 className="mb-2 mt-0 text-base font-semibold">1. First-time setup (in the app)</h2>
+        <ol className="m-0 space-y-2 pl-5 text-sm leading-6">
           <li>
-            <Link to="/integrations">Paybills &amp; tills</Link> — add your shortcode and network credentials.
+            <Link to="/integrations">Shortcodes</Link> — add your paybill or till and network credentials.
           </li>
           <li>
-            Open the shortcode → <strong>Connect this shortcode</strong> (confirm when asked). Links stay on the page if
-            you need them later. Phone-prompt results use these links automatically.
+            Open the shortcode → <strong>Connect</strong> so payment results reach NetPay.
           </li>
           <li>
-            <Link to="/webhooks">App endpoints</Link> — optional HTTPS URL so <em>your</em> app is told when a
-            payment is Paid or Failed.
-          </li>
-        </ol>
-        <p className="text-[var(--muted)] text-xs">
-          Connecting the shortcode (so NetPay receives network results) is different from App endpoints (so your
-          own app is told). Re-open any shortcode anytime from Paybills &amp; tills.
-        </p>
-      </div>
-
-      <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">2. Take a payment</h2>
-        <p>
-          Open <Link to="/intents">Payments</Link>, choose the shortcode, enter the customer’s phone and amount, then
-          send. The customer gets a prompt on their phone.
-        </p>
-      </div>
-
-      <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">2b. Paybill &amp; till (C2B)</h2>
-        <p>
-          Customers can also pay your paybill or till without a phone prompt. Safaricom sends a confirmation to NetHub
-          edge; we match it using the <strong>account reference</strong> (bill reference) on an open payment.
-        </p>
-        <ul>
-          <li>Connect the shortcode so confirmation URLs stay on NetHub edge.</li>
-          <li>Create a payment with the same account reference the customer will use.</li>
-          <li>On confirmation we mark it successful, record ledger, and notify your app endpoints.</li>
-          <li>
-            Unknown reference or amount mismatch goes to <Link to="/reconciliation">Needs attention</Link> — we do not
-            invent a success.
-          </li>
-          <li>The same M-Pesa transaction id is never credited twice.</li>
-        </ul>
-      </div>
-
-      <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">3. What each status means</h2>
-        <ul>
-          <li>
-            <strong>Created</strong> — saved, not yet sent to the network.
+            <Link to="/webhooks">After payment</Link> — HTTPS URL where we notify your system when a
+            payment succeeds or fails.
           </li>
           <li>
-            <strong>Waiting for customer</strong> — prompt sent; customer should enter PIN.
-          </li>
-          <li>
-            <strong>Paid</strong> — success. A ledger line is recorded for the amount.
-          </li>
-          <li>
-            <strong>Failed</strong> — customer cancelled or the network rejected. Start a <em>new</em> payment if needed.
-          </li>
-          <li>
-            <strong>Expired</strong> — no answer in time. Start a new payment; we don’t auto-revive expired ones.
-          </li>
-        </ul>
-      </div>
-
-      <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">4. Phone prompt stuck or failed?</h2>
-        <ol>
-          <li>
-            Open the payment — check <strong>Timeline</strong> and any failure message.
-          </li>
-          <li>
-            Open <Link to="/status">System status</Link> → <strong>Provider calls</strong>. Look for a failed “Phone
-            prompt request” or “Network login” for that payment.
-          </li>
-          <li>
-            Confirm the shortcode is connected and credentials match the environment (test vs live).
-          </li>
-          <li>
-            Check <strong>Edge connection</strong> on System status — heartbeats and last message should be recent.
-          </li>
-          <li>
-            If the prompt succeeded on the phone but NetPay still waits, the network result may not have reached the edge
-            (callback path / secrets). Support uses the payment’s checkout id on the detail page.
+            Optional: <Link to="/oauth-clients">Connect your system</Link> if a backend will start
+            payments (not only the dashboard).
           </li>
         </ol>
       </div>
 
       <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">5. For other systems (API)</h2>
-        <p className="mb-0 text-sm text-[var(--muted)]">
-          Create a payment with <code>POST /v1/payment-intents</code> and header <code>Idempotency-Key</code> (required).
+        <h2 className="mb-2 mt-0 text-base font-semibold">2. Machine-to-machine (M2M) — Partner quickstart</h2>
+        <p className="mt-0 text-sm leading-6 text-[var(--muted)]">
+          Your service gets a token, starts a payment, and receives a signed notification when it
+          settles. Machine tokens include <code>aud=netpay</code> and expire in 60 minutes by default
+          (<code>MACHINE_TOKEN_EXPIRE_MINUTES</code>).
         </p>
-        <ul>
+        <h3 className="mb-1 text-sm font-semibold">A. Get a token</h3>
+        <pre className={pre}>{`POST /v1/oauth/token
+Content-Type: application/json
+
+{
+  "grant_type": "client_credentials",
+  "client_id": "cli_…",
+  "client_secret": "…"
+}
+
+→ { "access_token": "…", "token_type": "bearer", "expires_in": 3600, "tenant_id": "…", "client_id": "…" }`}</pre>
+        <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
+          Rate-limited per client (default 30 requests / minute). Over limit → HTTP 429 with{' '}
+          <code>Retry-After</code>.
+        </p>
+        <h3 className="mb-1 mt-4 text-sm font-semibold">B. Start a payment</h3>
+        <pre className={pre}>{`POST /v1/payment-intents
+Authorization: Bearer <access_token>
+Idempotency-Key: <unique-id>
+Content-Type: application/json
+
+{
+  "integration_public_id": "gw_…",
+  "phone": "2547XXXXXXXX",
+  "amount_minor": 100,
+  "account_reference": "ORDER1",
+  "description": "Payment",
+  "metadata": { "order_id": "…" },
+  "status_callback_url": "https://your.app/hooks/pay"
+}`}</pre>
+        <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
+          <code>amount_minor</code> is cents (100 = KES 1.00). Prefer a unique{' '}
+          <code>Idempotency-Key</code> per attempt. Rate-limited (default 60 / minute). Use{' '}
+          <code>status_callback_url</code> for a one-off notify URL, or standing URLs under After
+          payment.
+        </p>
+        <h3 className="mb-1 mt-4 text-sm font-semibold">C. Verify settlement callbacks</h3>
+        <p className="mt-0 text-sm leading-6 text-[var(--muted)]">
+          NetPay POSTs JSON to your webhook or <code>status_callback_url</code> with header{' '}
+          <code>X-Nethub-Signature: sha256=&lt;hex&gt;</code>.
+        </p>
+        <ul className="m-0 space-y-2 pl-5 text-sm leading-6 text-[var(--muted)]">
           <li>
-            <strong>Required:</strong> shortcode ref (<code>integration_public_id</code>), phone, amount in minor units (
-            <code>amount_minor</code>).
+            <strong>Tenant webhook</strong> (After payment): HMAC-SHA256 of the raw body using the{' '}
+            <code>whsec_…</code> secret shown once when you added the URL.
           </li>
           <li>
-            <strong>Optional:</strong> <code>status_callback_url</code> (HTTPS) — we POST status here after the payment
-            is resolved; <code>metadata</code> — your own fields (e.g. order id).
-          </li>
-          <li>
-            If there is no status URL, we use <Link to="/webhooks">App endpoints</Link> for the business. If
-            neither is set, we do not notify your system (network results still go to NetPay via the edge).
-          </li>
-          <li>
-            Validation / confirmation / phone-prompt result URLs always stay on the NetHub edge — they are not the same
-            as <code>status_callback_url</code>.
+            <strong>Per-intent <code>status_callback_url</code></strong>: HMAC-SHA256 of the raw body
+            using secret = <code>SHA256(hex)</code> of the string{' '}
+            <code>{'{SECRET_KEY}:{intent_id}'}</code> (server <code>SECRET_KEY</code> + intent UUID).
+            Prefer tenant webhooks when you control the endpoint long-term.
           </li>
         </ul>
+        <p className="mb-0 mt-2 text-sm">
+          Respond with HTTP 2xx so we treat delivery as successful. Create credentials under{' '}
+          <Link to="/oauth-clients">Connect your system</Link> (you can rotate secrets there).
+        </p>
       </div>
 
       <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">6. Ledger &amp; exceptions</h2>
-        <p>
-          On a payment’s detail page, the <strong>Ledger</strong> section shows financial lines. A successful collection
-          adds one <code>collection_credit</code>.
-        </p>
-        <p>
-          Open <Link to="/reconciliation">Needs attention</Link> for open exceptions. Admins can run a scan; resolve with
-          a short note when done.
-        </p>
+        <h2 className="mb-2 mt-0 text-base font-semibold">3. In the dashboard</h2>
+        <ul className="m-0 space-y-2 pl-5 text-sm leading-6">
+          <li>
+            <Link to="/intents">Payments</Link> — status of each collection attempt.
+          </li>
+          <li>
+            <Link to="/dashboard">Overview</Link> — setup checklist for the business you’re working in.
+          </li>
+          <li>
+            <Link to="/events">Events</Link> — audit trail including delivery outcomes.
+          </li>
+        </ul>
       </div>
     </div>
   )

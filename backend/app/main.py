@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from app.api.routes import auth, events, health, integrations, internal, payments, reconciliation, system, tenants, webhooks, ws
+from app.api.routes import auth, events, health, integrations, internal, oauth_clients, oauth_token, payments, readiness, reconciliation, system, tenants, webhooks, ws
 from app.core.config import settings
 from app.core.db import engine
 from app.core.logging import logger, setup_logging
@@ -34,16 +34,31 @@ async def lifespan(app: FastAPI):
     await stop_live_subscriber()
     await engine.dispose()
 
+# Production secret guard (fail closed)
+try:
+    settings.assert_production_secrets()
+except RuntimeError as exc:
+    from app.core.logging import logger
+    logger.error("Refusing to start: {}", exc)
+    raise
+
+_openapi = settings.openapi_enabled_effective
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="Multi-tenant M-Pesa orchestration. Clients never talk to Daraja.",
     lifespan=lifespan,
+    docs_url="/docs" if _openapi else None,
+    redoc_url="/redoc" if _openapi else None,
+    openapi_url="/openapi.json" if _openapi else None,
 )
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(health.router)
+app.include_router(readiness.router)
 app.include_router(system.router)
 app.include_router(auth.router)
+app.include_router(oauth_clients.router)
+app.include_router(oauth_token.router)
 app.include_router(tenants.router)
 app.include_router(integrations.router)
 app.include_router(webhooks.router)
@@ -67,12 +82,33 @@ if STATIC_DIR.is_dir():
 
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str, request: Request):
-        # Do not swallow API/docs paths
-        blocked = ("api", "v1", "auth", "oauth", "health", "internal", "ws", "docs", "redoc", "openapi.json", "assets")
+        # OIDC browser return URL is a SPA route — must serve index.html.
+        # Backend auth API is only GET /auth/me (registered above the catch-all).
+        if full_path == "auth/callback" or full_path.startswith("auth/callback/"):
+            index = STATIC_DIR / "index.html"
+            if index.is_file():
+                return FileResponse(index)
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+        # Do not swallow API/docs paths — real 404 (not 200 with a JSON body)
+        blocked = (
+            "api",
+            "v1",
+            "auth",
+            "oauth",
+            "health",
+            "internal",
+            "ws",
+            "docs",
+            "redoc",
+            "openapi.json",
+            "assets",
+            "config.json",
+        )
         first = full_path.split("/", 1)[0]
         if first in blocked:
-            return {"detail": "Not Found"}
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
         index = STATIC_DIR / "index.html"
         if index.is_file():
             return FileResponse(index)
-        return {"detail": "Not Found"}
+        return JSONResponse({"detail": "Not Found"}, status_code=404)

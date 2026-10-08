@@ -1,79 +1,280 @@
-import { type FormEvent, useEffect, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
-import { api, ApiError, type OAuthClientOut, type Tenant } from '../api/client'
-import { useAuth } from '../auth/authState'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { Check, Copy, KeyRound, RefreshCw } from 'lucide-react'
+import { api, ApiError } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
-import { card, control, errorAlert, label, pageDescription, pageHeader, pageTitle, primaryButton } from '../components/ui'
+import { PageHeader } from '../components/PageHeader'
+import { useWorkspace } from '../workspace/useWorkspace'
+import { Button, Input, Modal } from '../components/primitives'
+import { mono } from '../components/ui'
+
+type OAuthClientCreated = {
+  client_id: string
+  client_secret: string
+  name: string
+  tenant_id: string
+}
+
+type OAuthClientRow = {
+  client_id: string
+  name: string
+  tenant_id: string
+  is_active: boolean
+  created_at?: string | null
+}
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [ok, setOk] = useState(false)
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      leftIcon={ok ? <Check size={14} /> : <Copy size={14} />}
+      onClick={() => {
+        void copyText(value).then((copied) => {
+          if (copied) {
+            setOk(true)
+            window.setTimeout(() => setOk(false), 1500)
+          }
+        })
+      }}
+    >
+      {ok ? 'Copied' : label}
+    </Button>
+  )
+}
 
 export function OAuthClients() {
-  const { isAdmin } = useAuth()
-  const [params] = useSearchParams()
-  const [tenants, setTenants] = useState<Tenant[]>([])
-  const [tenantId, setTenantId] = useState(params.get('tenant_id') || '')
+  const { activeTenantId, activeBusiness } = useWorkspace()
+  const [items, setItems] = useState<OAuthClientRow[]>([])
   const [name, setName] = useState('Default API client')
-  const [created, setCreated] = useState<OAuthClientOut | null>(null)
+  const [created, setCreated] = useState<OAuthClientCreated | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [rotatingId, setRotatingId] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    if (!activeTenantId) return
+    setLoading(true)
+    try {
+      const rows = await api.get<OAuthClientRow[]>(
+        `/v1/oauth/clients?tenant_id=${activeTenantId}`,
+      )
+      setItems(rows)
+      setError(null)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Could not load API clients')
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
+  }, [activeTenantId])
 
   useEffect(() => {
-    if (!isAdmin) return
-    api.get<Tenant[]>('/v1/tenants').then((t) => {
-      setTenants(t)
-      setTenantId((current) => current || t[0]?.id || '')
-    }).catch(() => {})
-  }, [isAdmin])
-
-  if (!isAdmin) return <Navigate to="/forbidden" replace />
+    void Promise.resolve().then(load)
+  }, [load])
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()
+    if (!activeTenantId) {
+      setError('Select a business in the sidebar first.')
+      return
+    }
     setBusy(true)
     setError(null)
     setCreated(null)
     try {
-      const res = await api.post<OAuthClientOut>('/v1/oauth-clients', { tenant_id: tenantId, name })
+      const res = await api.post<OAuthClientCreated>('/v1/oauth/clients', {
+        tenant_id: activeTenantId,
+        name: name.trim() || 'API client',
+      })
       setCreated(res)
+      setShowForm(false)
+      await load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Create failed')
+      setError(err instanceof ApiError ? err.detail : 'Could not create API client')
     } finally {
       setBusy(false)
     }
   }
 
+  async function onRotate(clientId: string) {
+    if (!window.confirm('Rotate secret? The current secret will stop working immediately.')) return
+    setRotatingId(clientId)
+    setError(null)
+    try {
+      const res = await api.post<OAuthClientCreated>(`/v1/oauth/clients/${clientId}/rotate`, {})
+      setCreated(res)
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : 'Could not rotate secret')
+    } finally {
+      setRotatingId(null)
+    }
+  }
+
+  const biz = activeBusiness?.name || 'this business'
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+
   return (
-    <div data-testid="oauth-page">
-      <div className={pageHeader}>
-        <div>
-        <h1 className={pageTitle}>OAuth clients</h1>
-        <p className={pageDescription}>Client-credentials for machine access (admin)</p>
-        </div>
-      </div>
-      {error && <div className={errorAlert} role="alert">{error}</div>}
-      {created && (
-        <div className="mb-4 rounded-lg border border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 px-4 py-3 text-sm text-[var(--text)]" role="status">
-          Client created — copy the secret now; it is not shown again.
-          <div className="mt-2 break-all font-mono">client_id: {created.client_id}</div>
-          <div className="mt-2 break-all font-mono">client_secret: {created.client_secret}</div>
+    <div>
+      <PageHeader
+        title="Connect your system"
+        description={`Let your backend start payments for ${biz} and receive results. Create a client, exchange it for a token, then call the payment API. Secret is shown only once.`}
+        actions={
+          <Button disabled={!activeTenantId || loading} onClick={() => setShowForm(true)}>
+            Create client
+          </Button>
+        }
+      />
+
+      {error && (
+        <div
+          className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
+          role="alert"
+        >
+          {error}
+          <div className="mt-2">
+            <Button variant="secondary" size="sm" onClick={() => void load()}>
+              Retry
+            </Button>
+          </div>
         </div>
       )}
 
-      <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">Create client</h2>
-        <form className="max-w-xl" onSubmit={onCreate}>
-          <label className={label}>Tenant</label>
-          <select className={control} required value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
-            <option value="">Select</option>
-            {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <label className={label}>Name</label>
-          <input className={control} required value={name} onChange={(e) => setName(e.target.value)} />
-          <button className={`${primaryButton} mt-4`} type="submit" disabled={busy}>
-            {busy ? 'Creating…' : 'Create client'}
-          </button>
-        </form>
-      </div>
+      {created && (
+        <div
+          className="mb-4 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-4 py-3 text-sm"
+          role="status"
+        >
+          <p className="m-0 font-semibold text-[var(--text)]">Client credentials — copy the secret now</p>
+          <p className="mb-2 mt-1 text-xs text-[var(--muted)]">
+            The secret is not shown again. Name: {created.name}
+          </p>
+          <div className="space-y-2 font-mono text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[var(--muted)]">client_id</span>
+              <span className={mono}>{created.client_id}</span>
+              <CopyButton value={created.client_id} label="Copy id" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[var(--muted)]">client_secret</span>
+              <span className={mono}>{created.client_secret}</span>
+              <CopyButton value={created.client_secret} label="Copy secret" />
+            </div>
+          </div>
+          <p className="mb-1 mt-3 text-xs font-semibold text-[var(--text)]">Get a token</p>
+          <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 font-mono text-[11px] leading-5">
+{`curl -s -X POST "${origin}/v1/oauth/token" \\
+  -H "Content-Type: application/json" \\
+  -d '{"grant_type":"client_credentials","client_id":"${created.client_id}","client_secret":"${created.client_secret}"}'`}
+          </pre>
+          <div className="mt-2">
+            <CopyButton
+              value={`curl -s -X POST "${origin}/v1/oauth/token" -H "Content-Type: application/json" -d '{"grant_type":"client_credentials","client_id":"${created.client_id}","client_secret":"${created.client_secret}"}'`}
+              label="Copy token cURL"
+            />
+          </div>
+          <p className="mb-1 mt-3 text-xs font-semibold text-[var(--text)]">Start a payment (after token)</p>
+          <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 font-mono text-[11px] leading-5">
+{`curl -s -X POST "${origin}/v1/payment-intents" \\
+  -H "Authorization: Bearer ACCESS_TOKEN" \\
+  -H "Idempotency-Key: $(uuidgen)" \\
+  -H "Content-Type: application/json" \\
+  -d '{"integration_public_id":"YOUR_SHORTCODE_PUBLIC_ID","phone":"2547XXXXXXXX","amount_minor":100,"status_callback_url":"https://your.app/hooks/pay"}'`}
+          </pre>
+          <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
+            Full walkthrough in <a href="/docs">Help</a>. Machine tokens expire in{' '}
+            <strong>MACHINE_TOKEN_EXPIRE_MINUTES</strong> (default 60) and include{' '}
+            <code>aud=netpay</code>.
+          </p>
+          <Button className="mt-3" variant="secondary" size="sm" onClick={() => setCreated(null)}>
+            Dismiss
+          </Button>
+        </div>
+      )}
 
-      {!tenants.length && <EmptyState title="No tenants" hint="Create a tenant first." />}
+      {loading ? (
+        <p className="text-sm text-[var(--muted)]">Loading…</p>
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={<KeyRound size={22} />}
+          title="No API clients yet"
+          hint={`Create a client so your backend can request payments for ${biz}.`}
+          action={
+            <Button disabled={!activeTenantId} onClick={() => setShowForm(true)}>
+              Create client
+            </Button>
+          }
+        />
+      ) : (
+        <ul className="m-0 list-none space-y-2 p-0">
+          {items.map((c) => (
+            <li
+              key={c.client_id}
+              className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-[var(--shadow-sm)]"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className="font-semibold text-[var(--text)]">{c.name}</div>
+                  <div className={`mt-1 text-xs text-[var(--muted)] ${mono}`}>{c.client_id}</div>
+                  <div className="mt-1 text-xs text-[var(--muted)]">
+                    {c.is_active ? 'Active' : 'Inactive'}
+                    {c.created_at ? ` · ${new Date(c.created_at).toLocaleString()}` : ''}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <CopyButton value={c.client_id} label="Copy id" />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<RefreshCw size={14} />}
+                    loading={rotatingId === c.client_id}
+                    onClick={() => void onRotate(c.client_id)}
+                  >
+                    Rotate secret
+                  </Button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Modal open={showForm} onClose={() => !busy && setShowForm(false)} title="Create API client">
+        <form className="space-y-4" onSubmit={(e) => void onCreate(e)}>
+          <p className="m-0 text-sm text-[var(--muted)]">
+            Client will be created for <strong className="text-[var(--text)]">{biz}</strong>. Switch business in
+            the sidebar if you need a different one.
+          </p>
+          <Input
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Production backend"
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => setShowForm(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={busy}>
+              Create
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

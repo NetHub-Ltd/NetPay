@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import can_access_tenant, get_current_user, get_session
+from app.api.deps import get_current_user, get_session, user_can_access_tenant
 from app.crud.event import event_crud
 from app.models.event import GatewayEvent
 from app.schemas.principal import Principal
@@ -39,7 +39,7 @@ async def replay_event(
     ev = await event_crud.get(session, event_id)
     if not ev:
         raise HTTPException(status_code=404, detail="Event not found")
-    if not can_access_tenant(user, ev.tenant_id):
+    if not await user_can_access_tenant(session, user, ev.tenant_id):
         raise HTTPException(status_code=403, detail="Forbidden")
     if not ev.is_replayable:
         raise HTTPException(status_code=400, detail="Event is not replayable")

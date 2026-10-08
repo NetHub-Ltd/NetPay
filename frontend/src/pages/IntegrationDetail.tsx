@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type Integration } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
-import { button, card, errorAlert, pageHeader, pageTitle, successAlert } from '../components/ui'
+import { PageHeader } from '../components/PageHeader'
+import { Button, PageLoader } from '../components/primitives'
+import { button, card, errorAlert, successAlert } from '../components/ui'
 
 type PublicConfig = {
   edge_public_base_url: string
@@ -43,7 +45,16 @@ export function IntegrationDetail() {
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [connectedOnce, setConnectedOnce] = useState(false)
+  const [pathCheck, setPathCheck] = useState<{
+    ok?: boolean
+    message?: string
+    steps?: Array<Record<string, unknown>>
+  } | null>(null)
+  const [lastOauth, setLastOauth] = useState<{
+    token_redacted?: string
+    expires_in?: number
+    environment?: string
+  } | null>(null)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -91,18 +102,19 @@ export function IntegrationDetail() {
     setMsg(null)
     try {
       const urls = buildUrls(item.public_id)
-      const res = await api.post<{ message?: string; detail?: string }>(
-        `/v1/integrations/${item.id}/register-urls`,
-        {
-          confirmation_url: urls.confirmation,
-          validation_url: urls.validation,
-          response_type: 'Completed',
-        },
-      )
-      setConnectedOnce(true)
+      const res = await api.post<{
+        message?: string
+        detail?: string
+        oauth?: { token_redacted?: string; expires_in?: number; environment?: string }
+      }>(`/v1/integrations/${item.id}/register-urls`, {
+        confirmation_url: urls.confirmation,
+        validation_url: urls.validation,
+        response_type: 'Completed',
+      })
+      if (res.oauth) setLastOauth(res.oauth)
       setMsg(
         res.message ||
-          `Shortcode ${item.shortcode} is connected. Payment results for this number can reach NetPay. Links below stay available if you need them later.`,
+          `Shortcode ${item.shortcode} is connected. Payment results for this number can reach NetPay.`,
       )
       await load()
     } catch (e) {
@@ -110,6 +122,51 @@ export function IntegrationDetail() {
       setError(
         `${detail}. You can still copy the links below and paste them in your provider portal, then try again.`,
       )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function disconnectPayments() {
+    if (!item) return
+    const confirmed = window.confirm(
+      `Disconnect shortcode ${item.shortcode} in NetPay?\n\n` +
+        `This clears NetPay's connected state for this shortcode. ` +
+        `You can reconnect later. In live mode Safaricom may keep old callback URLs until they are updated.`,
+    )
+    if (!confirmed) return
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    try {
+      const res = await api.post<{ message?: string }>(`/v1/integrations/${item.id}/disconnect`, {})
+      setLastOauth(null)
+      setMsg(res.message || 'Disconnected in NetPay.')
+      await load()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Could not disconnect')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+
+  async function runPathCheck() {
+    if (!item) return
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    setPathCheck(null)
+    try {
+      const res = await api.post<{
+        ok: boolean
+        message?: string
+        steps?: Array<Record<string, unknown>>
+      }>(`/v1/integrations/${item.id}/path-check`, {})
+      setPathCheck(res)
+      setMsg(res.message || (res.ok ? 'Path check finished.' : 'Path check found issues.'))
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : 'Path check failed')
     } finally {
       setBusy(false)
     }
@@ -123,7 +180,7 @@ export function IntegrationDetail() {
       </div>
     )
   }
-  if (!item) return <div data-testid="integration-detail-page">Loading…</div>
+  if (!item) return <div data-testid="integration-detail-page"><PageLoader label="Loading shortcode…" /></div>
 
   const urls = buildUrls(item.public_id)
 
@@ -132,19 +189,18 @@ export function IntegrationDetail() {
       <p className="mb-3 text-xs text-[var(--muted)]">
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </p>
-      <div className={pageHeader}>
-        <div>
-          <h1 className={pageTitle}>Shortcode {item.shortcode}</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            {item.type === 'till' ? 'Till' : 'Paybill'} · {' '}
-            {item.environment === 'production' ? 'Live' : 'Test'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <StatusBadge value={item.environment} />
-          <StatusBadge value={item.status} />
-        </div>
-      </div>
+      <PageHeader
+        title={`Shortcode ${item.shortcode}`}
+        description={`${item.type === 'till' ? 'Till' : 'Paybill'} · ${
+          item.environment === 'production' ? 'Live' : 'Test'
+        }`}
+        actions={
+          <div className="flex gap-2">
+            <StatusBadge value={item.environment} />
+            <StatusBadge value={item.status} />
+          </div>
+        }
+      />
       {error && <div className={errorAlert} role="alert">{error}</div>}
       {msg && <div className={successAlert} role="status">{msg}</div>}
 
@@ -156,7 +212,7 @@ export function IntegrationDetail() {
           </li>
           <li>
             <strong>Connect payment updates</strong>
-            {connectedOnce ? ' — done' : ' — use the button below'}
+            {item.connected || item.status === 'connected' ? ' — done' : ' — use the button below'}
           </li>
           <li>
             <strong>Notify your app</strong> — <Link to="/webhooks">Payment notifications</Link>
@@ -167,12 +223,68 @@ export function IntegrationDetail() {
       <div className={card}>
         <h2 className="mb-2 text-base font-semibold">Connect payment updates</h2>
         <p className="mb-4 text-sm text-[var(--muted)]">
-          One click tells the network where to send results for this shortcode so NetPay can mark payments Paid or
-          Failed. You'll be asked to confirm before anything is sent.
+          Connects this shortcode so paybill and till results
+          reach NetPay. You will be asked to confirm. Production URLs must be HTTPS and publicly reachable.
         </p>
-        <button className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white shadow-[var(--shadow-sm)] hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={connectPayments} disabled={busy}>
-          {busy ? 'Connecting…' : 'Connect this shortcode'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={() => void connectPayments()} loading={busy}>
+            {busy
+              ? 'Working…'
+              : item.connected || item.status === 'connected'
+                ? 'Reconnect to M-Pesa'
+                : 'Connect M-Pesa'}
+          </Button>
+          {(item.connected || item.status === 'connected') && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void disconnectPayments()}
+            >
+              Disconnect in NetPay
+            </Button>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => void runPathCheck()}>
+            Run path check
+          </Button>
+        </div>
+        <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
+          Path check verifies network login, callback URLs, edge reachability, and sends a live toast — without depending on M-Pesa registration uptime.
+        </p>
+        {pathCheck && (
+          <div className="mt-3 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-xs">
+            <div className="font-semibold">
+              {pathCheck.ok ? 'Checks look healthy' : 'Issues found'} — {pathCheck.message}
+            </div>
+            {(pathCheck.steps || []).map((s: Record<string, unknown>) => (
+              <div key={String(s.id)} className="border-t border-[var(--border)] pt-2">
+                <span className={s.ok ? 'text-[var(--accent)]' : 'text-[var(--danger)]'}>{s.ok ? '✓' : '✗'}</span>{' '}
+                <strong>{String(s.label)}</strong>
+                {s.source ? <span className="text-[var(--muted)]"> · {String(s.source)}</span> : null}
+                {s.error ? <div className="text-[var(--danger)]">{String(s.error)}</div> : null}
+                {s.hint ? <div className="text-[var(--muted)]">{String(s.hint)}</div> : null}
+                {s.token_redacted ? (
+                  <div className="text-[var(--muted)]">
+                    token {String(s.token_redacted)}
+                    {s.expires_in != null && Number(s.expires_in) > 0 ? ` · expires_in ${String(s.expires_in)}s` : ''}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+        {lastOauth && (
+
+          <p className="mb-0 mt-3 text-xs text-[var(--muted)]">
+            Last network login check: token {lastOauth.token_redacted}
+            {lastOauth.expires_in != null && lastOauth.expires_in > 0
+              ? ` · expires_in ${lastOauth.expires_in}s`
+              : ''}
+            {lastOauth.environment ? ` · ${lastOauth.environment}` : ''}
+          </p>
+        )}
       </div>
 
       <div className={card}>

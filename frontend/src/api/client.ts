@@ -22,6 +22,11 @@ export function setIdToken(token: string | null) {
 export function clearSessionTokens() {
   sessionStorage.removeItem(TOKEN_KEY)
   sessionStorage.removeItem(ID_TOKEN_KEY)
+  try {
+    sessionStorage.removeItem('netpay_active_tenant_id')
+  } catch {
+    /* ignore */
+  }
 }
 
 export class ApiError extends Error {
@@ -32,6 +37,24 @@ export class ApiError extends Error {
     this.status = status
     this.detail = detail
   }
+}
+
+/** Flatten FastAPI detail (string | object) for UI. */
+export function formatApiDetail(detail: unknown): string {
+  if (detail == null) return 'Request failed'
+  if (typeof detail === 'string') return detail
+  if (typeof detail === 'object' && detail !== null) {
+    const d = detail as Record<string, unknown>
+    if (typeof d.message === 'string') {
+      const parts = [d.message]
+      if (d.source) parts.push(`Source: ${String(d.source)}`)
+      if (d.stage) parts.push(`Stage: ${String(d.stage)}`)
+      if (d.hint) parts.push(String(d.hint))
+      return parts.join(' · ')
+    }
+    return JSON.stringify(detail)
+  }
+  return String(detail)
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -57,7 +80,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     let detail = res.statusText || 'Request failed'
     if (typeof data === 'object' && data && 'detail' in data) {
       const d = (data as { detail: unknown }).detail
-      detail = typeof d === 'string' ? d : JSON.stringify(d)
+      detail = formatApiDetail(d)
     }
     throw new ApiError(res.status, detail)
   }
@@ -76,6 +99,11 @@ export const api = {
         ...(init?.headers || {}),
       },
     }),
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: 'PATCH',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 
@@ -83,8 +111,12 @@ export type User = {
   id: string
   email: string
   display_name?: string | null
+  full_name?: string | null
+  username?: string | null
   role: 'admin' | 'user'
   tenant_id?: string | null
+  tenant_name?: string | null
+  tenant_tier?: string | null
   is_active: boolean
 }
 
@@ -110,9 +142,35 @@ export type Tenant = {
   name: string
   slug: string
   status: string
-  created_at: string
+  category?: string | null
+  email?: string | null
+  phone_number?: string | null
+  created_at?: string
 }
 
+
+export type Readiness = {
+  has_business: boolean
+  has_shortcode: boolean
+  has_connected_shortcode: boolean
+  has_notifications: boolean
+  has_api_client: boolean
+  ready_to_collect: boolean
+  next_step:
+    | 'create_business'
+    | 'add_shortcode'
+    | 'connect_mpesa'
+    | 'add_notification'
+    | 'connect_system'
+    | 'take_payment'
+    | 'done'
+  tenant_id?: string | null
+  primary_integration_id?: string | null
+  shortcode_count: number
+  connected_count: number
+  notification_count?: number
+  api_client_count?: number
+}
 
 export type Integration = {
   id: string
@@ -122,10 +180,11 @@ export type Integration = {
   type: string
   environment: string
   status: string
+  connected?: boolean
   confirmation_url?: string | null
   validation_url?: string | null
   stk_callback_url?: string | null
-  created_at: string
+  created_at?: string
 }
 
 export type Webhook = {

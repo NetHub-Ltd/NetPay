@@ -1,0 +1,171 @@
+"""OAuth client create/list and client_credentials token."""
+from __future__ import annotations
+
+from uuid import uuid4
+
+import pytest
+
+
+async def _seed_tenant():
+    from tests.conftest import ADMIN_ID
+    from app.core.db import AsyncSessionLocal
+    from app.crud.tenant import tenant_crud
+
+    tenant_id = uuid4()
+    async with AsyncSessionLocal() as session:
+        await tenant_crud.create_tenant(
+            session,
+            name="OAuth Test Biz",
+            slug=f"oauth-test-{tenant_id.hex[:8]}",
+            created_by=ADMIN_ID,
+            id=tenant_id,
+            status="active",
+        )
+        await session.commit()
+    return tenant_id
+
+
+def _drop_auth_override():
+    from app.main import app
+    from app.api.deps import get_current_user
+
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_create_and_list_oauth_client(client):
+    tenant_id = await _seed_tenant()
+
+    create = await client.post(
+        "/v1/oauth/clients",
+        json={"tenant_id": str(tenant_id), "name": "Test client"},
+    )
+    assert create.status_code == 201, create.text
+    body = create.json()
+    assert body.get("client_id", "").startswith("cli_")
+    assert body.get("client_secret")
+    assert body["name"] == "Test client"
+
+    listed = await client.get(f"/v1/oauth/clients?tenant_id={tenant_id}")
+    assert listed.status_code == 200, listed.text
+    rows = listed.json()
+    assert any(r["client_id"] == body["client_id"] for r in rows)
+    assert all("client_secret" not in r for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_oauth_client_non_admin_forbidden_other_tenant(user_client):
+    """Non-admin cannot create a client on a business they do not access."""
+    res = await user_client.post(
+        "/v1/oauth/clients",
+        json={"tenant_id": "00000000-0000-4000-8000-0000000000ff", "name": "Nope"},
+    )
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_client_credentials_token(client):
+    tenant_id = await _seed_tenant()
+    created = await client.post(
+        "/v1/oauth/clients",
+        json={"tenant_id": str(tenant_id), "name": "M2M client"},
+    )
+    assert created.status_code == 201, created.text
+    cid = created.json()["client_id"]
+    secret = created.json()["client_secret"]
+
+    _drop_auth_override()
+
+    tok = await client.post(
+        "/v1/oauth/token",
+        json={"grant_type": "client_credentials", "client_id": cid, "client_secret": secret},
+    )
+    assert tok.status_code == 200, tok.text
+    body = tok.json()
+    assert body.get("access_token")
+    assert body.get("token_type") == "bearer"
+    assert body.get("client_id") == cid
+    assert body.get("tenant_id") == str(tenant_id)
+
+    headers = {"Authorization": f"Bearer {body['access_token']}"}
+    listed = await client.get(f"/v1/oauth/clients?tenant_id={tenant_id}", headers=headers)
+    # Machine may list clients for its own tenant
+    assert listed.status_code == 200
+
+    bad = await client.post(
+        "/v1/oauth/token",
+        json={"grant_type": "client_credentials", "client_id": cid, "client_secret": "wrong-secret-value"},
+    )
+    assert bad.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_machine_token_lists_payments(client):
+    tenant_id = await _seed_tenant()
+    created = await client.post(
+        "/v1/oauth/clients",
+        json={"tenant_id": str(tenant_id), "name": "Pay client"},
+    )
+    assert created.status_code == 201, created.text
+
+    _drop_auth_override()
+
+    tok = await client.post(
+        "/v1/oauth/token",
+        json={
+            "grant_type": "client_credentials",
+            "client_id": created.json()["client_id"],
+            "client_secret": created.json()["client_secret"],
+        },
+    )
+    assert tok.status_code == 200, tok.text
+    headers = {"Authorization": f"Bearer {tok.json()['access_token']}"}
+    res = await client.get(f"/v1/payment-intents?tenant_id={tenant_id}", headers=headers)
+    assert res.status_code == 200, res.text
+    assert isinstance(res.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_rotate_oauth_client_secret(client):
+    tenant_id = await _seed_tenant()
+    create = await client.post(
+        "/v1/oauth/clients",
+        json={"tenant_id": str(tenant_id), "name": "Rotate me"},
+    )
+    assert create.status_code == 201, create.text
+    body = create.json()
+    cid = body["client_id"]
+    old_secret = body["client_secret"]
+
+    rotated = await client.post(f"/v1/oauth/clients/{cid}/rotate")
+    assert rotated.status_code == 200, rotated.text
+    new_body = rotated.json()
+    assert new_body["client_id"] == cid
+    assert new_body["client_secret"] != old_secret
+
+    # Old secret must fail token exchange
+    bad = await client.post(
+        "/v1/oauth/token",
+        json={
+            "grant_type": "client_credentials",
+            "client_id": cid,
+            "client_secret": old_secret,
+        },
+    )
+    assert bad.status_code == 401
+
+    good = await client.post(
+        "/v1/oauth/token",
+        json={
+            "grant_type": "client_credentials",
+            "client_id": cid,
+            "client_secret": new_body["client_secret"],
+        },
+    )
+    assert good.status_code == 200, good.text
+    token = good.json()["access_token"]
+    from jose import jwt
+    from app.core.config import settings
+    payload = jwt.get_unverified_claims(token)
+    assert payload.get("typ") == "machine"
+    assert payload.get("aud") == settings.machine_token_audience

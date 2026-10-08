@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-:root,
-[data-theme="light"] {
+/* NetPay light theme — locked to dashboard hero green */
+:root {
   --bg: #f3f6f4;
   --panel: #ffffff;
   --panel-2: #eef3ef;
@@ -16,46 +16,28 @@
   --danger-soft: #fceeee;
   --warn: #b86a00;
   --warn-soft: #fff4e5;
+  --ok: #0d7a55;
   --ok-soft: #e6f5ee;
   --radius: 14px;
   --radius-sm: 10px;
+  --radius-xl: 16px;
   --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --shadow: 0 1px 2px rgba(15, 31, 23, 0.04), 0 10px 28px rgba(15, 31, 23, 0.06);
   --shadow-sm: 0 1px 2px rgba(15, 31, 23, 0.05);
   --nav-active-bg: var(--accent-soft);
   --nav-active-color: #0a6244;
-  --login-hero-bg: linear-gradient(145deg, #0a3d2c 0%, #0d7a55 48%, #1aae78 100%);
+  --hero-bg: linear-gradient(145deg, #0a3d2c 0%, #0d7a55 48%, #1aae78 100%);
+  --login-hero-bg: var(--hero-bg);
+  /* Gradient stops for Tailwind bg-gradient-* (bg-[var(--hero-bg)] cannot paint gradients) */
+  --hero-from: #0a3d2c;
+  --hero-via: #0d7a55;
+  --hero-to: #1aae78;
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+  --on-hero: #ffffff;
+  --on-hero-muted: rgba(255, 255, 255, 0.78);
 }
 
-[data-theme="dark"] {
-  --bg: #0c1410;
-  --panel: #121c17;
-  --panel-2: #1a2620;
-  --border: #2a3b32;
-  --text: #e8f0eb;
-  --muted: #8fa99a;
-  --accent: #3dd68c;
-  --accent-hover: #5ee0a0;
-  --accent-2: #3dd68c;
-  --accent-soft: #163528;
-  --danger: #f07171;
-  --danger-soft: #3a1c1c;
-  --warn: #f0b429;
-  --warn-soft: #3a2e12;
-  --ok-soft: #163528;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --nav-active-bg: #163528;
-  --nav-active-color: #e8f0eb;
-  --login-hero-bg: linear-gradient(145deg, #07140f 0%, #0f2a20 50%, #0d4a34 100%);
-  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
-}
-
-
-/* Brand tokens exposed to Tailwind utilities (v4 @theme).
-   Prefer these over one-off bg-[var(--…)] where practical. */
 @theme {
   --color-np-bg: var(--bg);
   --color-np-panel: var(--panel);
@@ -74,6 +56,7 @@
   --color-np-ok-soft: var(--ok-soft);
   --radius-np: var(--radius);
   --radius-np-sm: var(--radius-sm);
+  --radius-np-xl: var(--radius-xl);
   --font-np: var(--font);
   --font-np-mono: var(--font-mono);
   --shadow-np: var(--shadow);

@@ -1,12 +1,12 @@
 /**
  * Browser OIDC (Zitadel / NetHub IdP) with PKCE — public SPA client.
  *
- * Aligned with NetHubKe env naming (OIDC_ISSUER, OIDC_CLIENT_ID) exposed to the
- * SPA as VITE_OIDC_* at image build time. NetPay never validates the JWT; it
- * stores the access_token and calls NetHub GET /users/me with Bearer.
+ * Config resolution order:
+ *   1. Runtime GET /config.json from FastAPI (OIDC_* process env) — production
+ *   2. Vite import.meta.env VITE_OIDC_* — local `npm run dev` only
  *
- * Unlike NetHubKe (Next.js Auth.js + optional client secret on the server),
- * this SPA uses authorization-code + PKCE only — no client secret in the browser.
+ * NetPay never validates the JWT; it stores the access_token and calls
+ * NetHub GET /users/me with Bearer. No client secret in the browser.
  */
 
 const STORAGE = {
@@ -24,6 +24,14 @@ export type OidcConfig = {
   scopes: string
 }
 
+type RuntimeSpaConfig = {
+  oidc_issuer?: string
+  oidc_client_id?: string
+  oidc_redirect_uri?: string
+  oidc_scopes?: string
+  oidc_configured?: boolean
+}
+
 type Discovery = {
   authorization_endpoint?: string
   token_endpoint?: string
@@ -31,8 +39,11 @@ type Discovery = {
 }
 
 let discoveryCache: { at: number; data: Discovery } | null = null
+let runtimeConfig: RuntimeSpaConfig | null = null
+let runtimeLoad: Promise<RuntimeSpaConfig | null> | null = null
+let resolvedConfig: OidcConfig | null | undefined = undefined
 
-export function getOidcConfig(): OidcConfig | null {
+function fromViteEnv(): OidcConfig | null {
   const issuer = (import.meta.env.VITE_OIDC_ISSUER as string | undefined)
     ?.trim()
     .replace(/\/$/, '')
@@ -46,6 +57,67 @@ export function getOidcConfig(): OidcConfig | null {
     (import.meta.env.VITE_OIDC_SCOPES as string | undefined)?.trim() ||
     'openid profile email offline_access'
   return { issuer, clientId, redirectUri, scopes }
+}
+
+function fromRuntime(data: RuntimeSpaConfig | null | undefined): OidcConfig | null {
+  if (!data) return null
+  const issuer = (data.oidc_issuer || '').trim().replace(/\/$/, '')
+  const clientId = (data.oidc_client_id || '').trim()
+  if (!issuer || !clientId) return null
+  if (issuer === BUILD_PLACEHOLDER_ISSUER) return null
+  const redirectUri =
+    (data.oidc_redirect_uri || '').trim() ||
+    `${window.location.origin}/auth/callback`
+  const scopes =
+    (data.oidc_scopes || '').trim() || 'openid profile email offline_access'
+  return { issuer, clientId, redirectUri, scopes }
+}
+
+/** Fetch public SPA config from FastAPI (cached). */
+export async function loadRuntimeConfig(): Promise<RuntimeSpaConfig | null> {
+  if (runtimeConfig) return runtimeConfig
+  if (runtimeLoad) return runtimeLoad
+  runtimeLoad = (async () => {
+    try {
+      const res = await fetch('/config.json', {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+      })
+      if (!res.ok) {
+        runtimeConfig = null
+        return null
+      }
+      runtimeConfig = (await res.json()) as RuntimeSpaConfig
+      return runtimeConfig
+    } catch {
+      runtimeConfig = null
+      return null
+    } finally {
+      runtimeLoad = null
+    }
+  })()
+  return runtimeLoad
+}
+
+/**
+ * Resolve OIDC config: runtime first, then Vite env.
+ * Call `await ensureOidcConfig()` before login; sync getters work after that.
+ */
+export async function ensureOidcConfig(): Promise<OidcConfig | null> {
+  const runtime = fromRuntime(await loadRuntimeConfig())
+  if (runtime) {
+    resolvedConfig = runtime
+    return runtime
+  }
+  const vite = fromViteEnv()
+  resolvedConfig = vite
+  return vite
+}
+
+/** Sync getter — prefers last ensureOidcConfig() result, else Vite-only. */
+export function getOidcConfig(): OidcConfig | null {
+  if (resolvedConfig !== undefined) return resolvedConfig
+  return fromViteEnv()
 }
 
 export function isOidcConfigured(): boolean {
@@ -93,7 +165,7 @@ export async function beginLogin(returnTo = '/dashboard'): Promise<void> {
   const cfg = getOidcConfig()
   if (!cfg) {
     throw new Error(
-      'OIDC is not configured. Set VITE_OIDC_ISSUER and VITE_OIDC_CLIENT_ID at image build.',
+      'OIDC is not configured. Set OIDC_ISSUER and OIDC_CLIENT_ID on the server (or VITE_* for local dev).',
     )
   }
   const discovery = await oidcDiscovery(cfg.issuer)
@@ -192,7 +264,9 @@ export async function beginLogout(idToken?: string | null): Promise<void> {
       discovery.end_session_endpoint || `${cfg.issuer}/oidc/v1/end_session`
     const url = new URL(endSession)
     if (idToken) url.searchParams.set('id_token_hint', idToken)
-    url.searchParams.set('post_logout_redirect_uri', `${window.location.origin}/login`)
+    // Must match a Post Logout URI in Zitadel (e.g. https://pay.nethub.co.ke/).
+    // /login is not registered → invalid_request: post_logout_redirect_uri invalid
+    url.searchParams.set('post_logout_redirect_uri', `${window.location.origin}/`)
     url.searchParams.set('client_id', cfg.clientId)
     window.location.assign(url.toString())
   } catch {

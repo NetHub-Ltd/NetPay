@@ -18,9 +18,19 @@ class Principal(BaseModel):
     tenant_id: Optional[UUID] = None
     tenant_name: Optional[str] = None
     tenant_tier: Optional[str] = None
-    # Set by NetPay from ADMIN_EMAIL allowlist — not from IdP roles
+    # Set by NetHub allowlist or machine client
     is_admin: bool = False
+    # Present when authenticated via client_credentials
+    client_id: Optional[str] = None
 
     @property
     def role(self) -> str:
-        return "admin" if self.is_admin else "user"
+        if self.is_admin:
+            return "admin"
+        if self.client_id:
+            return "machine"
+        return "user"
+
+    @property
+    def is_machine(self) -> bool:
+        return bool(self.client_id)

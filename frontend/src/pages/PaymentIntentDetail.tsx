@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { emitNotification, subscribeLiveMessages } from '../hooks/liveEvents'
 import { api, ApiError, type PaymentIntent } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatKes, statusHint } from '../components/statusUtils'
-import { button, card, errorAlert, ghostButton, pageHeader, pageTitle, primaryButton, successAlert, table } from '../components/ui'
+import { PageHeader } from '../components/PageHeader'
+import { card, errorAlert, successAlert, table, button, primaryButton, ghostButton } from '../components/ui'
 
 type LedgerRow = {
   id: string
@@ -97,8 +99,32 @@ export function PaymentIntentDetail() {
   const [showTech, setShowTech] = useState(false)
 
   const load = useCallback(async () => {
+    if (!id) return null
     try {
-      setItem(await api.get<PaymentIntent>(`/v1/payment-intents/${id}`))
+      const next = await api.get<PaymentIntent>(`/v1/payment-intents/${id}`)
+      setItem((prev) => {
+        if (prev && prev.status !== next.status) {
+          const terminal = next.status === 'succeeded' || next.status === 'failed' || next.status === 'expired'
+          if (terminal) {
+            emitNotification({
+              id: `local-${next.id}-${next.status}`,
+              title:
+                next.status === 'succeeded'
+                  ? 'Payment successful'
+                  : next.status === 'expired'
+                    ? 'Payment expired'
+                    : 'Payment failed',
+              body: `${formatKes(next.amount_minor, next.amount, next.currency)} · ${next.phone || ''}`.trim(),
+              level: next.status === 'succeeded' ? 'success' : 'error',
+              href: `/intents/${next.id}`,
+              status: next.status,
+              intent_id: next.id,
+              ts: new Date().toISOString(),
+            })
+          }
+        }
+        return next
+      })
       try {
         setLedger(await api.get<LedgerRow[]>(`/v1/payment-intents/${id}/ledger`))
       } catch {
@@ -109,14 +135,31 @@ export function PaymentIntentDetail() {
       } catch {
         setTimeline(null)
       }
+      setError(null)
+      return next
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Not found')
+      return null
     }
   }, [id])
 
+  // Initial load
   useEffect(() => {
     void Promise.resolve().then(load)
   }, [load])
+
+  // Live bus: any payment.update for this intent → reload
+  useEffect(() => {
+    if (!id) return
+    return subscribeLiveMessages((m) => {
+      const payload = m.payload || {}
+      const intentId = String(payload.intent_id || '')
+      if (m.type === 'payment.update' || m.type === 'notification') {
+        if (!intentId || intentId === id) void load()
+      }
+    })
+  }, [id, load])
+
 
   async function queryNetwork() {
     setBusy(true)
@@ -133,20 +176,6 @@ export function PaymentIntentDetail() {
     }
   }
 
-  async function simulate() {
-    setBusy(true)
-    setError(null)
-    setMsg(null)
-    try {
-      await api.post(`/v1/payment-intents/${id}/simulate`, {})
-      setMsg('Simulated success applied.')
-      await load()
-    } catch (e) {
-      setError(e instanceof ApiError ? e.detail : 'Simulate failed')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   const req = useMemo(() => parseJson(item?.stk_request_json), [item?.stk_request_json])
   const res = useMemo(() => parseJson(item?.stk_response_json), [item?.stk_response_json])
@@ -159,24 +188,21 @@ export function PaymentIntentDetail() {
 
   return (
     <div data-testid="intent-detail-page" className="space-y-4">
-      <div className={pageHeader}>
-        <div>
-          <p className="mb-1 text-sm text-[var(--muted)]">
-            <Link to="/intents">← Payments</Link>
-          </p>
-          <h1 className={pageTitle}>
-            {formatKes(item.amount_minor, item.amount, item.currency)}
-            <span className="ml-2 text-base font-medium text-[var(--muted)]">
-              to {item.phone}
-            </span>
-          </h1>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            {item.created_at ? new Date(item.created_at).toLocaleString() : ''}
-            {item.account_reference ? ` · Ref ${item.account_reference}` : ''}
-          </p>
-        </div>
-        <StatusBadge value={item.status} />
-      </div>
+      <p className="mb-2 text-sm text-[var(--muted)]">
+        <Link to="/intents">← Payments</Link>
+      </p>
+      <PageHeader
+        title={`${formatKes(item.amount_minor, item.amount, item.currency)} to ${item.phone || '—'}`}
+        description={
+          [
+            item.created_at ? new Date(item.created_at).toLocaleString() : '',
+            item.account_reference ? `Ref ${item.account_reference}` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        }
+        actions={<StatusBadge value={item.status} />}
+      />
 
       {error && <div className={errorAlert} role="alert">{error}</div>}
       {item.failure_reason && item.status !== 'succeeded' && (
@@ -184,9 +210,17 @@ export function PaymentIntentDetail() {
       )}
       {msg && <div className={successAlert} role="status">{msg}</div>}
       {hint && !item.failure_reason && (
-        <p className="m-0 text-sm text-[var(--muted)]">
-          {hint}
-        </p>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 text-sm shadow-[var(--shadow-sm)]">
+          <p className="m-0 font-medium text-[var(--text)]">{hint}</p>
+          {(item.status === 'created' || item.status === 'provider_requested') && (
+            <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
+              This page updates live when the network reports a result. The STK reply{' '}
+              <em>Success. Request accepted for processing</em> only means the phone prompt was accepted — not that
+              money moved. Status becomes Paid/Failed after the customer responds, a callback arrives, or you use{' '}
+              <strong>Check with network</strong>.
+            </p>
+          )}
+        </div>
       )}
 
       <div className="grid items-start gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -243,12 +277,7 @@ export function PaymentIntentDetail() {
                   {busy ? 'Checking…' : 'Check with network'}
                 </button>
               )}
-              {(item.status === 'created' || item.status === 'provider_requested') && (
-                <button className={button} type="button" disabled={busy} onClick={simulate}>
-                  {busy ? 'Working…' : 'Simulate success (dev)'}
-                </button>
-              )}
-              {(item.status === 'failed' || item.status === 'expired') && (
+{(item.status === 'failed' || item.status === 'expired') && (
                 <Link className={primaryButton} to="/intents">
                   Start a new payment
                 </Link>

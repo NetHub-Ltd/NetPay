@@ -59,6 +59,20 @@ Next.js Auth.js with server-side env (`OIDC_ISSUER`, `OIDC_CLIENT_ID`, optional
 **Do not** bake `OIDC_CLIENT_SECRET` into the SPA. NetHubKe may use a secret on
 the server; NetPay must not.
 
+## Runtime SPA config (preferred)
+
+NetPay serves **`GET /config.json`** (no auth) from process environment:
+
+| Env | JSON field | Notes |
+|-----|------------|--------|
+| `OIDC_ISSUER` | `oidc_issuer` | e.g. `https://auth.nethub.co.ke` |
+| `OIDC_CLIENT_ID` | `oidc_client_id` | Zitadel **SPA** (public) client |
+| `OIDC_REDIRECT_URI` | `oidc_redirect_uri` | e.g. `https://pay.nethub.co.ke/auth/callback` |
+| `OIDC_SCOPES` | `oidc_scopes` | default `openid profile email offline_access` |
+
+The SPA prefers this runtime config and falls back to `VITE_OIDC_*` only for local Vite dev.
+The same container image therefore works on GHCR, Render, and k3s — set env vars and restart.
+
 CI (`release.yml`) reads GitHub Actions **variables**:
 `vars.OIDC_ISSUER`, `vars.OIDC_CLIENT_ID`, `vars.NETPAY_OIDC_REDIRECT_URI`,
 optional `vars.OIDC_SCOPES`.
