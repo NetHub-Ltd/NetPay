@@ -6,13 +6,23 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 def to_sync_url(async_url: str) -> str:
+    """Convert async DATABASE_URL to a sync SQLAlchemy URL for Alembic.
+
+    Always pin Postgres to the psycopg2 driver (``postgresql+psycopg2://``).
+    Plain ``postgresql://`` can resolve to the psycopg3 dialect on newer
+    SQLAlchemy builds, which requires the separate ``psycopg`` package.
+    """
     u = async_url.strip()
     if u.startswith("sqlite+aiosqlite://"):
         return "sqlite://" + u.removeprefix("sqlite+aiosqlite://")
     if u.startswith("postgresql+asyncpg://"):
-        return "postgresql://" + u.removeprefix("postgresql+asyncpg://")
+        return "postgresql+psycopg2://" + u.removeprefix("postgresql+asyncpg://")
+    if u.startswith("postgresql+psycopg://"):
+        return "postgresql+psycopg2://" + u.removeprefix("postgresql+psycopg://")
+    if u.startswith("postgresql://"):
+        return "postgresql+psycopg2://" + u.removeprefix("postgresql://")
     if u.startswith("postgres://"):
-        return "postgresql://" + u.removeprefix("postgres://")
+        return "postgresql+psycopg2://" + u.removeprefix("postgres://")
     return u
 
 class Settings(BaseSettings):

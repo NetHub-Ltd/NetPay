@@ -102,7 +102,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p data static
-          echo "Using DATABASE_URL host=$(python -c "from urllib.parse import urlparse; import os; u=urlparse(os.environ['DATABASE_URL'].replace('+asyncpg','')); print(u.hostname, u.port, u.path)")"
+          python - <<'PY'
+          import os
+          from app.core.config import to_sync_url
+          raw = os.environ["DATABASE_URL"]
+          sync = to_sync_url(raw)
+          print("async URL scheme host:", raw.split("://", 1)[0], raw.split("@")[-1])
+          print("sync URL for Alembic:", sync.split("://", 1)[0] + "://" + sync.split("@")[-1])
+          PY
           alembic upgrade head
 
       - name: Start API
