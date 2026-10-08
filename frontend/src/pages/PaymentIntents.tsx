@@ -173,7 +173,9 @@ export function PaymentIntents() {
         </div>
       )}
 
-      {noShortcodes ? (
+      {loading ? (
+        <TableSkeleton rows={5} />
+      ) : noShortcodes ? (
         <EmptyState
           icon={<CreditCard size={22} aria-hidden />}
           title="Add a shortcode before taking payments"
