@@ -78,3 +78,37 @@ async def create_oauth_client(
         name=(body.name or "API client").strip()[:120] or "API client",
         tenant_id=body.tenant_id,
     )
+
+
+@router.post("/{client_id}/rotate", response_model=OAuthClientOut)
+async def rotate_oauth_client_secret(
+    client_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[Principal, Depends(get_current_user)],
+) -> OAuthClientOut:
+    """Rotate secret for an existing client. New secret returned once; old secret stops working."""
+    from sqlmodel import col, select
+    from app.models.oauth_client import OAuthClient
+
+    stmt = (
+        select(OAuthClient)
+        .where(col(OAuthClient.client_id) == client_id)
+        .where(col(OAuthClient.deleted_at).is_(None))
+        .limit(1)
+    )
+    row = (await session.exec(stmt)).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    if not await user_can_access_tenant(session, user, row.tenant_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    plain = new_client_secret()
+    row.client_secret_hash = hash_password(plain)
+    session.add(row)
+    await session.commit()
+    await session.refresh(row)
+    return OAuthClientOut(
+        client_id=row.client_id,
+        client_secret=plain,
+        name=row.name,
+        tenant_id=row.tenant_id,
+    )

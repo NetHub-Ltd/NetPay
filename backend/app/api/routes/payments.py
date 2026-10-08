@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from app.core.config import settings
+from app.core.rate_limit import enforce_rate_limit
 from app.services.edge_urls import integration_callback_urls
 import json
 from decimal import Decimal
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import get_current_user, get_session, user_can_access_tenant
@@ -107,8 +108,14 @@ async def get_intent(
     )
 
 
-@router.post("", response_model=IntentCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=IntentCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={429: {"description": "Rate limit exceeded"}},
+)
 async def create_intent(
+    request: Request,
     body: IntentCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[Principal, Depends(get_current_user)],
@@ -119,7 +126,15 @@ async def create_intent(
 
     Requires header Idempotency-Key. Replaying the same key for the same tenant
     returns the original intent without a second provider call.
+    Rate-limited per machine client_id or IP (RATE_LIMIT_PAYMENT_PER_MINUTE).
     """
+    identity = getattr(user, "client_id", None) or (str(user.tenant_id) if user.tenant_id else None)
+    await enforce_rate_limit(
+        request,
+        bucket="payment_intent",
+        limit=settings.rate_limit_payment_per_minute,
+        identity=identity,
+    )
     if not idempotency_key or not idempotency_key.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

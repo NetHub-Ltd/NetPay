@@ -123,3 +123,49 @@ async def test_machine_token_lists_payments(client):
     res = await client.get(f"/v1/payment-intents?tenant_id={tenant_id}", headers=headers)
     assert res.status_code == 200, res.text
     assert isinstance(res.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_rotate_oauth_client_secret(client):
+    tenant_id = await _seed_tenant()
+    create = await client.post(
+        "/v1/oauth/clients",
+        json={"tenant_id": str(tenant_id), "name": "Rotate me"},
+    )
+    assert create.status_code == 201, create.text
+    body = create.json()
+    cid = body["client_id"]
+    old_secret = body["client_secret"]
+
+    rotated = await client.post(f"/v1/oauth/clients/{cid}/rotate")
+    assert rotated.status_code == 200, rotated.text
+    new_body = rotated.json()
+    assert new_body["client_id"] == cid
+    assert new_body["client_secret"] != old_secret
+
+    # Old secret must fail token exchange
+    bad = await client.post(
+        "/v1/oauth/token",
+        json={
+            "grant_type": "client_credentials",
+            "client_id": cid,
+            "client_secret": old_secret,
+        },
+    )
+    assert bad.status_code == 401
+
+    good = await client.post(
+        "/v1/oauth/token",
+        json={
+            "grant_type": "client_credentials",
+            "client_id": cid,
+            "client_secret": new_body["client_secret"],
+        },
+    )
+    assert good.status_code == 200, good.text
+    token = good.json()["access_token"]
+    from jose import jwt
+    from app.core.config import settings
+    payload = jwt.get_unverified_claims(token)
+    assert payload.get("typ") == "machine"
+    assert payload.get("aud") == settings.machine_token_audience

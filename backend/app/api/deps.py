@@ -65,11 +65,15 @@ async def get_current_user(
 
 
 def _try_machine_principal(token: str) -> Principal | None:
-    """Return Principal if token is a valid NetPay machine JWT; else None."""
+    """Return Principal if token is a valid NetPay machine JWT; else None.
+
+    Requires typ=machine and aud matching settings.machine_token_audience.
+    """
     from uuid import UUID, uuid5, NAMESPACE_URL
 
     from jose import JWTError
 
+    from app.core.config import settings
     from app.core.security import decode_token
 
     try:
@@ -80,6 +84,14 @@ def _try_machine_principal(token: str) -> Principal | None:
         return None
     if payload.get("typ") != "machine":
         return None
+    aud = payload.get("aud")
+    expected = settings.machine_token_audience
+    # jose may return aud as str or list
+    if isinstance(aud, list):
+        if expected not in aud:
+            return None
+    elif aud != expected:
+        return None
     client_id = payload.get("client_id") or payload.get("sub")
     tenant_raw = payload.get("tenant_id")
     if not client_id or not tenant_raw:
@@ -88,7 +100,6 @@ def _try_machine_principal(token: str) -> Principal | None:
         tenant_id = UUID(str(tenant_raw))
     except ValueError:
         return None
-    # Stable synthetic id for Principal.id (not a human user)
     pid = uuid5(NAMESPACE_URL, f"netpay:machine:{client_id}")
     return Principal(
         id=pid,

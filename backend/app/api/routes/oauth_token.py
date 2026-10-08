@@ -9,7 +9,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import get_session
 from app.core.config import settings
-from app.core.security import create_access_token, verify_password
+from app.core.rate_limit import enforce_rate_limit
+from app.core.security import create_machine_token, verify_password
 from app.crud.oauth_client import oauth_client_crud
 
 router = APIRouter(prefix="/v1/oauth", tags=["oauth"])
@@ -41,11 +42,10 @@ async def _issue_token(
     if client is None or not verify_password(client_secret, client.client_secret_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_client")
 
-    expires = int(settings.access_token_expire_minutes) * 60
-    token = create_access_token(
+    expires = int(settings.machine_token_expire_minutes) * 60
+    token = create_machine_token(
         subject=client.client_id,
         extra={
-            "typ": "machine",
             "client_id": client.client_id,
             "tenant_id": str(client.tenant_id),
             "name": client.name,
@@ -85,11 +85,26 @@ async def _parse_credentials(request: Request) -> tuple[str, str, str]:
         raise HTTPException(status_code=400, detail="invalid_request") from exc
 
 
-@router.post("/token", response_model=TokenResponse)
+@router.post(
+    "/token",
+    response_model=TokenResponse,
+    responses={429: {"description": "Rate limit exceeded"}},
+)
 async def oauth_token(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> TokenResponse:
-    """Exchange client_id + client_secret for a Bearer token (client_credentials)."""
+    """Exchange client_id + client_secret for a Bearer token (client_credentials).
+
+    Machine tokens include `aud=netpay` and use MACHINE_TOKEN_EXPIRE_MINUTES (default 60).
+    Rate-limited per client_id / IP (RATE_LIMIT_TOKEN_PER_MINUTE).
+    """
+    # Pre-parse identity for tighter rate-limit key when possible (body may be form/json)
     client_id, client_secret, grant_type = await _parse_credentials(request)
+    await enforce_rate_limit(
+        request,
+        bucket="oauth_token",
+        limit=settings.rate_limit_token_per_minute,
+        identity=client_id.strip() or None,
+    )
     return await _issue_token(session, client_id, client_secret, grant_type)

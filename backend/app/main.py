@@ -34,11 +34,23 @@ async def lifespan(app: FastAPI):
     await stop_live_subscriber()
     await engine.dispose()
 
+# Production secret guard (fail closed)
+try:
+    settings.assert_production_secrets()
+except RuntimeError as exc:
+    from app.core.logging import logger
+    logger.error("Refusing to start: {}", exc)
+    raise
+
+_openapi = settings.openapi_enabled_effective
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="Multi-tenant M-Pesa orchestration. Clients never talk to Daraja.",
     lifespan=lifespan,
+    docs_url="/docs" if _openapi else None,
+    redoc_url="/redoc" if _openapi else None,
+    openapi_url="/openapi.json" if _openapi else None,
 )
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(health.router)

@@ -35,9 +35,11 @@ export function Docs() {
       </div>
 
       <div className={card}>
-        <h2 className="mb-2 mt-0 text-base font-semibold">2. Machine-to-machine (M2M)</h2>
+        <h2 className="mb-2 mt-0 text-base font-semibold">2. Machine-to-machine (M2M) — Partner quickstart</h2>
         <p className="mt-0 text-sm leading-6 text-[var(--muted)]">
-          Your service gets a token, starts a payment, and receives a notification when it settles.
+          Your service gets a token, starts a payment, and receives a signed notification when it
+          settles. Machine tokens include <code>aud=netpay</code> and expire in 60 minutes by default
+          (<code>MACHINE_TOKEN_EXPIRE_MINUTES</code>).
         </p>
         <h3 className="mb-1 text-sm font-semibold">A. Get a token</h3>
         <pre className={pre}>{`POST /v1/oauth/token
@@ -49,7 +51,11 @@ Content-Type: application/json
   "client_secret": "…"
 }
 
-→ { "access_token": "…", "token_type": "bearer", "expires_in": 43200 }`}</pre>
+→ { "access_token": "…", "token_type": "bearer", "expires_in": 3600, "tenant_id": "…", "client_id": "…" }`}</pre>
+        <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
+          Rate-limited per client (default 30 requests / minute). Over limit → HTTP 429 with{' '}
+          <code>Retry-After</code>.
+        </p>
         <h3 className="mb-1 mt-4 text-sm font-semibold">B. Start a payment</h3>
         <pre className={pre}>{`POST /v1/payment-intents
 Authorization: Bearer <access_token>
@@ -62,23 +68,35 @@ Content-Type: application/json
   "amount_minor": 100,
   "account_reference": "ORDER1",
   "description": "Payment",
+  "metadata": { "order_id": "…" },
   "status_callback_url": "https://your.app/hooks/pay"
 }`}</pre>
         <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
           <code>amount_minor</code> is cents (100 = KES 1.00). Prefer a unique{' '}
-          <code>Idempotency-Key</code> per attempt. Use{' '}
-          <code>status_callback_url</code> for a one-off notify URL, or configure standing URLs under
-          After payment.
+          <code>Idempotency-Key</code> per attempt. Rate-limited (default 60 / minute). Use{' '}
+          <code>status_callback_url</code> for a one-off notify URL, or standing URLs under After
+          payment.
         </p>
-        <h3 className="mb-1 mt-4 text-sm font-semibold">C. What we send after settlement</h3>
+        <h3 className="mb-1 mt-4 text-sm font-semibold">C. Verify settlement callbacks</h3>
         <p className="mt-0 text-sm leading-6 text-[var(--muted)]">
-          NetPay POSTs a JSON body to your webhook or <code>status_callback_url</code> when the
-          payment reaches a final state (succeeded / failed / expired). Verify the signature using the
-          webhook secret shown when you added the URL (or the documented HMAC for per-intent
-          callbacks). Respond with HTTP 2xx so we treat delivery as successful.
+          NetPay POSTs JSON to your webhook or <code>status_callback_url</code> with header{' '}
+          <code>X-Nethub-Signature: sha256=&lt;hex&gt;</code>.
         </p>
-        <p className="mb-0 text-sm">
-          Create credentials under <Link to="/oauth-clients">Connect your system</Link>.
+        <ul className="m-0 space-y-2 pl-5 text-sm leading-6 text-[var(--muted)]">
+          <li>
+            <strong>Tenant webhook</strong> (After payment): HMAC-SHA256 of the raw body using the{' '}
+            <code>whsec_…</code> secret shown once when you added the URL.
+          </li>
+          <li>
+            <strong>Per-intent <code>status_callback_url</code></strong>: HMAC-SHA256 of the raw body
+            using secret = <code>SHA256(hex)</code> of the string{' '}
+            <code>{'{SECRET_KEY}:{intent_id}'}</code> (server <code>SECRET_KEY</code> + intent UUID).
+            Prefer tenant webhooks when you control the endpoint long-term.
+          </li>
+        </ul>
+        <p className="mb-0 mt-2 text-sm">
+          Respond with HTTP 2xx so we treat delivery as successful. Create credentials under{' '}
+          <Link to="/oauth-clients">Connect your system</Link> (you can rotate secrets there).
         </p>
       </div>
 
@@ -90,6 +108,9 @@ Content-Type: application/json
           </li>
           <li>
             <Link to="/dashboard">Overview</Link> — setup checklist for the business you’re working in.
+          </li>
+          <li>
+            <Link to="/events">Events</Link> — audit trail including delivery outcomes.
           </li>
         </ul>
       </div>
