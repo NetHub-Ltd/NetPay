@@ -1,0 +1,130 @@
+name: Backend readiness
+
+# Proves the API boots against real Postgres + Redis and answers /health.
+# Unit tests stay in ci.yml (SQLite). This job is the production-like smoke.
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-readiness-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  start-and-health:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: netpay
+          POSTGRES_PASSWORD: netpay
+          POSTGRES_DB: netpay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U netpay -d netpay"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      ENVIRONMENT: test
+      SECRET_KEY: ci-readiness-secret-key-not-for-prod-32
+      INTERNAL_API_KEY: ci-internal-api-key-not-for-prod-32
+      DATABASE_URL: postgresql+asyncpg://netpay:netpay@localhost:5432/netpay
+      REDIS_URL: redis://localhost:6379/0
+      REDIS_REQUIRED: "true"
+      # Identity flag only — NetPay does not call this URL during /health
+      NETHUB_API_BASE_URL: https://api.example.invalid
+      OPENAPI_ENABLED: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend
+        run: |
+          pip install -U pip
+          pip install -e ".[dev]"
+
+      - name: Migrate schema
+        run: |
+          mkdir -p data static
+          alembic upgrade head
+
+      - name: Start API
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/netpay-uvicorn.log 2>&1 &
+          echo $! > /tmp/netpay-uvicorn.pid
+
+      - name: Wait for /health (liveness + dependency readiness)
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 40); do
+            if ! kill -0 "$(cat /tmp/netpay-uvicorn.pid)" 2>/dev/null; then
+              echo "uvicorn exited early"
+              cat /tmp/netpay-uvicorn.log || true
+              exit 1
+            fi
+            if curl -sfS "http://127.0.0.1:8000/health" -o /tmp/health.json; then
+              echo "Attempt $i — health response:"
+              cat /tmp/health.json
+              python3 - <<'PY'
+          import json, sys
+          h = json.load(open("/tmp/health.json"))
+          ok = (
+              h.get("status") == "ok"
+              and h.get("database") is True
+              and h.get("redis") == "ok"
+              and h.get("admin_ready") is True
+          )
+          if not ok:
+              print("Health not ready yet:", h)
+              sys.exit(1)
+          print("Health OK:", h)
+          PY
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Timed out waiting for /health"
+          cat /tmp/netpay-uvicorn.log || true
+          exit 1
+
+      - name: Assert OpenAPI disabled when OPENAPI_ENABLED=false
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8000/openapi.json" || true)
+          echo "openapi.json HTTP $code"
+          test "$code" = "404"
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [ -f /tmp/netpay-uvicorn.pid ]; then
+            kill "$(cat /tmp/netpay-uvicorn.pid)" 2>/dev/null || true
+          fi
+          cat /tmp/netpay-uvicorn.log || true
