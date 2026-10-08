@@ -223,17 +223,25 @@ async def register_urls(
             stage = "preflight"
         elif "HTTP" in msg and "failed" in msg.lower():
             source = "network"
+        if source == "netpay":
+            user_message = "We couldn’t connect this shortcode because the callback links are invalid."
+            user_action = "Use HTTPS links, then try again."
+        elif stage == "oauth":
+            user_message = "Network login failed for this shortcode."
+            user_action = "Check the credentials and try again."
+        elif source == "network":
+            user_message = "We couldn’t reach the payment network to connect this shortcode."
+            user_action = "This is often temporary. Try again in a few minutes, or register the links manually below."
+        else:
+            user_message = "The payment network couldn’t complete shortcode registration right now."
+            user_action = "Try again later, or register the links manually in your provider portal."
+        # Operator-facing fields first; raw provider text only in logs (msg above).
         detail = {
-            "message": msg[:600],
+            "user_message": user_message,
+            "user_action": user_action,
+            "message": user_message,
             "source": source,
             "stage": stage,
-            "hint": (
-                "NetPay rejected the request before calling Daraja."
-                if source == "netpay"
-                else "HTTP/transport problem reaching Safaricom — often sandbox outage."
-                if source == "network"
-                else "Safaricom/Daraja rejected or errored. Sandbox is often unstable; retry later."
-            ),
             "environment": integ.environment,
             "shortcode": integ.shortcode,
         }

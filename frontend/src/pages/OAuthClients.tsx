@@ -4,7 +4,7 @@ import { api, ApiError } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
 import { useWorkspace } from '../workspace/useWorkspace'
-import { Button, Input, Modal } from '../components/primitives'
+import { Button, ConfirmModal, Input, Modal } from '../components/primitives'
 import { mono } from '../components/ui'
 
 type OAuthClientCreated = {
@@ -63,6 +63,7 @@ export function OAuthClients() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [rotatingId, setRotatingId] = useState<string | null>(null)
+  const [rotateTarget, setRotateTarget] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!activeTenantId) return
@@ -110,7 +111,7 @@ export function OAuthClients() {
   }
 
   async function onRotate(clientId: string) {
-    if (!window.confirm('Rotate secret? The current secret will stop working immediately.')) return
+    setRotateTarget(null)
     setRotatingId(clientId)
     setError(null)
     try {
@@ -242,7 +243,7 @@ export function OAuthClients() {
                     size="sm"
                     leftIcon={<RefreshCw size={14} />}
                     loading={rotatingId === c.client_id}
-                    onClick={() => void onRotate(c.client_id)}
+                    onClick={() => setRotateTarget(c.client_id)}
                   >
                     Rotate secret
                   </Button>
@@ -275,6 +276,17 @@ export function OAuthClients() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        open={!!rotateTarget}
+        title="Rotate API secret?"
+        body="The current secret will stop working immediately. You will see the new secret once — copy it before leaving this page."
+        confirmLabel="Rotate secret"
+        danger
+        busy={!!rotatingId}
+        onCancel={() => !rotatingId && setRotateTarget(null)}
+        onConfirm={() => rotateTarget && void onRotate(rotateTarget)}
+      />
     </div>
   )
 }
