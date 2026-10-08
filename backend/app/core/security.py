@@ -47,7 +47,19 @@ def create_machine_token(
     )
 
 def decode_token(token: str, *, audience: Optional[str] = None) -> dict[str, Any]:
+    """Decode JWT.
+
+    When ``audience`` is provided, it is validated.
+    When omitted, audience claim is not verified (callers that care about
+    machine tokens must check ``aud`` themselves — see deps._try_machine_principal).
+    """
+    options: dict[str, bool] = {}
     kwargs: dict[str, Any] = {"algorithms": [ALGORITHM]}
-    if audience:
+    if audience is not None:
         kwargs["audience"] = audience
+    else:
+        # python-jose rejects tokens that *contain* aud when audience=None
+        options["verify_aud"] = False
+    if options:
+        kwargs["options"] = options
     return jwt.decode(token, settings.secret_key, **kwargs)
