@@ -1,8 +1,8 @@
 /**
  * Visual sandbox for proposed NetPay theme v2.
- * Scoped under .theme-lab-v2 — does NOT change global styles.css until approved.
+ * Tokens applied via inline CSS variables on the wrapper — no component CSS in styles.css.
  */
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Bell, Check, CreditCard, KeyRound, Landmark } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { Button, ConfirmModal, Input, Modal } from '../components/primitives'
@@ -10,27 +10,50 @@ import { EmptyState } from '../components/EmptyState'
 import { StatusBadge } from '../components/StatusBadge'
 import { emitNotification } from '../hooks/liveEvents'
 
+/** Proposed tokens — preview only until promoted to :root */
+const labTokens = {
+  ['--bg']: '#e8ece9',
+  ['--panel']: '#ffffff',
+  ['--panel-2']: '#f4f7f5',
+  ['--border']: '#cfdad3',
+  ['--text']: '#0a2e22',
+  ['--muted']: '#3d5248',
+  ['--accent']: '#0d7a55',
+  ['--accent-hover']: '#0a6244',
+  ['--accent-soft']: '#e6f5ee',
+  ['--shadow']: '0 1px 2px rgba(10, 46, 34, 0.05), 0 8px 24px rgba(10, 46, 34, 0.08)',
+  ['--shadow-sm']: '0 1px 3px rgba(10, 46, 34, 0.06)',
+} as CSSProperties
+
 const section =
   'mb-6 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]'
-const label = 'mb-2 text-xs font-bold uppercase tracking-wide text-[var(--muted)]'
+const label =
+  'mb-2 text-[0.6875rem] font-bold uppercase tracking-wider text-[var(--muted)]'
+const h1 =
+  'mt-0 mb-2 text-[clamp(1.5rem,1.25rem+1vw,1.875rem)] font-extrabold leading-tight tracking-tight text-[var(--text)]'
+const h2 =
+  'mt-0 mb-2 text-[clamp(1.2rem,1.1rem+0.5vw,1.375rem)] font-bold leading-snug tracking-tight text-[var(--text)]'
+const h3 = 'mt-0 mb-3 text-[1.05rem] font-bold leading-snug tracking-tight text-[var(--text)]'
+const body = 'm-0 text-[0.9375rem] font-semibold leading-relaxed text-[var(--text)]'
+const muted = 'm-0 text-sm font-medium leading-relaxed text-[var(--muted)]'
 
 export function ThemeLab() {
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   return (
-    <div className="theme-lab-v2" data-testid="theme-lab-page">
+    <div style={labTokens} data-testid="theme-lab-page">
       <PageHeader
         title="Theme lab"
         description="Proposed typography, layers, and controls — preview only. Approve before we lock styles.css."
       />
 
       <div className={`${section} border-[var(--accent)]/30 bg-[var(--accent-soft)]`}>
-        <p className="m-0 text-sm font-semibold text-[var(--text)]">
-          This page scopes proposed tokens under <code className="font-mono text-xs">.theme-lab-v2</code>.
-          The rest of the app still uses the current theme until you approve.
+        <p className={`${body} text-sm`}>
+          Tokens are applied inline on this page only. The rest of the app still uses the current
+          theme until you approve.
         </p>
-        <ul className="mb-0 mt-2 list-disc pl-5 text-sm font-medium text-[var(--text)]">
+        <ul className="mb-0 mt-2 list-disc pl-5 text-sm font-semibold text-[var(--text)]">
           <li>Body text is darker green (primary family), not pure gray-black</li>
           <li>Headings 700–800; body 600; muted 500 and darker for readability</li>
           <li>Canvas gray + white cards with border and soft lift shadow</li>
@@ -38,42 +61,41 @@ export function ThemeLab() {
         </ul>
       </div>
 
-      {/* Type scale */}
       <section className={section}>
         <div className={label}>Typography</div>
-        <h1 className="np-h1 mt-0 mb-2">Heading 1 — Shortcode 174379</h1>
-        <h2 className="np-h2 mt-0 mb-2">Heading 2 — Connect payment updates</h2>
-        <h3 className="np-h3 mt-0 mb-3">Heading 3 — Setup for this shortcode</h3>
-        <p className="np-body m-0 mb-2">
+        <h1 className={h1}>Heading 1 — Shortcode 174379</h1>
+        <h2 className={h2}>Heading 2 — Connect payment updates</h2>
+        <h3 className={h3}>Heading 3 — Setup for this shortcode</h3>
+        <p className={`${body} mb-2`}>
           Body — Main operator copy. Connect this shortcode so paybill and till results reach NetPay.
           Production URLs must be HTTPS and publicly reachable.
         </p>
-        <p className="np-muted m-0 mb-2">
+        <p className={`${muted} mb-2`}>
           Muted — Secondary hints and meta. Path check verifies network login without depending on
           registration uptime.
         </p>
-        <p className="np-label m-0 mb-1">Overline / section label</p>
-        <code className="np-mono text-xs">Mono — cli_ab12cd · gw_public_id · KES 1,250.00</code>
+        <p className={`${label} mb-1`}>Overline / section label</p>
+        <code className="font-mono text-xs font-medium text-[var(--text)]">
+          Mono — cli_ab12cd · gw_public_id · KES 1,250.00
+        </code>
       </section>
 
-      {/* Layers */}
       <section className={section}>
         <div className={label}>Layered surface</div>
         <div className="rounded-xl bg-[var(--bg)] p-4">
-          <p className="np-muted m-0 mb-3 text-sm">Canvas (page background)</p>
+          <p className={`${muted} mb-3 text-sm`}>Canvas (page background)</p>
           <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]">
-            <p className="np-h3 m-0 mb-1">Card on canvas</p>
-            <p className="np-body m-0 mb-3 text-sm">
+            <p className={`${h3} mb-1`}>Card on canvas</p>
+            <p className={`${body} mb-3 text-sm`}>
               White panel, border, soft shadow — primary content lives here.
             </p>
             <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3">
-              <p className="np-muted m-0 text-sm">Nested well (panel-2) for secondary blocks</p>
+              <p className={`${muted} m-0 text-sm`}>Nested well (panel-2) for secondary blocks</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Buttons */}
       <section className={section}>
         <div className={label}>Buttons</div>
         <div className="flex flex-wrap gap-2">
@@ -87,7 +109,6 @@ export function ThemeLab() {
         </div>
       </section>
 
-      {/* Inputs + badges */}
       <section className={section}>
         <div className={label}>Inputs & badges</div>
         <div className="mb-4 max-w-sm">
@@ -102,10 +123,9 @@ export function ThemeLab() {
         </div>
       </section>
 
-      {/* Notifications model */}
       <section className={section}>
         <div className={label}>Notifications (proposed model)</div>
-        <p className="np-body m-0 mb-3 text-sm">
+        <p className={`${body} mb-3 text-sm`}>
           Prefer toast or modal — not permanent page banners. Try the controls:
         </p>
         <div className="mb-4 flex flex-wrap gap-2">
@@ -142,13 +162,12 @@ export function ThemeLab() {
             Confirm modal
           </Button>
         </div>
-        <p className="np-muted m-0 text-sm">
+        <p className={`${muted} text-sm`}>
           Toasts appear top-right (existing ToastHost). Use the bell for history. Avoid sticky green/red
           strips that stay in the page body until navigation.
         </p>
       </section>
 
-      {/* Empty + list card */}
       <section className={section}>
         <div className={label}>Empty state & list row</div>
         <EmptyState
@@ -173,7 +192,6 @@ export function ThemeLab() {
         </ul>
       </section>
 
-      {/* Icon row */}
       <section className={section}>
         <div className={label}>Icon affordances</div>
         <div className="flex gap-4 text-[var(--accent)]">
@@ -185,7 +203,7 @@ export function ThemeLab() {
       </section>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Path check finished">
-        <p className="np-body m-0 text-sm">
+        <p className={`${body} text-sm`}>
           NetPay-side checks look healthy. Connecting to the payment network can still fail when the
           sandbox is down — try again later if needed.
         </p>
