@@ -153,6 +153,11 @@ export function PaymentIntents() {
           role="alert"
         >
           {error}
+          <div className="mt-2">
+            <Button variant="secondary" size="sm" onClick={() => void load()}>
+              Retry
+            </Button>
+          </div>
         </div>
       )}
       {success && (
