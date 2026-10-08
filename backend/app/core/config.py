@@ -2,17 +2,27 @@
 from __future__ import annotations
 from functools import lru_cache
 from typing import Literal, Optional
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 def to_sync_url(async_url: str) -> str:
+    """Convert async DATABASE_URL to a sync SQLAlchemy URL for Alembic.
+
+    Always pin Postgres to the psycopg2 driver (``postgresql+psycopg2://``).
+    Plain ``postgresql://`` can resolve to the psycopg3 dialect on newer
+    SQLAlchemy builds, which requires the separate ``psycopg`` package.
+    """
     u = async_url.strip()
     if u.startswith("sqlite+aiosqlite://"):
         return "sqlite://" + u.removeprefix("sqlite+aiosqlite://")
     if u.startswith("postgresql+asyncpg://"):
-        return "postgresql://" + u.removeprefix("postgresql+asyncpg://")
+        return "postgresql+psycopg2://" + u.removeprefix("postgresql+asyncpg://")
+    if u.startswith("postgresql+psycopg://"):
+        return "postgresql+psycopg2://" + u.removeprefix("postgresql+psycopg://")
+    if u.startswith("postgresql://"):
+        return "postgresql+psycopg2://" + u.removeprefix("postgresql://")
     if u.startswith("postgres://"):
-        return "postgresql://" + u.removeprefix("postgres://")
+        return "postgresql+psycopg2://" + u.removeprefix("postgres://")
     return u
 
 class Settings(BaseSettings):
@@ -71,6 +81,21 @@ class Settings(BaseSettings):
         default="openid profile email offline_access",
         alias="OIDC_SCOPES",
     )
+
+    @field_validator("openapi_enabled", mode="before")
+    @classmethod
+    def _coerce_optional_bool(cls, v):  # noqa: ANN001
+        if v is None or v == "":
+            return None
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            low = v.strip().lower()
+            if low in ("1", "true", "yes", "on"):
+                return True
+            if low in ("0", "false", "no", "off"):
+                return False
+        return v
 
     @property
     def async_database_url(self) -> str:

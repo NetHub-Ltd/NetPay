@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.api.routes import auth, events, health, integrations, internal, oauth_clients, oauth_token, payments, readiness, reconciliation, system, tenants, webhooks, ws
 from app.core.config import settings
@@ -88,9 +88,9 @@ if STATIC_DIR.is_dir():
             index = STATIC_DIR / "index.html"
             if index.is_file():
                 return FileResponse(index)
-            return {"detail": "Not Found"}
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-        # Do not swallow API/docs paths
+        # Do not swallow API/docs paths — real 404 (not 200 with a JSON body)
         blocked = (
             "api",
             "v1",
@@ -107,8 +107,8 @@ if STATIC_DIR.is_dir():
         )
         first = full_path.split("/", 1)[0]
         if first in blocked:
-            return {"detail": "Not Found"}
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
         index = STATIC_DIR / "index.html"
         if index.is_file():
             return FileResponse(index)
-        return {"detail": "Not Found"}
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
