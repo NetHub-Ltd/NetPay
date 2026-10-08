@@ -170,7 +170,15 @@ export function IntegrationDetail() {
         steps?: Array<Record<string, unknown>>
       }>(`/v1/integrations/${item.id}/path-check`, {})
       setPathCheck(res)
-      setMsg(res.message || (res.ok ? 'Path check finished.' : 'Path check found issues.'))
+      const pathMsg = res.message || (res.ok ? 'Path check finished.' : 'Path check found issues.')
+      setMsg(pathMsg)
+      emitNotification({
+        id: `path-check-${item.id}-${Date.now()}`,
+        title: res.ok ? 'Path check OK' : 'Path check found issues',
+        body: pathMsg,
+        level: res.ok ? 'success' : 'error',
+        href: `/integrations/${item.id}`,
+      })
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Path check failed')
     } finally {
@@ -181,7 +189,12 @@ export function IntegrationDetail() {
   if (error && !item) {
     return (
       <div data-testid="integration-detail-page">
-        <div className={errorAlert} role="alert">{error}</div>
+        <div className={errorAlert} role="alert">
+          <div className="flex items-start justify-between gap-3">
+            <span>{error}</span>
+            <button type="button" className="shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--danger)] underline" onClick={() => setError(null)}>Dismiss</button>
+          </div>
+        </div>
         <Link to="/integrations">← All paybills &amp; tills</Link>
       </div>
     )
@@ -207,8 +220,34 @@ export function IntegrationDetail() {
           </div>
         }
       />
-      {error && <div className={errorAlert} role="alert">{error}</div>}
-      {msg && <div className={successAlert} role="status">{msg}</div>}
+      {error && (
+        <div className={errorAlert} role="alert">
+          <div className="flex items-start justify-between gap-3">
+            <span>{error}</span>
+            <button
+              type="button"
+              className="shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--danger)] underline"
+              onClick={() => setError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+      {msg && (
+        <div className={successAlert} role="status">
+          <div className="flex items-start justify-between gap-3">
+            <span>{msg}</span>
+            <button
+              type="button"
+              className="shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--muted)] underline"
+              onClick={() => setMsg(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className={card}>
         <h2 className="mb-3 text-base font-semibold">Setup for this shortcode</h2>

@@ -159,10 +159,10 @@ export function Layout() {
 
         <div className="flex min-h-0 min-w-0 flex-col lg:h-screen lg:overflow-hidden">
           <header className="z-5 flex shrink-0 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--panel)] px-4 py-2.5 sm:px-6">
-            <span className="text-sm font-semibold text-[var(--text)]">NetPay</span>
+            <span className="text-sm font-bold text-[var(--text)]">NetPay</span>
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Link
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-semibold text-[var(--text)] no-underline shadow-[var(--shadow-sm)] transition hover:bg-[var(--panel-2)] hover:no-underline"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-bold text-[var(--text)] no-underline shadow-[var(--shadow-sm)] transition hover:bg-[var(--panel-2)] hover:no-underline"
                 to="/integrations"
               >
                 <Landmark size={16} strokeWidth={1.75} aria-hidden />
