@@ -15,7 +15,7 @@ export function Docs() {
       />
 
       <div className={card}>
-        <h2 className="mb-2 mt-0 text-base font-semibold">1. First-time setup (in the app)</h2>
+        <h2 className="mb-2 mt-0 text-base font-bold">1. First-time setup (in the app)</h2>
         <ol className="m-0 space-y-2 pl-5 text-sm leading-6">
           <li>
             <Link to="/integrations">Shortcodes</Link> — add your paybill or till and network credentials.
@@ -35,7 +35,7 @@ export function Docs() {
       </div>
 
       <div className={card}>
-        <h2 className="mb-2 mt-0 text-base font-semibold">2. Machine-to-machine (M2M) — Partner quickstart</h2>
+        <h2 className="mb-2 mt-0 text-base font-bold">2. Machine-to-machine (M2M) — Partner quickstart</h2>
         <p className="mt-0 text-sm leading-6 text-[var(--muted)]">
           Your service gets a token, starts a payment, and receives a signed notification when it
           settles. Machine tokens include <code>aud=netpay</code> and expire in 60 minutes by default
@@ -101,7 +101,7 @@ Content-Type: application/json
       </div>
 
       <div className={card}>
-        <h2 className="mb-2 mt-0 text-base font-semibold">3. In the dashboard</h2>
+        <h2 className="mb-2 mt-0 text-base font-bold">3. In the dashboard</h2>
         <ul className="m-0 space-y-2 pl-5 text-sm leading-6">
           <li>
             <Link to="/intents">Payments</Link> — status of each collection attempt.

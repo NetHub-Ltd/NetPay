@@ -6,6 +6,7 @@ import { useAuth } from '../auth/authState'
 import { useWorkspace } from '../workspace/useWorkspace'
 import { Button, ConfirmModal, Input, Modal } from '../components/primitives'
 import { BUSINESS_CATEGORIES } from '../lib/businessCategories'
+import { DismissibleBanner } from '../components/DismissibleBanner'
 
 const selectClass =
   'w-full rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3.5 py-2.5 text-sm shadow-[var(--shadow-sm)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/25'
@@ -147,13 +148,10 @@ export function SelectBusiness() {
         </div>
 
         {error && (
-          <div
-            className="rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
-            role="alert"
-          >
-            {error}
-          </div>
-        )}
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>
+          {error}
+        </DismissibleBanner>
+      )}
 
         {businesses.length > 0 && (
           <ul className="m-0 list-none space-y-2 p-0">

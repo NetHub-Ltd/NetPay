@@ -6,6 +6,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useWorkspace } from '../workspace/useWorkspace'
 import { Button, ConfirmModal, Input, Modal } from '../components/primitives'
 import { mono } from '../components/ui'
+import { DismissibleBanner } from '../components/DismissibleBanner'
 
 type OAuthClientCreated = {
   client_id: string
@@ -141,17 +142,14 @@ export function OAuthClients() {
       />
 
       {error && (
-        <div
-          className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
-          role="alert"
-        >
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>
           {error}
           <div className="mt-2">
             <Button variant="secondary" size="sm" onClick={() => void load()}>
               Retry
             </Button>
           </div>
-        </div>
+        </DismissibleBanner>
       )}
 
       {created && (
@@ -224,7 +222,7 @@ export function OAuthClients() {
           {items.map((c) => (
             <li
               key={c.client_id}
-              className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-[var(--shadow-sm)]"
+              className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-[var(--shadow-sm)] transition hover:border-[var(--accent)]/35 hover:shadow-[var(--shadow)]"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>

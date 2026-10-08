@@ -7,6 +7,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useWorkspace } from '../workspace/useWorkspace'
 import { Button, ConfirmModal, Input, Modal } from '../components/primitives'
 import { mono, table, tableWrap } from '../components/ui'
+import { DismissibleBanner } from '../components/DismissibleBanner'
 
 export function Webhooks() {
   const { activeTenantId, activeBusiness } = useWorkspace()
@@ -98,9 +99,9 @@ export function Webhooks() {
       />
 
       {error && (
-        <div className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>
           {error}
-        </div>
+        </DismissibleBanner>
       )}
       {msg && (
         <div className="mb-4 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-4 py-3 text-sm">

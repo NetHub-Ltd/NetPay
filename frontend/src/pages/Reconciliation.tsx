@@ -8,6 +8,7 @@ import { PageHeader } from '../components/PageHeader'
 import { StatusBadge } from '../components/StatusBadge'
 import { Button } from '../components/primitives'
 import { table, tableWrap } from '../components/ui'
+import { DismissibleBanner } from '../components/DismissibleBanner'
 
 type ReconRow = {
   id: string
@@ -100,9 +101,9 @@ export function Reconciliation() {
       />
 
       {error && (
-        <div className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>
           {error}
-        </div>
+        </DismissibleBanner>
       )}
       {msg && (
         <div className="mb-4 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-4 py-3 text-sm">

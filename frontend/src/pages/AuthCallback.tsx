@@ -60,7 +60,7 @@ export function AuthCallback() {
         <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--hero-from)] via-[var(--hero-via)] to-[var(--hero-to)] text-[var(--on-hero)] shadow-[var(--shadow)]">
           <Landmark size={26} strokeWidth={1.75} aria-hidden />
         </div>
-        <h1 className="m-0 text-lg font-semibold tracking-tight">Signing you in</h1>
+        <h1 className="m-0 text-lg font-bold tracking-tight">Signing you in</h1>
         <p className="mb-6 mt-2 text-sm leading-6 text-[var(--muted)]">
           Confirming your account with NetHub. This only takes a moment.
         </p>

@@ -1,29 +1,13 @@
 /**
- * Visual sandbox for proposed NetPay theme v2.
- * Tokens applied via inline CSS variables on the wrapper — no component CSS in styles.css.
+ * Living reference for global theme tokens (styles.css is source of truth).
  */
-import { useState, type CSSProperties } from 'react'
+import { useState } from 'react'
 import { Bell, Check, CreditCard, KeyRound, Landmark } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { Button, ConfirmModal, Input, Modal } from '../components/primitives'
 import { EmptyState } from '../components/EmptyState'
 import { StatusBadge } from '../components/StatusBadge'
 import { emitNotification } from '../hooks/liveEvents'
-
-/** Proposed tokens — preview only until promoted to :root */
-const labTokens = {
-  ['--bg']: '#e8ece9',
-  ['--panel']: '#ffffff',
-  ['--panel-2']: '#f4f7f5',
-  ['--border']: '#cfdad3',
-  ['--text']: '#0a2e22',
-  ['--muted']: '#3d5248',
-  ['--accent']: '#0d7a55',
-  ['--accent-hover']: '#0a6244',
-  ['--accent-soft']: '#e6f5ee',
-  ['--shadow']: '0 1px 2px rgba(10, 46, 34, 0.05), 0 8px 24px rgba(10, 46, 34, 0.08)',
-  ['--shadow-sm']: '0 1px 3px rgba(10, 46, 34, 0.06)',
-} as CSSProperties
 
 const section =
   'mb-6 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]'
@@ -42,16 +26,15 @@ export function ThemeLab() {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   return (
-    <div style={labTokens} data-testid="theme-lab-page">
+    <div data-testid="theme-lab-page">
       <PageHeader
         title="Theme lab"
-        description="Proposed typography, layers, and controls — preview only. Approve before we lock styles.css."
+        description="Living reference for global theme tokens, type scale, and notification patterns."
       />
 
       <div className={`${section} border-[var(--accent)]/30 bg-[var(--accent-soft)]`}>
         <p className={`${body} text-sm`}>
-          Tokens are applied inline on this page only. The rest of the app still uses the current
-          theme until you approve.
+          This page uses the global theme tokens from styles.css (source of truth).
         </p>
         <ul className="mb-0 mt-2 list-disc pl-5 text-sm font-semibold text-[var(--text)]">
           <li>Body text is darker green (primary family), not pure gray-black</li>

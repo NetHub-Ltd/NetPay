@@ -38,12 +38,17 @@ const TONE_CLASSES: Record<string, string> = {
   neutral: 'border-[var(--border)] bg-[var(--panel-2)] text-[var(--muted)]',
 }
 
+const PROCESSING = new Set(['pending', 'created', 'provider_requested', 'waiting', 'processing'])
+
 export function StatusBadge({ value }: { value: string }) {
   const key = value?.toLowerCase?.() || ''
   const tone = MAP[key] || 'neutral'
   const label = LABEL[key] || value
+  const pulse = PROCESSING.has(key)
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold leading-5 ${TONE_CLASSES[tone]}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold leading-5 ${TONE_CLASSES[tone]} ${pulse ? 'animate-pulse' : ''}`}
+    >
       {label}
     </span>
   )

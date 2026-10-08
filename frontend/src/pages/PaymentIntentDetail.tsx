@@ -5,7 +5,8 @@ import { api, ApiError, type PaymentIntent } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatKes, statusHint } from '../components/statusUtils'
 import { PageHeader } from '../components/PageHeader'
-import { card, errorAlert, successAlert, table, button, primaryButton, ghostButton } from '../components/ui'
+import { card, table, button, primaryButton, ghostButton } from '../components/ui'
+import { DismissibleBanner } from '../components/DismissibleBanner'
 
 type LedgerRow = {
   id: string
@@ -180,7 +181,11 @@ export function PaymentIntentDetail() {
   const req = useMemo(() => parseJson(item?.stk_request_json), [item?.stk_request_json])
   const res = useMemo(() => parseJson(item?.stk_response_json), [item?.stk_response_json])
 
-  if (error && !item) return <div className={errorAlert} role="alert" data-testid="intent-detail-page">{error}</div>
+  if (error && !item) return (
+    <div data-testid="intent-detail-page">
+      <DismissibleBanner tone="error" onDismiss={() => setError(null)}>{error}</DismissibleBanner>
+    </div>
+  )
   if (!item) return <div data-testid="intent-detail-page">Loading…</div>
 
   const hint = statusHint(item.status, item.failure_reason)
@@ -204,11 +209,15 @@ export function PaymentIntentDetail() {
         actions={<StatusBadge value={item.status} />}
       />
 
-      {error && <div className={errorAlert} role="alert">{error}</div>}
-      {item.failure_reason && item.status !== 'succeeded' && (
-        <div className={errorAlert} role="alert">{item.failure_reason}</div>
+      {error && (
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>{error}</DismissibleBanner>
       )}
-      {msg && <div className={successAlert} role="status">{msg}</div>}
+      {item.failure_reason && item.status !== 'succeeded' && (
+        <DismissibleBanner tone="error">{item.failure_reason}</DismissibleBanner>
+      )}
+      {msg && (
+        <DismissibleBanner tone="success" onDismiss={() => setMsg(null)}>{msg}</DismissibleBanner>
+      )}
       {hint && !item.failure_reason && (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 text-sm shadow-[var(--shadow-sm)]">
           <p className="m-0 font-medium text-[var(--text)]">{hint}</p>
@@ -225,7 +234,7 @@ export function PaymentIntentDetail() {
 
       <div className="grid items-start gap-4 lg:grid-cols-[1.4fr_1fr]">
         <section className={card}>
-          <h2 className="mb-3 text-base font-semibold">Timeline</h2>
+          <h2 className="mb-3 text-base font-bold">Timeline</h2>
           {steps.length === 0 ? (
             <p className="text-xs text-[var(--muted)]">No timeline events yet.</p>
           ) : (
@@ -249,7 +258,7 @@ export function PaymentIntentDetail() {
 
         <aside className="flex flex-col gap-4">
           <section className={card}>
-            <h2 className="mb-3 text-base font-semibold">Summary</h2>
+            <h2 className="mb-3 text-base font-bold">Summary</h2>
             <Field label="Amount">{formatKes(item.amount_minor, item.amount, item.currency)}</Field>
             <Field label="Phone">
               <span className="font-mono">{item.phone}</span>
@@ -264,7 +273,7 @@ export function PaymentIntentDetail() {
           </section>
 
           <section className={card}>
-            <h2 className="mb-3 text-base font-semibold">Network</h2>
+            <h2 className="mb-3 text-base font-bold">Network</h2>
             <Field label="Checkout ID">
               <span className="break-all font-mono text-xs">{item.provider_checkout_id || '—'}</span>
             </Field>
@@ -289,7 +298,7 @@ export function PaymentIntentDetail() {
 
       {(req || res) && (
         <section className={card}>
-          <h2 className="mb-2 text-base font-semibold">Phone prompt exchange</h2>
+          <h2 className="mb-2 text-base font-bold">Phone prompt exchange</h2>
           <p className="mb-4 text-xs text-[var(--muted)]">
             What we sent to the network and what came back. Secrets are redacted.
           </p>
@@ -330,7 +339,7 @@ export function PaymentIntentDetail() {
       )}
 
       <section className={card}>
-        <h2 className="mb-3 text-base font-semibold">Ledger</h2>
+        <h2 className="mb-3 text-base font-bold">Ledger</h2>
         {ledger.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No ledger entries yet. A credit appears when the payment is successful.</p>
         ) : (
