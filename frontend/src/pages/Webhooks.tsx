@@ -5,7 +5,7 @@ import { api, ApiError, type Webhook } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
 import { useWorkspace } from '../workspace/useWorkspace'
-import { Button, Input, Modal } from '../components/primitives'
+import { Button, ConfirmModal, Input, Modal } from '../components/primitives'
 import { mono, table, tableWrap } from '../components/ui'
 
 export function Webhooks() {
@@ -18,6 +18,7 @@ export function Webhooks() {
   const [secretOnce, setSecretOnce] = useState<string | null>(null)
   const [secretAck, setSecretAck] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   const load = useCallback(async () => {
@@ -64,10 +65,7 @@ export function Webhooks() {
   }
 
   async function onDelete(id: string) {
-    const ok = window.confirm(
-      'Stop sending payment updates to this URL?\n\nYour app will no longer receive automatic notifications.',
-    )
-    if (!ok) return
+    setDeleteTarget(null)
     setBusy(true)
     try {
       await api.delete(`/v1/webhooks/${id}`)
@@ -160,7 +158,7 @@ export function Webhooks() {
                     {w.last_live_at ? new Date(w.last_live_at).toLocaleString() : '—'}
                   </td>
                   <td>
-                    <Button size="sm" variant="danger" disabled={busy} onClick={() => void onDelete(w.id)}>
+                    <Button size="sm" variant="danger" disabled={busy} onClick={() => setDeleteTarget(w.id)}>
                       Remove
                     </Button>
                   </td>
@@ -204,6 +202,17 @@ export function Webhooks() {
           />
         </form>
       </Modal>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Remove notification URL?"
+        body="Your app will no longer receive automatic payment updates at this address."
+        confirmLabel="Remove"
+        danger
+        busy={busy}
+        onCancel={() => !busy && setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && void onDelete(deleteTarget)}
+      />
     </div>
   )
 }

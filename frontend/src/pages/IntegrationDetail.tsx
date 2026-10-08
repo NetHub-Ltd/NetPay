@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { api, ApiError, type Integration } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { PageHeader } from '../components/PageHeader'
-import { Button, PageLoader } from '../components/primitives'
+import { Button, ConfirmModal, PageLoader } from '../components/primitives'
+import { emitNotification } from '../hooks/liveEvents'
 import { button, card, errorAlert, successAlert } from '../components/ui'
 
 type PublicConfig = {
@@ -55,6 +56,7 @@ export function IntegrationDetail() {
     expires_in?: number
     environment?: string
   } | null>(null)
+  const [confirmKind, setConfirmKind] = useState<'connect' | 'disconnect' | null>(null)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -89,17 +91,12 @@ export function IntegrationDetail() {
     }
   }
 
-  async function connectPayments() {
+  async function doConnectPayments() {
     if (!item) return
-    const confirmed = window.confirm(
-      `Connect shortcode ${item.shortcode} so payment results can reach NetPay automatically?\n\n` +
-        `You only need to do this once per shortcode. You can still copy the technical links below if your provider portal needs them.`,
-    )
-    if (!confirmed) return
-
     setBusy(true)
     setError(null)
     setMsg(null)
+    setConfirmKind(null)
     try {
       const urls = buildUrls(item.public_id)
       const res = await api.post<{
@@ -112,36 +109,46 @@ export function IntegrationDetail() {
         response_type: 'Completed',
       })
       if (res.oauth) setLastOauth(res.oauth)
-      setMsg(
+      const success =
         res.message ||
-          `Shortcode ${item.shortcode} is connected. Payment results for this number can reach NetPay.`,
-      )
+        `Shortcode ${item.shortcode} is connected. Payment results for this number can reach NetPay.`
+      setMsg(success)
+      emitNotification({
+        id: `connect-${item.id}-${Date.now()}`,
+        title: 'Shortcode connected',
+        body: success,
+        level: 'success',
+        href: `/integrations/${item.id}`,
+      })
       await load()
     } catch (e) {
       const detail = e instanceof ApiError ? e.detail : 'Could not connect this shortcode'
       setError(
-        `${detail}. You can still copy the links below and paste them in your provider portal, then try again.`,
+        `${detail} You can still copy the links below and register them in your provider portal if needed.`,
       )
     } finally {
       setBusy(false)
     }
   }
 
-  async function disconnectPayments() {
+  async function doDisconnectPayments() {
     if (!item) return
-    const confirmed = window.confirm(
-      `Disconnect shortcode ${item.shortcode} in NetPay?\n\n` +
-        `This clears NetPay's connected state for this shortcode. ` +
-        `You can reconnect later. In live mode Safaricom may keep old callback URLs until they are updated.`,
-    )
-    if (!confirmed) return
     setBusy(true)
     setError(null)
     setMsg(null)
+    setConfirmKind(null)
     try {
       const res = await api.post<{ message?: string }>(`/v1/integrations/${item.id}/disconnect`, {})
       setLastOauth(null)
-      setMsg(res.message || 'Disconnected in NetPay.')
+      const success = res.message || 'Disconnected in NetPay.'
+      setMsg(success)
+      emitNotification({
+        id: `disconnect-${item.id}-${Date.now()}`,
+        title: 'Shortcode disconnected',
+        body: success,
+        level: 'info',
+        href: `/integrations/${item.id}`,
+      })
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : 'Could not disconnect')
@@ -149,7 +156,6 @@ export function IntegrationDetail() {
       setBusy(false)
     }
   }
-
 
   async function runPathCheck() {
     if (!item) return
@@ -227,7 +233,7 @@ export function IntegrationDetail() {
           reach NetPay. You will be asked to confirm. Production URLs must be HTTPS and publicly reachable.
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={() => void connectPayments()} loading={busy}>
+          <Button type="button" onClick={() => setConfirmKind('connect')} loading={busy}>
             {busy
               ? 'Working…'
               : item.connected || item.status === 'connected'
@@ -239,7 +245,7 @@ export function IntegrationDetail() {
               type="button"
               variant="secondary"
               disabled={busy}
-              onClick={() => void disconnectPayments()}
+              onClick={() => setConfirmKind('disconnect')}
             >
               Disconnect in NetPay
             </Button>
@@ -303,6 +309,34 @@ export function IntegrationDetail() {
         <div className="text-[var(--muted)] text-xs">Routing id (support)</div>
         <code className="font-mono text-[0.85em]">{item.public_id}</code>
       </div>
+
+      <ConfirmModal
+        open={confirmKind === 'connect'}
+        title="Connect this shortcode?"
+        body={
+          item
+            ? `Connect ${item.shortcode} so payment results reach NetPay automatically. You only need to do this once per shortcode. You can still copy the technical links below if your provider portal needs them.`
+            : ''
+        }
+        confirmLabel="Connect"
+        busy={busy}
+        onCancel={() => !busy && setConfirmKind(null)}
+        onConfirm={() => void doConnectPayments()}
+      />
+      <ConfirmModal
+        open={confirmKind === 'disconnect'}
+        title="Disconnect this shortcode?"
+        body={
+          item
+            ? `Disconnect ${item.shortcode} in NetPay? This clears the connected state here. You can reconnect later. In live mode the network may keep old callback URLs until they are updated.`
+            : ''
+        }
+        confirmLabel="Disconnect"
+        danger
+        busy={busy}
+        onCancel={() => !busy && setConfirmKind(null)}
+        onConfirm={() => void doDisconnectPayments()}
+      />
     </div>
   )
 }
