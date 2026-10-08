@@ -149,6 +149,9 @@ export function Layout() {
                 <NavLink to="/status" className={linkClass}>
                   <Radio {...ico} /> System status
                 </NavLink>
+                <NavLink to="/theme-lab" className={linkClass}>
+                  <CircleHelp {...ico} /> Theme lab
+                </NavLink>
               </>
             )}
           </nav>

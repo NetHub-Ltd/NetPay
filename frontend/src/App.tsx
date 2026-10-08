@@ -23,6 +23,7 @@ import { OAuthClients } from './pages/OAuthClients'
 import { Forbidden } from './pages/Forbidden'
 import { SelectBusiness } from './pages/SelectBusiness'
 import { NotFound } from './pages/NotFound'
+import { ThemeLab } from './pages/ThemeLab'
 import { PageLoader } from './components/primitives'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="intents/:id" element={<PaymentIntentDetail />} />
           <Route path="reconciliation" element={<Reconciliation />} />
           <Route path="docs" element={<Docs />} />
+          <Route path="theme-lab" element={<ThemeLab />} />
           <Route path="events" element={<Events />} />
           <Route path="oauth-clients" element={<OAuthClients />} />
           <Route path="forbidden" element={<Forbidden />} />
