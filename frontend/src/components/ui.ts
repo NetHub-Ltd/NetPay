@@ -3,7 +3,7 @@ export const pageHeader =
 export const pageTitle = 'm-0 text-2xl font-extrabold tracking-tight text-[var(--text)]'
 export const pageDescription = 'mt-1 text-sm font-medium text-[var(--muted)]'
 export const card =
-  'mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow)]'
+  'mb-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--shadow-sm)]'
 export const button =
   'inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-semibold text-[var(--text)] no-underline shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--panel-2)] hover:no-underline disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]'
 export const primaryButton =
@@ -27,3 +27,7 @@ export const table =
 export const muted = 'text-[var(--muted)]'
 export const tiny = 'text-xs'
 export const mono = 'font-mono text-[0.85em]'
+
+export const sectionTitle = 'm-0 text-base font-bold tracking-tight text-[var(--text)]'
+export const listRow =
+  'rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-[var(--shadow-sm)] transition hover:border-[var(--accent)]/35 hover:shadow-[var(--shadow)]'

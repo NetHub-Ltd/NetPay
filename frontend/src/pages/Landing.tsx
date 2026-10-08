@@ -154,7 +154,7 @@ export function Landing() {
 
         <div className="relative mx-auto w-full max-w-[580px] lg:ml-auto">
           <div className="absolute -inset-8 -z-10 rounded-full bg-[var(--accent)]/10 blur-3xl" />
-          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--panel)] shadow-[0_32px_100px_-32px_rgba(4,54,36,0.32)]">
+          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow-hero)]">
             <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4 sm:px-6">
               <div className="flex items-center gap-3">
                 <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]">
@@ -292,7 +292,7 @@ export function Landing() {
                   <Icon size={18} aria-hidden="true" />
                 </span>
               </div>
-              <h3 className="mb-2 mt-6 text-base font-semibold">{title}</h3>
+              <h3 className="mb-2 mt-6 text-base font-bold">{title}</h3>
               <p className="m-0 text-sm leading-6 text-[var(--muted)]">{description}</p>
             </article>
           ))}

@@ -250,7 +250,7 @@ export function IntegrationDetail() {
       )}
 
       <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">Setup for this shortcode</h2>
+        <h2 className="mb-3 text-base font-bold">Setup for this shortcode</h2>
         <ol className="list-decimal space-y-2 pl-5 text-sm">
           <li>
             <strong>Shortcode saved</strong> — done
@@ -266,7 +266,7 @@ export function IntegrationDetail() {
       </div>
 
       <div className={card}>
-        <h2 className="mb-2 text-base font-semibold">Connect payment updates</h2>
+        <h2 className="mb-2 text-base font-bold">Connect payment updates</h2>
         <p className="mb-4 text-sm text-[var(--muted)]">
           Connects this shortcode so paybill and till results
           reach NetPay. You will be asked to confirm. Production URLs must be HTTPS and publicly reachable.
@@ -333,7 +333,7 @@ export function IntegrationDetail() {
       </div>
 
       <div className={card}>
-        <h2 className="mb-2 text-base font-semibold">Links (if you need them)</h2>
+        <h2 className="mb-2 text-base font-bold">Links (if you need them)</h2>
         <p className="mb-4 text-sm text-[var(--muted)]">
           Keep these for your records or if a portal asks you to paste addresses manually. You can return here anytime
           from <Link to="/integrations">Paybills &amp; tills</Link> → Open.
@@ -344,7 +344,7 @@ export function IntegrationDetail() {
       </div>
 
       <div className={card}>
-        <h2 className="mb-3 text-base font-semibold">Advanced</h2>
+        <h2 className="mb-3 text-base font-bold">Advanced</h2>
         <div className="text-[var(--muted)] text-xs">Routing id (support)</div>
         <code className="font-mono text-[0.85em]">{item.public_id}</code>
       </div>

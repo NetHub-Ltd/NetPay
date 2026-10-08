@@ -8,6 +8,8 @@ import { PageHeader } from '../components/PageHeader'
 import { StatusBadge } from '../components/StatusBadge'
 import { Button } from '../components/primitives'
 import { mono, table, tableWrap } from '../components/ui'
+import { DismissibleBanner } from '../components/DismissibleBanner'
+import { TableSkeleton } from '../components/Skeleton'
 
 export function Integrations() {
   const navigate = useNavigate()
@@ -54,20 +56,17 @@ export function Integrations() {
       />
 
       {error && (
-        <div
-          className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
-          role="alert"
-        >
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>
           {error}
           <div className="mt-2">
             <Button variant="secondary" size="sm" onClick={() => void load()}>
               Retry
             </Button>
           </div>
-        </div>
+        </DismissibleBanner>
       )}
       {loading ? (
-        <p className="text-sm text-[var(--muted)]">Loading…</p>
+        <TableSkeleton rows={4} />
       ) : items.length === 0 ? (
         <EmptyState
           icon={<Landmark size={22} />}

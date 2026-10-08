@@ -11,6 +11,8 @@ import { StatusBadge } from '../components/StatusBadge'
 import { formatKes, paymentLifecycleBucket, statusHint } from '../components/statusUtils'
 import { Button, Input, Modal } from '../components/primitives'
 import { mono } from '../components/ui'
+import { DismissibleBanner } from '../components/DismissibleBanner'
+import { TableSkeleton } from '../components/Skeleton'
 
 export function PaymentIntents() {
   const navigate = useNavigate()
@@ -148,17 +150,14 @@ export function PaymentIntents() {
       />
 
       {error && (
-        <div
-          className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
-          role="alert"
-        >
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>
           {error}
           <div className="mt-2">
             <Button variant="secondary" size="sm" onClick={() => void load()}>
               Retry
             </Button>
           </div>
-        </div>
+        </DismissibleBanner>
       )}
       {success && (
         <div className="mb-4 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--text)]">

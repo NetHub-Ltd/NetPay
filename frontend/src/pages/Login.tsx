@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { ArrowRight, Landmark, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../auth/authState'
 import { Button } from '../components/primitives'
+import { DismissibleBanner } from '../components/DismissibleBanner'
 
 export function Login() {
   const { user, login, loading, oidcReady } = useAuth()
@@ -67,26 +68,20 @@ export function Login() {
 
         <div className="w-full max-w-md lg:flex-1">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)] sm:p-8">
-            <h2 className="m-0 text-lg font-semibold">Sign in to NetPay</h2>
+            <h2 className="m-0 text-lg font-bold">Sign in to NetPay</h2>
             <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
               You’ll be taken to NetHub to verify it’s you — we never ask for your password here.
             </p>
 
             {error && (
-              <div
-                className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
-                role="alert"
-              >
+              <DismissibleBanner tone="error" onDismiss={() => setError(null)}>
                 {error}
-              </div>
+              </DismissibleBanner>
             )}
             {!oidcReady && (
-              <div
-                className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
-                role="alert"
-              >
+              <DismissibleBanner tone="error">
                 Sign-in is temporarily unavailable. Please try again in a moment.
-              </div>
+              </DismissibleBanner>
             )}
 
             <Button
