@@ -2,7 +2,7 @@
 from __future__ import annotations
 from functools import lru_cache
 from typing import Literal, Optional
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 def to_sync_url(async_url: str) -> str:
@@ -81,6 +81,21 @@ class Settings(BaseSettings):
         default="openid profile email offline_access",
         alias="OIDC_SCOPES",
     )
+
+    @field_validator("openapi_enabled", mode="before")
+    @classmethod
+    def _coerce_optional_bool(cls, v):  # noqa: ANN001
+        if v is None or v == "":
+            return None
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            low = v.strip().lower()
+            if low in ("1", "true", "yes", "on"):
+                return True
+            if low in ("0", "false", "no", "off"):
+                return False
+        return v
 
     @property
     def async_database_url(self) -> str:

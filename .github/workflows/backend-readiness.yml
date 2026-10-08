@@ -160,9 +160,16 @@ jobs:
 
       - name: Assert OpenAPI disabled when OPENAPI_ENABLED=false
         run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8000/openapi.json" || true)
+          set -euo pipefail
+          code=$(curl -s -o /tmp/openapi_body.json -w "%{http_code}" "http://127.0.0.1:8000/openapi.json" || true)
           echo "openapi.json HTTP $code"
+          echo "body:"; head -c 200 /tmp/openapi_body.json; echo
+          # Must be HTTP 404 and must not look like an OpenAPI document
           test "$code" = "404"
+          if python3 -c "import json; d=json.load(open('/tmp/openapi_body.json')); raise SystemExit(0 if ('openapi' in d or 'swagger' in d) else 1)" 2>/dev/null; then
+            echo "Unexpected OpenAPI schema body while disabled"
+            exit 1
+          fi
 
       - name: Stop API
         if: always()
