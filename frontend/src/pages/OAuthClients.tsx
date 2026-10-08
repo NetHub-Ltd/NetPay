@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
-import { KeyRound } from 'lucide-react'
+import { Check, Copy, KeyRound, RefreshCw } from 'lucide-react'
 import { api, ApiError } from '../api/client'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
@@ -22,6 +22,37 @@ type OAuthClientRow = {
   created_at?: string | null
 }
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [ok, setOk] = useState(false)
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      leftIcon={ok ? <Check size={14} /> : <Copy size={14} />}
+      onClick={() => {
+        void copyText(value).then((copied) => {
+          if (copied) {
+            setOk(true)
+            window.setTimeout(() => setOk(false), 1500)
+          }
+        })
+      }}
+    >
+      {ok ? 'Copied' : label}
+    </Button>
+  )
+}
+
 export function OAuthClients() {
   const { activeTenantId, activeBusiness } = useWorkspace()
   const [items, setItems] = useState<OAuthClientRow[]>([])
@@ -31,6 +62,7 @@ export function OAuthClients() {
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [rotatingId, setRotatingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!activeTenantId) return
@@ -77,7 +109,23 @@ export function OAuthClients() {
     }
   }
 
+  async function onRotate(clientId: string) {
+    if (!window.confirm('Rotate secret? The current secret will stop working immediately.')) return
+    setRotatingId(clientId)
+    setError(null)
+    try {
+      const res = await api.post<OAuthClientCreated>(`/v1/oauth/clients/${clientId}/rotate`, {})
+      setCreated(res)
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : 'Could not rotate secret')
+    } finally {
+      setRotatingId(null)
+    }
+  }
+
   const biz = activeBusiness?.name || 'this business'
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
   return (
     <div>
@@ -85,13 +133,7 @@ export function OAuthClients() {
         title="Connect your system"
         description={`Let your backend start payments for ${biz} and receive results. Create a client, exchange it for a token, then call the payment API. Secret is shown only once.`}
         actions={
-          <Button
-            disabled={!activeTenantId}
-            onClick={() => {
-              setError(null)
-              setShowForm(true)
-            }}
-          >
+          <Button disabled={!activeTenantId || loading} onClick={() => setShowForm(true)}>
             Create client
           </Button>
         }
@@ -103,6 +145,11 @@ export function OAuthClients() {
           role="alert"
         >
           {error}
+          <div className="mt-2">
+            <Button variant="secondary" size="sm" onClick={() => void load()}>
+              Retry
+            </Button>
+          </div>
         </div>
       )}
 
@@ -111,36 +158,46 @@ export function OAuthClients() {
           className="mb-4 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-4 py-3 text-sm"
           role="status"
         >
-          <p className="m-0 font-semibold text-[var(--text)]">Client created — copy the secret now</p>
+          <p className="m-0 font-semibold text-[var(--text)]">Client credentials — copy the secret now</p>
           <p className="mb-2 mt-1 text-xs text-[var(--muted)]">
             The secret is not shown again. Name: {created.name}
           </p>
-          <div className="space-y-1 font-mono text-xs">
-            <div>
-              <span className="text-[var(--muted)]">client_id </span>
+          <div className="space-y-2 font-mono text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[var(--muted)]">client_id</span>
               <span className={mono}>{created.client_id}</span>
+              <CopyButton value={created.client_id} label="Copy id" />
             </div>
-            <div>
-              <span className="text-[var(--muted)]">client_secret </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[var(--muted)]">client_secret</span>
               <span className={mono}>{created.client_secret}</span>
+              <CopyButton value={created.client_secret} label="Copy secret" />
             </div>
           </div>
           <p className="mb-1 mt-3 text-xs font-semibold text-[var(--text)]">Get a token</p>
           <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 font-mono text-[11px] leading-5">
-{`curl -s -X POST "${window.location.origin}/v1/oauth/token" \
-  -H "Content-Type: application/json" \
+{`curl -s -X POST "${origin}/v1/oauth/token" \\
+  -H "Content-Type: application/json" \\
   -d '{"grant_type":"client_credentials","client_id":"${created.client_id}","client_secret":"${created.client_secret}"}'`}
           </pre>
+          <div className="mt-2">
+            <CopyButton
+              value={`curl -s -X POST "${origin}/v1/oauth/token" -H "Content-Type: application/json" -d '{"grant_type":"client_credentials","client_id":"${created.client_id}","client_secret":"${created.client_secret}"}'`}
+              label="Copy token cURL"
+            />
+          </div>
           <p className="mb-1 mt-3 text-xs font-semibold text-[var(--text)]">Start a payment (after token)</p>
           <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 font-mono text-[11px] leading-5">
-{`curl -s -X POST "${window.location.origin}/v1/payment-intents" \
-  -H "Authorization: Bearer ACCESS_TOKEN" \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -H "Content-Type: application/json" \
+{`curl -s -X POST "${origin}/v1/payment-intents" \\
+  -H "Authorization: Bearer ACCESS_TOKEN" \\
+  -H "Idempotency-Key: $(uuidgen)" \\
+  -H "Content-Type: application/json" \\
   -d '{"integration_public_id":"YOUR_SHORTCODE_PUBLIC_ID","phone":"2547XXXXXXXX","amount_minor":100,"status_callback_url":"https://your.app/hooks/pay"}'`}
           </pre>
           <p className="mb-0 mt-2 text-xs text-[var(--muted)]">
-            Full walkthrough in <a href="/docs">Help</a>.
+            Full walkthrough in <a href="/docs">Help</a>. Machine tokens expire in{' '}
+            <strong>MACHINE_TOKEN_EXPIRE_MINUTES</strong> (default 60) and include{' '}
+            <code>aud=netpay</code>.
           </p>
           <Button className="mt-3" variant="secondary" size="sm" onClick={() => setCreated(null)}>
             Dismiss
@@ -168,11 +225,28 @@ export function OAuthClients() {
               key={c.client_id}
               className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-[var(--shadow-sm)]"
             >
-              <div className="font-semibold text-[var(--text)]">{c.name}</div>
-              <div className={`mt-1 text-xs text-[var(--muted)] ${mono}`}>{c.client_id}</div>
-              <div className="mt-1 text-xs text-[var(--muted)]">
-                {c.is_active ? 'Active' : 'Inactive'}
-                {c.created_at ? ` · ${new Date(c.created_at).toLocaleString()}` : ''}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className="font-semibold text-[var(--text)]">{c.name}</div>
+                  <div className={`mt-1 text-xs text-[var(--muted)] ${mono}`}>{c.client_id}</div>
+                  <div className="mt-1 text-xs text-[var(--muted)]">
+                    {c.is_active ? 'Active' : 'Inactive'}
+                    {c.created_at ? ` · ${new Date(c.created_at).toLocaleString()}` : ''}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <CopyButton value={c.client_id} label="Copy id" />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<RefreshCw size={14} />}
+                    loading={rotatingId === c.client_id}
+                    onClick={() => void onRotate(c.client_id)}
+                  >
+                    Rotate secret
+                  </Button>
+                </div>
               </div>
             </li>
           ))}

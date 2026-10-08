@@ -1,7 +1,7 @@
 """Settings — one DATABASE_URL drives async app + sync Alembic."""
 from __future__ import annotations
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     redis_required: bool = Field(default=False, alias="REDIS_REQUIRED")
     access_token_expire_minutes: int = 720
+    # Machine (client_credentials) tokens use a shorter default TTL than human sessions.
+    machine_token_expire_minutes: int = Field(default=60, alias="MACHINE_TOKEN_EXPIRE_MINUTES")
+    machine_token_audience: str = Field(default="netpay", alias="MACHINE_TOKEN_AUDIENCE")
+    # Rate limits (requests per window). 0 disables.
+    rate_limit_token_per_minute: int = Field(default=30, alias="RATE_LIMIT_TOKEN_PER_MINUTE")
+    rate_limit_payment_per_minute: int = Field(default=60, alias="RATE_LIMIT_PAYMENT_PER_MINUTE")
+    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS")
+    # OpenAPI /docs — disabled automatically in production unless explicitly enabled.
+    openapi_enabled: Optional[bool] = Field(default=None, alias="OPENAPI_ENABLED")
     cors_origins: str = "*"
     log_level: str = "INFO"
     webhook_timeout_seconds: float = 8.0
@@ -76,6 +85,27 @@ class Settings(BaseSettings):
         if self.cors_origins.strip() == "*":
             return ["*"]
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def openapi_enabled_effective(self) -> bool:
+        """OpenAPI UI enabled unless production (or explicit false)."""
+        if self.openapi_enabled is not None:
+            return bool(self.openapi_enabled)
+        return self.environment != "production"
+
+    def assert_production_secrets(self) -> None:
+        """Fail closed when unsafe defaults are used in production."""
+        if self.environment != "production":
+            return
+        if self.secret_key in ("", "dev-secret-change-me", "change-me"):
+            raise RuntimeError(
+                "SECRET_KEY must be set to a strong value in production "
+                "(refusing default dev secret)"
+            )
+        if self.internal_api_key in ("", "change-me-internal-worker-secret", "change-me"):
+            raise RuntimeError(
+                "INTERNAL_API_KEY must be set to a strong value in production"
+            )
 
 @lru_cache
 def get_settings() -> Settings:
