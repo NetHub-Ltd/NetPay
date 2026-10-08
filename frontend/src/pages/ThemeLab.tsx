@@ -115,11 +115,11 @@ export function ThemeLab() {
           <Input label="Shortcode name" placeholder="Paybill - Test" defaultValue="Paybill - Test" />
         </div>
         <div className="flex flex-wrap gap-2">
-          <StatusBadge status="connected" />
-          <StatusBadge status="pending_setup" />
-          <StatusBadge status="sandbox" />
-          <StatusBadge status="failed" />
-          <StatusBadge status="succeeded" />
+          <StatusBadge value="connected" />
+          <StatusBadge value="pending_setup" />
+          <StatusBadge value="sandbox" />
+          <StatusBadge value="failed" />
+          <StatusBadge value="succeeded" />
         </div>
       </section>
 
@@ -184,8 +184,8 @@ export function ThemeLab() {
                 <div className="text-sm font-medium text-[var(--muted)]">Paybill · Test</div>
               </div>
               <div className="flex gap-2">
-                <StatusBadge status="sandbox" />
-                <StatusBadge status="pending_setup" />
+                <StatusBadge value="sandbox" />
+                <StatusBadge value="pending_setup" />
               </div>
             </div>
           </li>
