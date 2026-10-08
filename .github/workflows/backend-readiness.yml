@@ -2,6 +2,8 @@ name: Backend readiness
 
 # Proves the API boots against real Postgres + Redis and answers /health.
 # Unit tests stay in ci.yml (SQLite). This job is the production-like smoke.
+#
+# No long-lived secrets are hardcoded: ephemeral keys are generated per run.
 
 on:
   pull_request:
@@ -36,7 +38,7 @@ jobs:
           --health-cmd "pg_isready -U netpay -d netpay"
           --health-interval 5s
           --health-timeout 5s
-          --health-retries 10
+          --health-retries 20
 
       redis:
         image: redis:7-alpine
@@ -46,18 +48,14 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 3s
-          --health-retries 10
+          --health-retries 20
 
     env:
       ENVIRONMENT: test
-      SECRET_KEY: ci-readiness-secret-key-not-for-prod-32
-      INTERNAL_API_KEY: ci-internal-api-key-not-for-prod-32
-      DATABASE_URL: postgresql+asyncpg://netpay:netpay@localhost:5432/netpay
-      REDIS_URL: redis://localhost:6379/0
       REDIS_REQUIRED: "true"
-      # Identity flag only — NetPay does not call this URL during /health
-      NETHUB_API_BASE_URL: https://api.example.invalid
       OPENAPI_ENABLED: "false"
+      # Identity flag only — /health does not call this URL
+      NETHUB_API_BASE_URL: https://api.example.invalid
 
     steps:
       - uses: actions/checkout@v4
@@ -66,20 +64,55 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Ephemeral runtime config
+        # Generate per-run keys so nothing secret is committed or static in YAML.
+        run: |
+          set -euo pipefail
+          {
+            echo "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+            echo "INTERNAL_API_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+            # CI-only credentials for the service container (not production).
+            echo "DATABASE_URL=postgresql+asyncpg://netpay:netpay@127.0.0.1:5432/netpay"
+            echo "REDIS_URL=redis://127.0.0.1:6379/0"
+          } >> "$GITHUB_ENV"
+
       - name: Install backend
         run: |
           pip install -U pip
           pip install -e ".[dev]"
+          # Sync Alembic driver (psycopg2) is required even when app uses asyncpg
+          python -c "import psycopg2, asyncpg; print('db drivers ok')"
+
+      - name: Wait for Postgres
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if python -c "import psycopg2; psycopg2.connect(host='127.0.0.1', port=5432, user='netpay', password='netpay', dbname='netpay').close(); print('postgres up')"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres did not become ready"
+          exit 1
 
       - name: Migrate schema
         run: |
+          set -euo pipefail
           mkdir -p data static
+          echo "Using DATABASE_URL host=$(python -c "from urllib.parse import urlparse; import os; u=urlparse(os.environ['DATABASE_URL'].replace('+asyncpg','')); print(u.hostname, u.port, u.path)")"
           alembic upgrade head
 
       - name: Start API
         run: |
+          set -euo pipefail
           nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/netpay-uvicorn.log 2>&1 &
           echo $! > /tmp/netpay-uvicorn.pid
+          sleep 2
+          if ! kill -0 "$(cat /tmp/netpay-uvicorn.pid)" 2>/dev/null; then
+            echo "uvicorn failed to start"
+            cat /tmp/netpay-uvicorn.log
+            exit 1
+          fi
 
       - name: Wait for /health (liveness + dependency readiness)
         run: |
