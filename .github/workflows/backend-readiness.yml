@@ -30,8 +30,9 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: netpay
-          POSTGRES_PASSWORD: netpay
           POSTGRES_DB: netpay
+          # CI only — no password so scanners do not flag workflow credentials
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
@@ -72,7 +73,7 @@ jobs:
             echo "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
             echo "INTERNAL_API_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
             # CI-only credentials for the service container (not production).
-            echo "DATABASE_URL=postgresql+asyncpg://netpay:netpay@127.0.0.1:5432/netpay"
+            echo "DATABASE_URL=postgresql+asyncpg://netpay@127.0.0.1:5432/netpay"
             echo "REDIS_URL=redis://127.0.0.1:6379/0"
           } >> "$GITHUB_ENV"
 
@@ -87,7 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           for i in $(seq 1 30); do
-            if python -c "import psycopg2; psycopg2.connect(host='127.0.0.1', port=5432, user='netpay', password='netpay', dbname='netpay').close(); print('postgres up')"; then
+            if python -c "import psycopg2; psycopg2.connect(host='127.0.0.1', port=5432, user='netpay', dbname='netpay').close(); print('postgres up')"; then
               exit 0
             fi
             sleep 2
