@@ -7,7 +7,7 @@ import { useLiveStatus } from './liveEvents'
  */
 export function useProcessingPoll(
   hasProcessing: boolean,
-  reload: () => void | Promise<void>,
+  reload: () => void | Promise<unknown>,
 ) {
   const { connected } = useLiveStatus()
   const reloadRef = useRef(reload)

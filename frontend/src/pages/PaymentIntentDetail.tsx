@@ -165,7 +165,7 @@ export function PaymentIntentDetail() {
   const processing = !!item && ['created', 'provider_requested', 'pending', 'processing', 'waiting'].includes(
     (item.status || '').toLowerCase(),
   )
-  useProcessingPoll(processing, load)
+  useProcessingPoll(processing, () => { void load() })
 
 
 
