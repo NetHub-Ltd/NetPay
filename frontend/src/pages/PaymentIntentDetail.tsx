@@ -162,6 +162,12 @@ export function PaymentIntentDetail() {
     })
   }, [id, load])
 
+  const processing = !!item && ['created', 'provider_requested', 'pending', 'processing', 'waiting'].includes(
+    (item.status || '').toLowerCase(),
+  )
+  useProcessingPoll(processing, load)
+
+
 
   async function queryNetwork() {
     setBusy(true)

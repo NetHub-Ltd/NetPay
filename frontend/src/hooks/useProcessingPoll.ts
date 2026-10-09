@@ -3,9 +3,7 @@ import { useLiveStatus } from './liveEvents'
 
 /**
  * While any payment is still processing, poll the list periodically.
- * Always runs at a modest interval as safety net; faster when WS is down.
- * This covers missed WebSocket frames and delayed edge callbacks that
- * only surface after server-side state changes without a live push.
+ * Faster when WS is down. Safety net for missed live frames.
  */
 export function useProcessingPoll(
   hasProcessing: boolean,
@@ -13,7 +11,10 @@ export function useProcessingPoll(
 ) {
   const { connected } = useLiveStatus()
   const reloadRef = useRef(reload)
-  reloadRef.current = reload
+
+  useEffect(() => {
+    reloadRef.current = reload
+  }, [reload])
 
   useEffect(() => {
     if (!hasProcessing) return
