@@ -22,6 +22,7 @@ import { useWorkspace } from '../workspace/useWorkspace'
 import { paymentLifecycleBucket } from '../components/statusUtils'
 import { subscribeLiveMessages } from '../hooks/liveEvents'
 import { Button } from '../components/primitives'
+import { DismissibleBanner } from '../components/DismissibleBanner'
 
 function greetingName(user: {
   display_name?: string | null
@@ -219,7 +220,7 @@ export function Home() {
       {/* Goal checklist */}
       {readiness && (
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow-sm)]">
-          <h2 className="m-0 text-base font-semibold text-[var(--text)]">
+          <h2 className="m-0 text-base font-bold text-[var(--text)]">
             Setup for {activeBusiness?.name || 'this business'}
           </h2>
           <p className="mb-4 mt-1 text-sm text-[var(--muted)]">
@@ -284,12 +285,9 @@ export function Home() {
       )}
 
       {error && (
-        <div
-          className="rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
-          role="alert"
-        >
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>
           {error}
-        </div>
+        </DismissibleBanner>
       )}
 
       <section aria-label="Payment pulse">
@@ -351,7 +349,7 @@ export function Home() {
               {ready ? <Check size={18} aria-hidden /> : <CircleAlert size={18} aria-hidden />}
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="m-0 text-base font-semibold">{copy.title}</h2>
+              <h2 className="m-0 text-base font-bold">{copy.title}</h2>
               <p className="mb-3 mt-1 text-sm text-[var(--muted)]">{copy.detail}</p>
               <div className="flex flex-wrap gap-2">
                 <Link to={connectTo} className="no-underline">
@@ -385,7 +383,7 @@ export function Home() {
               )}
             </span>
             <div className="min-w-0">
-              <h2 className="m-0 text-base font-semibold">Needs attention</h2>
+              <h2 className="m-0 text-base font-bold">Needs attention</h2>
               <p className="mb-3 mt-1 text-sm leading-6 text-[var(--muted)]">
                 {loading
                   ? 'Checking activity…'

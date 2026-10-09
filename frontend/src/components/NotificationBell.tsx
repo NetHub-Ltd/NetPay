@@ -41,7 +41,7 @@ export function NotificationBell() {
         {unread > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[var(--danger)] px-1 text-center text-[10px] font-bold leading-4 text-white">{unread > 9 ? '9+' : unread}</span>}
       </button>
 
-      <div className={`fixed inset-0 z-40 bg-black/20 transition-opacity md:hidden ${open ? 'visible opacity-100' : 'invisible opacity-0'}`} aria-hidden={!open} onClick={() => setOpen(false)} />
+      <div className={`fixed inset-0 z-40 bg-[var(--scrim)] transition-opacity md:hidden ${open ? 'visible opacity-100' : 'invisible opacity-0'}`} aria-hidden={!open} onClick={() => setOpen(false)} />
       <aside ref={panelRef} className={`fixed right-0 top-0 z-50 flex h-full w-[min(380px,100vw)] flex-col border-l border-[var(--border)] bg-[var(--panel)] shadow-2xl transition-transform duration-200 ${open ? 'translate-x-0' : 'translate-x-full'}`} role="dialog" aria-label="Notifications" aria-hidden={!open}>
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <span className="font-semibold">Notifications</span>

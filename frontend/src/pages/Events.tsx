@@ -6,6 +6,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useLiveStatus } from '../hooks/liveEvents'
 import { Button } from '../components/primitives'
 import { mono, table, tableWrap } from '../components/ui'
+import { DismissibleBanner } from '../components/DismissibleBanner'
 
 export function Events() {
   const [items, setItems] = useState<GatewayEvent[]>([])
@@ -63,22 +64,19 @@ export function Events() {
       />
 
       {error && (
-        <div
-          className="mb-4 rounded-xl border border-[var(--danger)]/25 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]"
-          role="alert"
-        >
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>
           {error}
           <div className="mt-2">
             <Button variant="secondary" size="sm" onClick={() => void load()}>
               Retry
             </Button>
           </div>
-        </div>
+        </DismissibleBanner>
       )}
       {msg && (
-        <div className="mb-4 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-4 py-3 text-sm">
+        <DismissibleBanner tone="success" onDismiss={() => setMsg(null)}>
           {msg}
-        </div>
+        </DismissibleBanner>
       )}
 
       {items.length === 0 ? (

@@ -6,7 +6,8 @@ import { DataTable } from '../components/DataTable'
 import { useLiveStatus } from '../hooks/liveEvents'
 import { PageHeader } from '../components/PageHeader'
 import { Button } from '../components/primitives'
-import { card, errorAlert } from '../components/ui'
+import { card } from '../components/ui'
+import { DismissibleBanner } from '../components/DismissibleBanner'
 
 type EdgeConnection = {
   status: string
@@ -90,11 +91,13 @@ export function Health() {
           </Button>
         }
       />
-      {error && <div className={errorAlert} role="alert">{error}</div>}
+      {error && (
+        <DismissibleBanner tone="error" onDismiss={() => setError(null)}>{error}</DismissibleBanner>
+      )}
 
       {displayedEdge && (
         <div className={card}>
-          <h2 className="mb-2 text-base font-semibold">Edge connection</h2>
+          <h2 className="mb-2 text-base font-bold">Edge connection</h2>
           <p className="mb-4">{displayedEdge.label}</p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
@@ -120,7 +123,7 @@ export function Health() {
       )}
 
       <div className={card}>
-        <h2 className="mb-2 text-base font-semibold">Provider calls</h2>
+        <h2 className="mb-2 text-base font-bold">Provider calls</h2>
         <p className="mb-4 text-xs text-[var(--muted)]">
           Recent requests NetPay made to the payment network (login, phone prompts, connect shortcode).
         </p>
