@@ -11,6 +11,7 @@ from app.crud.payment_intent import payment_intent_crud
 from app.domain.payment_status import IllegalTransitionError, is_terminal
 from app.models.payment_intent import PaymentIntent
 from app.schemas.event import EnvelopeIn, ProcessResult
+from app.services.domain_events import publish_payment_settled
 from app.services.events import record_event
 from app.services.ledger import post_collection_credit
 from app.services.transitions import transition_payment_intent
@@ -123,47 +124,13 @@ async def apply_payment_result(
         await post_collection_credit(session, intent)
     await session.commit()
     await session.refresh(intent)
-    meta = None
-    if intent.metadata_json:
-        try:
-            import json as _json
-            meta = _json.loads(intent.metadata_json)
-        except Exception:
-            meta = None
-    await fanout_webhooks(
+    # Domain event: webhooks + live UI (isolated subscribers)
+    await publish_payment_settled(
         session,
-        intent.tenant_id,
-        intent.id,
-        {
-            "event": "payment.update",
-            "intent_id": str(intent.id),
-            "status": intent.status,
-            "provider_transaction_id": transaction_id,
-            "failure_reason": failure,
-            "amount_minor": intent.amount_minor,
-            "phone": intent.phone,
-            "metadata": meta,
-        },
-        intent=intent,
+        intent,
+        transaction_id=transaction_id,
+        failure=failure,
     )
-    # Live SPA notification (WebSocket)
-    label = {"succeeded": "Payment paid", "failed": "Payment failed", "expired": "Payment expired"}.get(
-        intent.status, f"Payment {intent.status}"
-    )
-    level = "success" if intent.status == "succeeded" else "error" if intent.status in ("failed", "expired") else "info"
-    amount_txt = f"{(intent.amount_minor or 0) / 100:.2f} {intent.currency or 'KES'}"
-    try:
-        await publish_notification(
-            title=label,
-            body=f"{amount_txt} · {intent.phone or ''}".strip(" ·"),
-            tenant_id=intent.tenant_id,
-            intent_id=intent.id,
-            level=level,
-            href=f"/intents/{intent.id}",
-            status=intent.status,
-        )
-    except Exception:  # noqa: BLE001
-        pass
     return intent
 
 

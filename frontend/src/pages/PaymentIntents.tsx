@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CreditCard, Plus } from 'lucide-react'
 import { subscribeLiveMessages } from '../hooks/liveEvents'
+import { useProcessingPoll } from '../hooks/useProcessingPoll'
 import { useWorkspace } from '../workspace/useWorkspace'
 import { api, ApiError, type Integration, type PaymentIntent } from '../api/client'
 import { DataTable } from '../components/DataTable'
@@ -72,6 +73,12 @@ export function PaymentIntents() {
       if (m.type === 'payment.update' || m.type === 'notification') void load()
     })
   }, [load])
+
+  const hasProcessing = items.some((p) => {
+    const s = (p.status || '').toLowerCase()
+    return s in { created: 1, provider_requested: 1, pending: 1, processing: 1, waiting: 1 }
+  })
+  useProcessingPoll(hasProcessing, load)
 
   async function onCreate(e: FormEvent) {
     e.preventDefault()

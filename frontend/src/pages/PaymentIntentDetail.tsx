@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { emitNotification, subscribeLiveMessages } from '../hooks/liveEvents'
+import { useProcessingPoll } from '../hooks/useProcessingPoll'
 import { api, ApiError, type PaymentIntent } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatKes, statusHint } from '../components/statusUtils'
