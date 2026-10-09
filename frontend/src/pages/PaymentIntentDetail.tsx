@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { emitNotification, subscribeLiveMessages } from '../hooks/liveEvents'
+import { useProcessingPoll } from '../hooks/useProcessingPoll'
 import { api, ApiError, type PaymentIntent } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatKes, statusHint } from '../components/statusUtils'
@@ -160,6 +161,12 @@ export function PaymentIntentDetail() {
       }
     })
   }, [id, load])
+
+  const processing = !!item && ['created', 'provider_requested', 'pending', 'processing', 'waiting'].includes(
+    (item.status || '').toLowerCase(),
+  )
+  useProcessingPoll(processing, () => { void load() })
+
 
 
   async function queryNetwork() {
