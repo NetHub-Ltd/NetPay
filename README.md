@@ -1,89 +1,22 @@
 # NetHub Payment Gateway (NetPay)
 
-Multi-tenant M-Pesa payment gateway — FastAPI backend + React dashboard.
+NetPay is being rebuilt as a minimal, multi-merchant M-Pesa Daraja gateway.
 
-## Layout
+## Start here
 
-```text
-backend/     FastAPI app, Alembic, tests, static/ (SPA build output)
-frontend/    Vite + React source
-deploy/      docker-compose, k8s
-scripts/     helper scripts (e.g. build-frontend.sh)
-```
+- Agent rules: [AGENTS.md](AGENTS.md)
+- Implementation brief for Grok/other coding agents: [docs/REBUILD_SPEC.md](docs/REBUILD_SPEC.md)
 
-## Backend
+## Product scope
 
-```bash
-cd backend
-cp .env.example .env
-./run.sh
-# API: http://127.0.0.1:8000  docs: /docs
-```
+Core: merchant-owned Daraja integrations, STK Push, hosted STK callbacks, transaction verification where supported, reconciliation, M2M access and reliable payment events.
 
-Tests:
+Conditional: C2B validation/confirmation and Daraja C2B URL registration. C2B URLs are generated and stored for each integration, but registration is opt-in. STK-only merchants must not be forced to register C2B URLs.
 
-```bash
-cd backend
-pip install -e ".[dev]"
-pytest -q
-```
+Frontend: Next.js App Router and TypeScript, with SEO-friendly public pages and a private merchant dashboard.
 
-## Frontend (dev)
+## Repository and deployment
 
-```bash
-cd frontend
-npm ci
-npm run dev    # http://127.0.0.1:5173 (proxies API to :8000)
-```
+Git history is preserved. The rebuild is developed on `work/minimal-netpay-rebuild`, created from `main`. The existing GitHub Actions workflows, GHCR image identity, Docker/deployment configuration and release intent must be retained and adapted to the new implementation.
 
-## SPA into FastAPI static
-
-```bash
-./scripts/build-frontend.sh   # lint + build → backend/static/
-# then start backend; it serves backend/static at / and /assets
-```
-
-Or set `STATIC_DIR` to any folder containing `index.html` + `assets/`.
-
-## Docker
-
-```bash
-# from repo root
-docker compose -f deploy/docker-compose.yml up --build
-```
-
-Build context is the repo root (`backend/Dockerfile` copies frontend + backend).
-
-## CI
-
-- **PRs** to `main` or `dev`: backend pytest + frontend lint + build (`.github/workflows/ci.yml`).
-- **Push to `main`**: after tests, CI **auto-creates** the next patch tag (`vX.Y.Z`), builds multi-arch images, pushes to GHCR, and opens a GitHub Release with changelog notes (`.github/workflows/release.yml`).
-- No manual version tags required. Include `[skip release]` in a `main` commit message to skip tagging/release.
-- Images: `ghcr.io/nethub-ltd/netpay` (`latest`, `vX.Y.Z`, `main`, `sha-…`).
-
-Prefer merging only when checks are green.
-
-## Container (GHCR)
-
-Images: `ghcr.io/nethub-ltd/netpay`
-
-| Ref | Tags |
-|-----|------|
-| `main` branch | `main`, `sha-<short>` |
-| Tag `v1.2.3` | `1.2.3`, `1.2`, `latest` |
-
-```bash
-# from repo root — builds SPA into /app/static inside the image
-docker build -f backend/Dockerfile -t netpay:local .
-
-docker run --rm -p 8000:8000 \
-  -e DATABASE_URL=sqlite+aiosqlite:///./data/gateway.db \
-  -e REDIS_REQUIRED=false \
-  -e SECRET_KEY=dev \
-  netpay:local
-# API + dashboard: http://localhost:8000
-# Health: http://localhost:8000/health
-```
-
-CI pushes a **multi-arch** image (`linux/amd64`, `linux/arm64`) to GHCR after tests pass on `main` and on version tags (`v*`). Typical VPS = amd64; Apple Silicon / some cloud = arm64.
-
+Do not merge the rebuild into `main` until the acceptance criteria in the implementation brief pass.
