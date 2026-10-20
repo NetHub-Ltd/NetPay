@@ -22,7 +22,6 @@ class Settings(BaseSettings):
     secret_key: SecretStr = Field(default=SecretStr("development-only-change-me"))
     credential_encryption_key: SecretStr | None = None
     public_base_url: str = "http://localhost:8000"
-    redis_url: str = "redis://localhost:6379/0"
     log_level: str = "INFO"
     cors_origins: str = ""
 
