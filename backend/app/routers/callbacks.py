@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import hashlib
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -65,6 +66,7 @@ def _safe_payload(
         "receipt": str(metadata.get("MpesaReceiptNumber", ""))[:64],
         "amount": str(metadata.get("Amount", ""))[:32],
         "phone_last_four": phone[-4:] if phone else "",
+        "phone_hash": hashlib.sha256(phone.encode("utf-8")).hexdigest() if phone else "",
     }
 
 
@@ -138,12 +140,14 @@ async def stk_callback(
     event_type: str | None = None
     if payment is not None:
         if result_code != 0:
-            payment.provider_result_code = str(result_code)[:32]
-            result_desc = callback.get("ResultDesc")
-            payment.provider_result_description = result_desc[:250] if isinstance(result_desc, str) else None
             changed = apply_status(payment, "failed")
             if changed:
+                payment.provider_result_code = str(result_code)[:32]
+                result_desc = callback.get("ResultDesc")
+                payment.provider_result_description = result_desc[:250] if isinstance(result_desc, str) else None
                 event_type = "payment.failed"
+            elif payment.status != "failed":
+                record.processing_status = "discrepancy"
         else:
             discrepancy = False
             amount_value = values.get("Amount")
@@ -165,11 +169,15 @@ async def stk_callback(
                 if apply_status(payment, "unknown"):
                     event_type = "payment.unknown"
             else:
-                payment.provider_receipt = receipt
-                payment.provider_result_code = "0"
-                payment.provider_result_description = "Provider callback confirmed payment"
-                if apply_status(payment, "succeeded"):
-                    event_type = "payment.succeeded"
+                changed = apply_status(payment, "succeeded")
+                if changed or payment.status == "succeeded":
+                    payment.provider_receipt = receipt
+                    payment.provider_result_code = "0"
+                    payment.provider_result_description = "Provider callback confirmed payment"
+                    if changed:
+                        event_type = "payment.succeeded"
+                else:
+                    record.processing_status = "discrepancy"
         payment.updated_at = datetime.now(timezone.utc)
         session.add(payment)
         if event_type is not None:
