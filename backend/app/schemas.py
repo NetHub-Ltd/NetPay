@@ -13,6 +13,7 @@ class IntegrationCreate(BaseModel):
     environment: Literal["sandbox", "production"] = "sandbox"
     shortcode: str = Field(min_length=5, max_length=32, pattern=r"^[0-9]+$")
     product_type: Literal["paybill", "till"]
+    party_b_shortcode: str | None = Field(default=None, min_length=5, max_length=32, pattern=r"^[0-9]+$")
     consumer_key: SecretStr = Field(min_length=1)
     consumer_secret: SecretStr = Field(min_length=1)
     passkey: SecretStr = Field(min_length=1)
@@ -26,6 +27,7 @@ class IntegrationSummary(BaseModel):
     environment: str
     shortcode: str
     product_type: str
+    party_b_shortcode: str
     credential_status: str
     c2b_enabled: bool
     c2b_registration_status: str
