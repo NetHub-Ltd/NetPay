@@ -48,7 +48,7 @@ async def register_c2b_urls(
         "ValidationURL": validation_url,
     }
     try:
-        async with httpx.AsyncClient(timeout=15.0, transport=transport) as client:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=False, transport=transport) as client:
             response = await client.post(url, json=body, headers={"Authorization": f"Bearer {token}"})
     except httpx.RequestError as exc:
         raise C2BRegistrationUnknown("C2B registration outcome is unknown") from exc
