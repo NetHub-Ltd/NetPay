@@ -31,14 +31,38 @@ _DELIVERY_LEASE = timedelta(minutes=5)
 
 async def reconcile_unmatched_callbacks(session: AsyncSession, batch_size: int = 100) -> int:
     """Resolve callbacks that raced ahead of the STK response persistence."""
-    result = await session.exec(
+    now = datetime.now(timezone.utc)
+    stale_cutoff = now - timedelta(hours=24)
+
+    # Retire old unmatched callbacks in bounded batches so they cannot starve
+    # callbacks that have a chance of matching a recently persisted STK request.
+    stale_result = await session.exec(
         select(ProviderCallback)
-        .where(ProviderCallback.processing_status == "unmatched")
+        .where(
+            ProviderCallback.processing_status == "unmatched",
+            ProviderCallback.received_at <= stale_cutoff,
+        )
         .order_by(ProviderCallback.received_at.asc())
         .limit(batch_size)
     )
+    stale_records = list(stale_result.all())
+    for stale_record in stale_records:
+        stale_record.processing_status = "manual_review"
+        stale_record.processed_at = now
+        session.add(stale_record)
+    if stale_records:
+        await session.commit()
+
+    result = await session.exec(
+        select(ProviderCallback)
+        .where(
+            ProviderCallback.processing_status == "unmatched",
+            ProviderCallback.received_at > stale_cutoff,
+        )
+        .order_by(ProviderCallback.received_at.desc())
+        .limit(batch_size)
+    )
     recovered = 0
-    stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
     for callback in result.all():
         checkout_id = callback.safe_payload.get("checkout_request_id")
         if not isinstance(checkout_id, str) or not checkout_id:
@@ -53,14 +77,6 @@ async def reconcile_unmatched_callbacks(session: AsyncSession, batch_size: int =
         )
         payment = payment_result.first()
         if payment is None:
-            received_at = callback.received_at
-            if received_at.tzinfo is None:
-                received_at = received_at.replace(tzinfo=timezone.utc)
-            if received_at <= stale_cutoff:
-                callback.processing_status = "manual_review"
-                callback.processed_at = datetime.now(timezone.utc)
-                session.add(callback)
-                await session.commit()
             continue
         integration = await session.get(DarajaIntegration, callback.integration_id)
         if integration is None:
