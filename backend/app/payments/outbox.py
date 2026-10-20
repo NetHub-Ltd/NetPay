@@ -17,6 +17,9 @@ def payment_event(payment: Payment, event_type: str) -> EventOutbox:
         schema_version=1,
         payload={
             "event_id": str(event_id),
+            "event_type": event_type,
+            "schema_version": 1,
+            "occurred_at": now.isoformat(),
             "payment_id": str(payment.id),
             "merchant_id": str(payment.merchant_id),
             "client_reference": payment.client_reference,
