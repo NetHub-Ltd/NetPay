@@ -19,6 +19,8 @@ class IntegrationCreate(BaseModel):
 
 
 class IntegrationSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     integration_id: str
     environment: str
