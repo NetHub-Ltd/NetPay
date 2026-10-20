@@ -15,6 +15,8 @@ class Payment(SQLModel, table=True):
     __table_args__ = (
         CheckConstraint("amount_minor > 0", name="ck_payment_amount_positive"),
         UniqueConstraint("integration_id", "provider_receipt", name="uq_payment_integration_provider_receipt"),
+        UniqueConstraint("integration_id", "provider_checkout_request_id", name="uq_payment_integration_checkout"),
+        UniqueConstraint("integration_id", "provider_merchant_request_id", name="uq_payment_integration_merchant_request"),
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
