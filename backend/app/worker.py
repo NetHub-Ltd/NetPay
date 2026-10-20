@@ -160,7 +160,7 @@ async def _deliver_one(
             "X-NetPay-Signature": f"sha256={signature}",
             "Idempotency-Key": str(event.event_id),
         }
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False, transport=transport) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False, trust_env=False, transport=transport) as client:
             async with client.stream("POST", destination.url, content=body, headers=headers) as response:
                 http_status = response.status_code
         if 200 <= response.status_code < 300:
