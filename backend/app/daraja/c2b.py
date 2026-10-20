@@ -61,6 +61,8 @@ async def register_c2b_urls(
         result = response.json()
     except ValueError as exc:
         raise C2BRegistrationUnknown("C2B registration outcome is unknown") from exc
+    if not isinstance(result, dict):
+        raise C2BRegistrationUnknown("C2B registration response was not a JSON object")
     response_code = result.get("ResponseCode")
     if response_code is None:
         raise C2BRegistrationUnknown("C2B registration response was incomplete")
