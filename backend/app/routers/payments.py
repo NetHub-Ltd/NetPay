@@ -13,7 +13,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.auth import MerchantPrincipal, require_scope
-from app.crypto import decrypt_secret
+from app.crypto import CredentialEncryptionError, decrypt_secret
 from app.daraja.client import DarajaUnavailable, InvalidDarajaCredentials
 from app.daraja.stk import Environment, ProductType, STKOutcomeUnknown, STKRequestRejected, initiate_stk_push
 from app.db import get_session
@@ -167,6 +167,16 @@ async def create_stk_payment(
     if integration is None:
         raise HTTPException(status_code=404, detail={"code": "integration_not_found", "message": "A usable integration was not found"})
 
+    try:
+        consumer_key = decrypt_secret(integration.consumer_key_ciphertext)
+        consumer_secret = decrypt_secret(integration.consumer_secret_ciphertext)
+        passkey = decrypt_secret(integration.passkey_ciphertext)
+    except CredentialEncryptionError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "credential_decryption_failed", "message": "Stored Daraja credentials could not be opened"},
+        ) from exc
+
     payment = Payment(
         merchant_id=principal.merchant_id,
         integration_id=integration.id,
@@ -202,9 +212,9 @@ async def create_stk_payment(
     try:
         accepted = await initiate_stk_push(
             environment=cast(Environment, integration.environment),
-            consumer_key=decrypt_secret(integration.consumer_key_ciphertext),
-            consumer_secret=decrypt_secret(integration.consumer_secret_ciphertext),
-            passkey=decrypt_secret(integration.passkey_ciphertext),
+            consumer_key=consumer_key,
+            consumer_secret=consumer_secret,
+            passkey=passkey,
             business_shortcode=integration.shortcode,
             party_b_shortcode=integration.party_b_shortcode,
             product_type=cast(ProductType, integration.product_type),
