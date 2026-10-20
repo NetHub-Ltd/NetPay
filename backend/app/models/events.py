@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, JSON
+from sqlalchemy import Column, JSON, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -12,8 +12,10 @@ def utc_now() -> datetime:
 
 
 class EventOutbox(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("event_id"),)
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    event_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
+    event_id: UUID = Field(default_factory=uuid4, index=True)
     merchant_id: UUID = Field(foreign_key="merchant.id", index=True)
     aggregate_id: UUID = Field(index=True)
     event_type: str = Field(max_length=100, index=True)
