@@ -61,6 +61,8 @@ async def test_stale_submitting_payment_becomes_unknown_without_retry() -> None:
         created_at=old,
         updated_at=old,
     )
+    payment_id = payment.id
+    attempt_id = attempt.id
     with Session(engine) as session:
         session.add(merchant)
         session.add(integration)
@@ -80,9 +82,9 @@ async def test_stale_submitting_payment_becomes_unknown_without_retry() -> None:
     assert recovered == 1
     engine = create_engine(_sync_url())
     with Session(engine) as session:
-        saved_payment = session.exec(select(Payment).where(Payment.id == payment.id)).one()
-        saved_attempt = session.exec(select(PaymentAttempt).where(PaymentAttempt.id == attempt.id)).one()
-        events = session.exec(select(EventOutbox).where(EventOutbox.aggregate_id == payment.id)).all()
+        saved_payment = session.exec(select(Payment).where(Payment.id == payment_id)).one()
+        saved_attempt = session.exec(select(PaymentAttempt).where(PaymentAttempt.id == attempt_id)).one()
+        events = session.exec(select(EventOutbox).where(EventOutbox.aggregate_id == payment_id)).all()
     engine.dispose()
     assert saved_payment.status == "unknown"
     assert saved_attempt.outcome == "unknown"
