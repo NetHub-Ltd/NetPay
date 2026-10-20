@@ -44,3 +44,43 @@ def verify_client_secret(secret: str, encoded: str) -> bool:
         return hmac.compare_digest(actual, expected)
     except (ValueError, TypeError, UnicodeEncodeError):
         return False
+
+
+from datetime import datetime, timedelta, timezone
+from uuid import UUID
+
+from jose import JWTError, jwt
+
+from app.config import Settings, get_settings
+
+_ACCESS_TOKEN_TTL_SECONDS = 900
+_ISSUER = "netpay"
+_AUDIENCE = "netpay-api"
+
+
+def create_access_token(client_id: str, merchant_id: UUID, scopes: list[str]) -> tuple[str, int]:
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    claims = {
+        "sub": client_id,
+        "mid": str(merchant_id),
+        "scopes": scopes,
+        "iss": _ISSUER,
+        "aud": _AUDIENCE,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=_ACCESS_TOKEN_TTL_SECONDS)).timestamp()),
+        "jti": secrets.token_urlsafe(16),
+    }
+    token = jwt.encode(claims, settings.secret_key.get_secret_value(), algorithm="HS256")
+    return token, _ACCESS_TOKEN_TTL_SECONDS
+
+
+def decode_access_token(token: str) -> dict[str, object]:
+    settings = get_settings()
+    return jwt.decode(
+        token,
+        settings.secret_key.get_secret_value(),
+        algorithms=["HS256"],
+        audience=_AUDIENCE,
+        issuer=_ISSUER,
+    )
