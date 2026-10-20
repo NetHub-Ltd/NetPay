@@ -78,7 +78,7 @@ async def _apply_early_callback(
         ).order_by(ProviderCallback.received_at.asc())
     )
     event_type: str | None = None
-    expected_phone_hash = hashlib.sha256(payment.phone_number.encode("utf-8")).hexdigest()
+    expected_phone_hash = hashlib.sha256((payment.phone_number or "").encode("utf-8")).hexdigest()
     for callback in result.all():
         safe = callback.safe_payload
         if safe.get("checkout_request_id") != checkout_request_id:
