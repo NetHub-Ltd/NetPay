@@ -39,10 +39,12 @@ class IntegrationSummary(BaseModel):
     credential_status: str
     c2b_enabled: bool
     c2b_registration_status: str
+    registration_error: str | None
     stk_callback_url: str
     c2b_validation_url: str
     c2b_confirmation_url: str
     created_at: datetime
+    updated_at: datetime
 
 
 class IntegrationList(BaseModel):
