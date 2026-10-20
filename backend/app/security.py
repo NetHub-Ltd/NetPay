@@ -51,7 +51,7 @@ from uuid import UUID
 
 from jose import JWTError, jwt
 
-from app.config import Settings, get_settings
+from app.config import get_settings
 
 _ACCESS_TOKEN_TTL_SECONDS = 900
 _ISSUER = "netpay"
