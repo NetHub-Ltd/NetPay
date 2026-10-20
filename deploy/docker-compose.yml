@@ -22,7 +22,6 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://gateway:gateway@db:5432/gateway
       ENVIRONMENT: development
-      PUBLIC_BASE_URL: http://localhost:8000
       STATIC_DIR: /app/static
     depends_on:
       migrate:
