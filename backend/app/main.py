@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.db import check_database, dispose_engine
 from app.routers.auth import router as auth_router
 from app.routers.callbacks import router as callbacks_router
+from app.routers.events import router as events_router
 from app.routers.integrations import router as integrations_router
 from app.routers.payments import router as payments_router
 
@@ -37,6 +38,7 @@ app.include_router(auth_router)
 app.include_router(integrations_router)
 app.include_router(payments_router)
 app.include_router(callbacks_router)
+app.include_router(events_router)
 
 
 @app.get("/health/live", tags=["health"], include_in_schema=False)
