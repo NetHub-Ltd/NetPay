@@ -80,7 +80,7 @@ async def initiate_stk_push(
     }
     url = f"{_BASE_URLS[environment]}/mpesa/stkpush/v1/processrequest"
     try:
-        async with httpx.AsyncClient(timeout=15.0, transport=transport) as client:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=False, transport=transport) as client:
             response = await client.post(url, json=body, headers={"Authorization": f"Bearer {token}"})
     except httpx.RequestError as exc:
         raise STKOutcomeUnknown("STK request outcome is unknown") from exc
