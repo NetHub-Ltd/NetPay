@@ -39,7 +39,6 @@ async def register_c2b_urls(
     # Token failures occur before registration is submitted, so callers may safely
     # report a definite failure. Network ambiguity after POST must not be retried
     # blindly in production because registration is documented as one-time.
-    await request_access_token(environment, consumer_key, consumer_secret, transport=transport)
     token = await request_access_token(environment, consumer_key, consumer_secret, transport=transport)
     url = f"{_BASE_URLS[environment]}/mpesa/c2b/v1/registerurl"
     body = {
