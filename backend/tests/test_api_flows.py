@@ -177,11 +177,30 @@ def test_stk_idempotency_and_callback_are_durable(monkeypatch) -> None:
             }
         }
         callback_url = f"/cb/stk/{integration_id}"
+        spoofed_payload = {
+            "Body": {
+                "stkCallback": {
+                    **callback_payload["Body"]["stkCallback"],
+                    "MerchantRequestID": "unrelated-request-id",
+                    "CallbackMetadata": {
+                        "Item": [
+                            {"Name": "Amount", "Value": 25.0},
+                            {"Name": "MpesaReceiptNumber", "Value": "SPOOFEDRECEIPT"},
+                            {"Name": "PhoneNumber", "Value": 254712345678},
+                        ]
+                    },
+                }
+            }
+        }
+        spoofed = client.post(callback_url, json=spoofed_payload)
+        status_before_valid_callback = client.get(f"/api/v1/payments/{payment_id}", headers=auth)
         callback_first = client.post(callback_url, json=callback_payload)
         callback_second = client.post(callback_url, json=callback_payload)
         status_response = client.get(f"/api/v1/payments/{payment_id}", headers=auth)
 
     assert calls == 1
+    assert spoofed.status_code == 200
+    assert status_before_valid_callback.json()["status"] == "pending"
     assert callback_first.status_code == 200
     assert callback_second.status_code == 200
     assert status_response.status_code == 200
