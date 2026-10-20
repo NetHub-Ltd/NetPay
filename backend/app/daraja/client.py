@@ -34,7 +34,7 @@ async def request_access_token(
     """Request an OAuth token; never log or return the token to API callers."""
     url = f"{_BASE_URLS[environment]}/oauth/v1/generate"
     try:
-        async with httpx.AsyncClient(timeout=10.0, transport=transport) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False, transport=transport) as client:
             response = await client.get(
                 url,
                 params={"grant_type": "client_credentials"},
