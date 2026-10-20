@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
@@ -42,6 +43,16 @@ app.include_router(integrations_router)
 app.include_router(payments_router)
 app.include_router(callbacks_router)
 app.include_router(events_router)
+
+allowed_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+if allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
+    )
 
 
 @app.get("/health/live", tags=["health"], include_in_schema=False)
