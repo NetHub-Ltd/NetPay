@@ -183,9 +183,44 @@ def upgrade() -> None:
     op.create_index("ix_paymentattempt_correlation_id", "paymentattempt", ["correlation_id"], unique=True)
     op.create_index("ix_paymentattempt_outcome", "paymentattempt", ["outcome"], unique=False)
 
+    op.create_table(
+        "eventdestination",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("merchant_id", sa.Uuid(), nullable=False),
+        sa.Column("url", sa.String(length=512), nullable=False),
+        sa.Column("signing_secret_ciphertext", sa.LargeBinary(), nullable=False),
+        sa.Column("enabled", sa.Boolean(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["merchant_id"], ["merchant.id"]),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("merchant_id", name="uq_event_destination_merchant"),
+    )
+    op.create_index("ix_eventdestination_merchant_id", "eventdestination", ["merchant_id"], unique=False)
+    op.create_index("ix_eventdestination_enabled", "eventdestination", ["enabled"], unique=False)
+
+    op.create_table(
+        "eventdeliveryattempt",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("outbox_event_id", sa.Uuid(), nullable=False),
+        sa.Column("attempt_number", sa.Integer(), nullable=False),
+        sa.Column("outcome", sa.String(length=24), nullable=False),
+        sa.Column("http_status", sa.Integer(), nullable=True),
+        sa.Column("safe_error_code", sa.String(length=100), nullable=True),
+        sa.Column("duration_ms", sa.Integer(), nullable=False),
+        sa.Column("attempted_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["outbox_event_id"], ["eventoutbox.id"]),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("outbox_event_id", "attempt_number", name="uq_delivery_attempt_number"),
+    )
+    op.create_index("ix_eventdeliveryattempt_outbox_event_id", "eventdeliveryattempt", ["outbox_event_id"], unique=False)
+    op.create_index("ix_eventdeliveryattempt_outcome", "eventdeliveryattempt", ["outcome"], unique=False)
+
 
 def downgrade() -> None:
     for table, columns in (
+        ("eventdeliveryattempt", ("outbox_event_id", "outcome")),
+        ("eventdestination", ("merchant_id", "enabled")),
         ("paymentattempt", ("payment_id", "correlation_id", "outcome")),
         ("eventoutbox", ("event_id", "merchant_id", "aggregate_id", "event_type", "delivery_status", "next_attempt_at")),
         ("providercallback", ("integration_id", "payment_id", "callback_type", "processing_status")),
@@ -197,6 +232,8 @@ def downgrade() -> None:
     ):
         for column in columns:
             op.drop_index(f"ix_{table}_{column}", table_name=table)
+    op.drop_table("eventdeliveryattempt")
+    op.drop_table("eventdestination")
     op.drop_table("paymentattempt")
     op.drop_table("eventoutbox")
     op.drop_table("providercallback")
