@@ -48,12 +48,13 @@ def _metadata(callback: dict[str, Any]) -> dict[str, object]:
 def _fingerprint(
     integration_id: str,
     checkout_id: str,
+    merchant_request_id: str,
     result_code: int,
     receipt: str | None,
     amount: object,
     phone_hash: str,
 ) -> str:
-    raw = f"{integration_id}|{checkout_id}|{result_code}|{receipt or ''}|{amount}|{phone_hash}"
+    raw = f"{integration_id}|{checkout_id}|{merchant_request_id}|{result_code}|{receipt or ''}|{amount}|{phone_hash}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -121,7 +122,7 @@ async def stk_callback(
     receipt = str(receipt_value) if receipt_value is not None else None
     safe = _safe_payload(checkout_id, merchant_request_id, result_code, values)
     fingerprint = _fingerprint(
-        integration_id, checkout_id, result_code, receipt, safe.get("amount", ""), str(safe.get("phone_hash", ""))
+        integration_id, checkout_id, merchant_request_id, result_code, receipt, safe.get("amount", ""), str(safe.get("phone_hash", ""))
     )
     duplicate_result = await session.exec(
         select(ProviderCallback).where(
