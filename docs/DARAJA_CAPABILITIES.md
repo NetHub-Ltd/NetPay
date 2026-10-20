@@ -21,6 +21,7 @@ Official documentation: https://developer.safaricom.co.ke/apis/CustomerToBusines
 - C2B URL registration enables confirmation notifications and optional validation callbacks for PayBill/Till payments.
 - C2B registration is separate from STK Push. A merchant that only uses STK Push must not be forced to register C2B URLs.
 - Safaricom documents external C2B validation as optional and requiring activation through its support process. Registering a validation URL does not by itself prove external validation is enabled for the shortcode.
+- The current NetPay validation handler checks basic request shape, shortcode, and positive amount, but does not yet support merchant-specific account-reference validation rules. Do not enable external validation in production if the merchant requires account-level rejection rules until that policy is implemented and tested.
 - Public callback URLs are required; production URLs must use HTTPS.
 - Sandbox URLs may be registered repeatedly or overwritten. Production URL registration is documented as one-time unless the existing registration is removed through URL management or Safaricom support.
 - If production registration times out after the request may have reached Safaricom, store the outcome as unknown and do not blindly retry; reconcile the registration status first.
