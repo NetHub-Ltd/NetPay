@@ -3,6 +3,7 @@
 from functools import lru_cache
 from typing import Self
 
+from cryptography.fernet import Fernet
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -32,10 +33,14 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def require_production_secrets(self) -> Self:
         if self.is_production:
-            if self.secret_key.get_secret_value() == "development-only-change-me":
-                raise ValueError("SECRET_KEY must be set to a non-default value in production")
+            if len(self.secret_key.get_secret_value()) < 32 or self.secret_key.get_secret_value() == "development-only-change-me":
+                raise ValueError("SECRET_KEY must be at least 32 characters and non-default in production")
             if self.credential_encryption_key is None:
                 raise ValueError("CREDENTIAL_ENCRYPTION_KEY is required in production")
+            try:
+                Fernet(self.credential_encryption_key.get_secret_value().encode("ascii"))
+            except (ValueError, UnicodeEncodeError) as exc:
+                raise ValueError("CREDENTIAL_ENCRYPTION_KEY must be a valid Fernet key") from exc
         return self
 
 
