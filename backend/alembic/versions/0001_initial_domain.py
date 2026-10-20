@@ -101,6 +101,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["merchant_id"], ["merchant.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("integration_id", "provider_receipt", name="uq_payment_integration_provider_receipt"),
+        sa.UniqueConstraint("integration_id", "provider_checkout_request_id", name="uq_payment_integration_checkout"),
+        sa.UniqueConstraint("integration_id", "provider_merchant_request_id", name="uq_payment_integration_merchant_request"),
     )
     for column in ("merchant_id", "integration_id", "payment_source", "status", "provider_checkout_request_id", "provider_merchant_request_id", "provider_receipt"):
         op.create_index(f"ix_payment_{column}", "payment", [column], unique=False)
