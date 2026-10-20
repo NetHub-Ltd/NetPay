@@ -2,8 +2,10 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
+from sqlmodel import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import Session
 
 from app.config import get_settings
@@ -72,7 +74,7 @@ async def test_stale_submitting_payment_becomes_unknown_without_retry() -> None:
     engine.dispose()
 
     async_engine = create_async_engine(get_settings().database_url)
-    session_factory = async_sessionmaker(async_engine, expire_on_commit=False)
+    session_factory = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
     try:
         async with session_factory() as session:
             recovered = await recover_stale_submissions(session)
