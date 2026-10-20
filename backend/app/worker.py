@@ -95,8 +95,8 @@ async def _deliver_one(
             "Idempotency-Key": str(event.event_id),
         }
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=False, transport=transport) as client:
-            response = await client.post(destination.url, content=body, headers=headers)
-        http_status = response.status_code
+            async with client.stream("POST", destination.url, content=body, headers=headers) as response:
+                http_status = response.status_code
         if 200 <= response.status_code < 300:
             outcome = "delivered"
         else:
