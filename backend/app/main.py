@@ -1,8 +1,11 @@
 """NetPay FastAPI entrypoint and operational health endpoints."""
 
 from contextlib import asynccontextmanager
+import os
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from app.config import get_settings
@@ -67,6 +70,11 @@ async def health_compatibility() -> dict[str, str]:
     return await readiness()
 
 
-@app.get("/", tags=["meta"])
-async def root() -> dict[str, str]:
+@app.get("/api", tags=["meta"])
+async def api_root() -> dict[str, str]:
     return {"name": settings.app_name, "status": "running", "docs": "/docs"}
+
+
+static_dir = Path(os.environ.get("STATIC_DIR", ""))
+if static_dir.is_dir() and (static_dir / "index.html").is_file():
+    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="frontend")
