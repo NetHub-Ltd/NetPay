@@ -39,7 +39,7 @@ After migrations, provision the first merchant/client from a trusted operator en
 MERCHANT_NAME="Example Merchant" uv run python -m scripts.provision_m2m_client
 ```
 
-The command creates a merchant, stores only a scrypt hash of the generated client secret, and prints the client secret once. Transfer it to a secret manager immediately. The default scopes are `integrations:read`, `integrations:write`, `payments:read`, and `payments:write`; override them with `NETPAY_CLIENT_SCOPES` if needed.
+The command creates a merchant, stores only a scrypt hash of the generated client secret, and prints the client secret once. Transfer it to a secret manager immediately. The default scopes are `integrations:read`, `integrations:write`, `payments:read`, `payments:write`, `events:read`, and `events:write`; override them with `NETPAY_CLIENT_SCOPES` if needed.
 
 Exchange the client ID and secret for a short-lived bearer token:
 
