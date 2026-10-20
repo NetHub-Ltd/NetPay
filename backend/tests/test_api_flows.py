@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
-from sqlmodel import Session
+from sqlalchemy import create_engine
+from sqlmodel import Session, select
 
 import pytest
 
