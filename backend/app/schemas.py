@@ -80,6 +80,9 @@ class PaymentSummary(BaseModel):
     amount_minor: int
     currency: str
     status: str
+    payment_source: str
     provider_checkout_request_id: str | None
+    provider_receipt: str | None
+    completed_at: datetime | None
     created_at: datetime
     updated_at: datetime
