@@ -4,6 +4,12 @@ import base64
 import hashlib
 import hmac
 import secrets
+from datetime import datetime, timedelta, timezone
+from uuid import UUID
+
+from jose import JWTError, jwt
+
+from app.config import get_settings
 
 _SCRYPT_N = 2**14
 _SCRYPT_R = 8
@@ -45,13 +51,6 @@ def verify_client_secret(secret: str, encoded: str) -> bool:
     except (ValueError, TypeError, UnicodeEncodeError):
         return False
 
-
-from datetime import datetime, timedelta, timezone
-from uuid import UUID
-
-from jose import JWTError, jwt
-
-from app.config import get_settings
 
 _ACCESS_TOKEN_TTL_SECONDS = 900
 _ISSUER = "netpay"
