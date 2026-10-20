@@ -45,8 +45,15 @@ def _metadata(callback: dict[str, Any]) -> dict[str, object]:
     return values
 
 
-def _fingerprint(integration_id: str, checkout_id: str, result_code: int, receipt: str | None) -> str:
-    raw = f"{integration_id}|{checkout_id}|{result_code}|{receipt or ''}"
+def _fingerprint(
+    integration_id: str,
+    checkout_id: str,
+    result_code: int,
+    receipt: str | None,
+    amount: object,
+    phone_hash: str,
+) -> str:
+    raw = f"{integration_id}|{checkout_id}|{result_code}|{receipt or ''}|{amount}|{phone_hash}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -112,7 +119,10 @@ async def stk_callback(
     values = _metadata(callback)
     receipt_value = values.get("MpesaReceiptNumber")
     receipt = str(receipt_value) if receipt_value is not None else None
-    fingerprint = _fingerprint(integration_id, checkout_id, result_code, receipt)
+    safe = _safe_payload(checkout_id, merchant_request_id, result_code, values)
+    fingerprint = _fingerprint(
+        integration_id, checkout_id, result_code, receipt, safe.get("amount", ""), str(safe.get("phone_hash", ""))
+    )
     duplicate_result = await session.exec(
         select(ProviderCallback).where(
             ProviderCallback.integration_id == integration.id,
@@ -122,7 +132,6 @@ async def stk_callback(
     if duplicate_result.first() is not None:
         return _ack()
 
-    safe = _safe_payload(checkout_id, merchant_request_id, result_code, values)
     payment_result = await session.exec(
         select(Payment)
         .where(
@@ -146,7 +155,9 @@ async def stk_callback(
 
     event_type: str | None = None
     if payment is not None:
-        if result_code != 0:
+        if payment.provider_merchant_request_id and payment.provider_merchant_request_id != merchant_request_id:
+            record.processing_status = "discrepancy"
+        elif result_code != 0:
             changed = apply_status(payment, "failed")
             if changed:
                 payment.provider_result_code = str(result_code)[:32]
@@ -176,8 +187,12 @@ async def stk_callback(
                 if apply_status(payment, "unknown"):
                     event_type = "payment.unknown"
             else:
-                changed = apply_status(payment, "succeeded")
-                if changed or payment.status == "succeeded":
+                if payment.status == "succeeded" and payment.provider_receipt not in (None, receipt):
+                    record.processing_status = "discrepancy"
+                    changed = False
+                else:
+                    changed = apply_status(payment, "succeeded")
+                if changed or (payment.status == "succeeded" and record.processing_status != "discrepancy"):
                     payment.provider_receipt = receipt
                     payment.provider_result_code = "0"
                     payment.provider_result_description = "Provider callback confirmed payment"
