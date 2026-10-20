@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 
 class IntegrationCreate(BaseModel):
@@ -17,6 +17,14 @@ class IntegrationCreate(BaseModel):
     consumer_key: SecretStr = Field(min_length=1)
     consumer_secret: SecretStr = Field(min_length=1)
     passkey: SecretStr = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_party_b(self) -> "IntegrationCreate":
+        if self.product_type == "till" and self.party_b_shortcode is None:
+            raise ValueError("party_b_shortcode is required for Till integrations")
+        if self.product_type == "paybill" and self.party_b_shortcode is None:
+            self.party_b_shortcode = self.shortcode
+        return self
 
 
 class IntegrationSummary(BaseModel):
