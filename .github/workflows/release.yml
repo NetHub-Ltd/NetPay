@@ -40,7 +40,6 @@ jobs:
       - name: Pytest
         env:
           DATABASE_URL: sqlite+aiosqlite:///./data/test.db
-          REDIS_REQUIRED: "false"
           SECRET_KEY: test-secret
           CREDENTIAL_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
           ENVIRONMENT: test
