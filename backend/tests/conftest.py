@@ -1,6 +1,5 @@
 """Database setup for integration tests; refuses to touch non-test databases."""
 
-import os
 from pathlib import Path
 
 import pytest
