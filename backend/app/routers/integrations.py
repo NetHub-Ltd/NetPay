@@ -11,7 +11,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.auth import MerchantPrincipal, require_scope
 from app.config import get_settings
-from app.crypto import decrypt_secret, encrypt_secret
+from app.crypto import CredentialEncryptionError, decrypt_secret, encrypt_secret
 from app.daraja.c2b import Environment, C2BRegistrationRejected, C2BRegistrationUnknown, register_c2b_urls
 from app.daraja.client import DarajaUnavailable, InvalidDarajaCredentials, request_access_token
 from app.db import get_session
@@ -140,6 +140,15 @@ async def enable_c2b(
     if integration.credential_status != "oauth_validated":
         raise HTTPException(status_code=409, detail={"code": "integration_not_ready", "message": "Validate Daraja credentials before enabling C2B"})
 
+    try:
+        consumer_key = decrypt_secret(integration.consumer_key_ciphertext)
+        consumer_secret = decrypt_secret(integration.consumer_secret_ciphertext)
+    except CredentialEncryptionError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "credential_decryption_failed", "message": "Stored Daraja credentials could not be opened"},
+        ) from exc
+
     integration.c2b_enabled = True
     integration.c2b_registration_status = "registering"
     integration.registration_error = None
@@ -150,8 +159,8 @@ async def enable_c2b(
     try:
         await register_c2b_urls(
             environment=cast(Environment, integration.environment),
-            consumer_key=decrypt_secret(integration.consumer_key_ciphertext),
-            consumer_secret=decrypt_secret(integration.consumer_secret_ciphertext),
+            consumer_key=consumer_key,
+            consumer_secret=consumer_secret,
             shortcode=integration.party_b_shortcode if integration.product_type == "till" else integration.shortcode,
             validation_url=integration.c2b_validation_url,
             confirmation_url=integration.c2b_confirmation_url,
