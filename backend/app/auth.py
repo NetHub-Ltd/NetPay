@@ -1,7 +1,6 @@
 """Bearer-token authentication and merchant scope enforcement."""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
@@ -65,8 +64,6 @@ async def get_principal(
         raise _unauthorized()
 
     effective_scopes = frozenset(token_scopes).intersection(client.scopes)
-    client.last_used_at = datetime.now(timezone.utc)
-    await session.commit()
     return MerchantPrincipal(merchant_id=merchant.id, client_id=client.client_id, scopes=effective_scopes)
 
 
