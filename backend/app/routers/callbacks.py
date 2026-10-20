@@ -13,7 +13,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db import get_session
-from app.models import DarajaIntegration, Payment, ProviderCallback
+from app.models import DarajaIntegration, EventOutbox, Payment, ProviderCallback
 from app.payments.outbox import payment_event
 from app.payments.phone import InvalidPhoneNumber, normalize_ke_phone
 from app.payments.state import apply_status
@@ -197,3 +197,141 @@ async def stk_callback(
         # A concurrent duplicate callback may have won the unique constraint.
         await session.rollback()
     return _ack()
+
+
+@router.post("/c2b/confirmation/{integration_id}")
+async def c2b_confirmation(
+    integration_id: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    """Persist an opted-in C2B confirmation as a payment and durable event."""
+    try:
+        payload: object = await request.json()
+    except ValueError:
+        return _ack()
+    if not isinstance(payload, dict):
+        return _ack()
+
+    integration_result = await session.exec(
+        select(DarajaIntegration).where(DarajaIntegration.integration_id == integration_id)
+    )
+    integration = integration_result.first()
+    if integration is None or not integration.c2b_enabled:
+        return _ack()
+
+    receipt_value = payload.get("TransID")
+    shortcode_value = payload.get("BusinessShortCode")
+    amount_value = payload.get("TransAmount")
+    if not isinstance(receipt_value, (str, int)) or not isinstance(shortcode_value, (str, int)):
+        return _ack()
+    receipt = str(receipt_value).strip()
+    shortcode = str(shortcode_value).strip()
+    if not receipt or len(receipt) > 64:
+        return _ack()
+    if shortcode not in {integration.shortcode, integration.party_b_shortcode}:
+        return _ack()
+    try:
+        amount_minor_decimal = Decimal(str(amount_value)) * Decimal(100)
+        if amount_minor_decimal <= 0 or amount_minor_decimal != amount_minor_decimal.to_integral_value():
+            return _ack()
+        amount_minor = int(amount_minor_decimal)
+    except (InvalidOperation, TypeError, ValueError):
+        return _ack()
+
+    existing_payment_result = await session.exec(
+        select(Payment).where(
+            Payment.integration_id == integration.id,
+            Payment.provider_receipt == receipt,
+        )
+    )
+    if existing_payment_result.first() is not None:
+        return _ack()
+
+    fingerprint = hashlib.sha256(f"{integration_id}|c2b|{receipt}".encode("utf-8")).hexdigest()
+    existing_callback_result = await session.exec(
+        select(ProviderCallback).where(
+            ProviderCallback.integration_id == integration.id,
+            ProviderCallback.dedupe_fingerprint == fingerprint,
+        )
+    )
+    if existing_callback_result.first() is not None:
+        return _ack()
+
+    now = datetime.now(timezone.utc)
+    bill_reference_value = payload.get("BillRefNumber")
+    bill_reference = str(bill_reference_value).strip()[:100] if bill_reference_value is not None else receipt
+    payment = Payment(
+        merchant_id=integration.merchant_id,
+        integration_id=integration.id,
+        client_reference=bill_reference or receipt,
+        amount_minor=amount_minor,
+        currency="KES",
+        phone_number=None,
+        payment_source="c2b",
+        status="succeeded",
+        provider_receipt=receipt,
+        provider_result_code="0",
+        provider_result_description="C2B confirmation notification received",
+        completed_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    safe_payload = {
+        "receipt": receipt,
+        "amount_minor": amount_minor,
+        "business_shortcode": shortcode,
+        "bill_reference": bill_reference,
+        "transaction_time": str(payload.get("TransTime", ""))[:20],
+    }
+    callback_record = ProviderCallback(
+        integration_id=integration.id,
+        payment_id=payment.id,
+        callback_type="c2b_confirmation",
+        dedupe_fingerprint=fingerprint,
+        safe_payload=safe_payload,
+        processing_status="processed",
+        received_at=now,
+        processed_at=now,
+    )
+    session.add(payment)
+    session.add(callback_record)
+    session.add(payment_event(payment, "payment.succeeded"))
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+    return _ack()
+
+
+@router.post("/c2b/validation/{integration_id}")
+async def c2b_validation(
+    integration_id: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    """Validate basic C2B fields; account-specific validation is not yet configurable."""
+    try:
+        payload: object = await request.json()
+    except ValueError:
+        return {"ResultCode": 1, "ResultDesc": "Invalid request"}
+    if not isinstance(payload, dict):
+        return {"ResultCode": 1, "ResultDesc": "Invalid request"}
+
+    integration_result = await session.exec(
+        select(DarajaIntegration).where(DarajaIntegration.integration_id == integration_id)
+    )
+    integration = integration_result.first()
+    if integration is None or not integration.c2b_enabled:
+        return {"ResultCode": 1, "ResultDesc": "C2B is not enabled"}
+
+    shortcode = str(payload.get("BusinessShortCode", "")).strip()
+    if shortcode not in {integration.shortcode, integration.party_b_shortcode}:
+        return {"ResultCode": 1, "ResultDesc": "Shortcode mismatch"}
+    try:
+        amount = Decimal(str(payload.get("TransAmount")))
+        if amount <= 0:
+            raise InvalidOperation
+    except (InvalidOperation, TypeError, ValueError):
+        return {"ResultCode": 1, "ResultDesc": "Invalid amount"}
+    return {"ResultCode": 0, "ResultDesc": "Accepted"}
