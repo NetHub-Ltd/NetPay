@@ -142,6 +142,8 @@ async def stk_callback(
         .with_for_update()
     )
     payment = payment_result.first()
+    integration_pk = integration.id
+    payment_pk = payment.id if payment is not None else None
     record = ProviderCallback(
         integration_id=integration.id,
         payment_id=payment.id if payment is not None else None,
@@ -209,8 +211,32 @@ async def stk_callback(
     try:
         await session.commit()
     except IntegrityError:
-        # A concurrent duplicate callback may have won the unique constraint.
+        # A concurrent duplicate callback or conflicting receipt may have won
+        # a unique constraint. Preserve an unmatched discrepancy when this was
+        # not merely a duplicate fingerprint.
         await session.rollback()
+        duplicate_check = await session.exec(
+            select(ProviderCallback).where(
+                ProviderCallback.integration_id == integration_pk,
+                ProviderCallback.dedupe_fingerprint == fingerprint,
+            )
+        )
+        if duplicate_check.first() is None:
+            discrepancy_record = ProviderCallback(
+                integration_id=integration_pk,
+                payment_id=payment_pk,
+                callback_type="stk",
+                dedupe_fingerprint=fingerprint,
+                safe_payload=safe,
+                processing_status="discrepancy",
+                received_at=datetime.now(timezone.utc),
+                processed_at=datetime.now(timezone.utc),
+            )
+            session.add(discrepancy_record)
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
     return _ack()
 
 
