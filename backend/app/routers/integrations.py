@@ -2,6 +2,7 @@
 
 import secrets
 from datetime import datetime, timezone
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -11,7 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.auth import MerchantPrincipal, require_scope
 from app.config import get_settings
 from app.crypto import decrypt_secret, encrypt_secret
-from app.daraja.c2b import C2BRegistrationRejected, C2BRegistrationUnknown, register_c2b_urls
+from app.daraja.c2b import Environment, C2BRegistrationRejected, C2BRegistrationUnknown, register_c2b_urls
 from app.daraja.client import DarajaUnavailable, InvalidDarajaCredentials, request_access_token
 from app.db import get_session
 from app.models import DarajaIntegration
@@ -148,7 +149,7 @@ async def enable_c2b(
 
     try:
         await register_c2b_urls(
-            environment=integration.environment,
+            environment=cast(Environment, integration.environment),
             consumer_key=decrypt_secret(integration.consumer_key_ciphertext),
             consumer_secret=decrypt_secret(integration.consumer_secret_ciphertext),
             shortcode=integration.shortcode,
