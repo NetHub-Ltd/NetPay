@@ -163,9 +163,29 @@ def upgrade() -> None:
     for column in ("event_id", "merchant_id", "aggregate_id", "event_type", "delivery_status", "next_attempt_at"):
         op.create_index(f"ix_eventoutbox_{column}", "eventoutbox", [column], unique=False)
 
+    op.create_table(
+        "paymentattempt",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("payment_id", sa.Uuid(), nullable=False),
+        sa.Column("attempt_number", sa.Integer(), nullable=False),
+        sa.Column("correlation_id", sa.Uuid(), nullable=False),
+        sa.Column("outcome", sa.String(length=24), nullable=False),
+        sa.Column("provider_result_code", sa.String(length=32), nullable=True),
+        sa.Column("safe_error_code", sa.String(length=100), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(["payment_id"], ["payment.id"]),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("payment_id", "attempt_number", name="uq_payment_attempt_number"),
+    )
+    op.create_index("ix_paymentattempt_payment_id", "paymentattempt", ["payment_id"], unique=False)
+    op.create_index("ix_paymentattempt_correlation_id", "paymentattempt", ["correlation_id"], unique=True)
+    op.create_index("ix_paymentattempt_outcome", "paymentattempt", ["outcome"], unique=False)
+
 
 def downgrade() -> None:
     for table, columns in (
+        ("paymentattempt", ("payment_id", "correlation_id", "outcome")),
         ("eventoutbox", ("event_id", "merchant_id", "aggregate_id", "event_type", "delivery_status", "next_attempt_at")),
         ("providercallback", ("integration_id", "payment_id", "callback_type", "processing_status")),
         ("idempotencyrecord", ("merchant_id", "resource_id", "expires_at")),
@@ -176,6 +196,7 @@ def downgrade() -> None:
     ):
         for column in columns:
             op.drop_index(f"ix_{table}_{column}", table_name=table)
+    op.drop_table("paymentattempt")
     op.drop_table("eventoutbox")
     op.drop_table("providercallback")
     op.drop_table("idempotencyrecord")
