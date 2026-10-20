@@ -1,5 +1,6 @@
 """SQLModel tables used by NetPay's durable domain layer."""
 
+from app.models.attempts import PaymentAttempt
 from app.models.events import EventOutbox
 from app.models.integrations import DarajaIntegration
 from app.models.merchants import Merchant, M2MClient
@@ -12,5 +13,6 @@ __all__ = [
     "M2MClient",
     "Merchant",
     "Payment",
+    "PaymentAttempt",
     "ProviderCallback",
 ]
