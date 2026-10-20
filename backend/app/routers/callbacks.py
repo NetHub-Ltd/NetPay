@@ -280,16 +280,40 @@ async def c2b_confirmation(
     except (InvalidOperation, TypeError, ValueError):
         return _ack()
 
+    fingerprint = hashlib.sha256(
+        f"{integration_id}|c2b|{receipt}|{amount_minor}|{shortcode}".encode("utf-8")
+    ).hexdigest()
     existing_payment_result = await session.exec(
         select(Payment).where(
             Payment.integration_id == integration.id,
             Payment.provider_receipt == receipt,
         )
     )
-    if existing_payment_result.first() is not None:
+    existing_payment = existing_payment_result.first()
+    if existing_payment is not None:
+        if existing_payment.amount_minor != amount_minor:
+            discrepancy_record = ProviderCallback(
+                integration_id=integration.id,
+                payment_id=existing_payment.id,
+                callback_type="c2b_confirmation",
+                dedupe_fingerprint=fingerprint,
+                safe_payload={
+                    "receipt": receipt,
+                    "amount_minor": amount_minor,
+                    "business_shortcode": shortcode,
+                    "bill_reference": bill_reference if "bill_reference" in locals() else "",
+                },
+                processing_status="discrepancy",
+                received_at=datetime.now(timezone.utc),
+                processed_at=datetime.now(timezone.utc),
+            )
+            session.add(discrepancy_record)
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
         return _ack()
 
-    fingerprint = hashlib.sha256(f"{integration_id}|c2b|{receipt}".encode("utf-8")).hexdigest()
     existing_callback_result = await session.exec(
         select(ProviderCallback).where(
             ProviderCallback.integration_id == integration.id,
@@ -302,6 +326,7 @@ async def c2b_confirmation(
     now = datetime.now(timezone.utc)
     bill_reference_value = payload.get("BillRefNumber")
     bill_reference = str(bill_reference_value).strip()[:100] if bill_reference_value is not None else receipt
+    integration_pk = integration.id
     payment = Payment(
         merchant_id=integration.merchant_id,
         integration_id=integration.id,
@@ -342,6 +367,28 @@ async def c2b_confirmation(
         await session.commit()
     except IntegrityError:
         await session.rollback()
+        duplicate_check = await session.exec(
+            select(ProviderCallback).where(
+                ProviderCallback.integration_id == integration_pk,
+                ProviderCallback.dedupe_fingerprint == fingerprint,
+            )
+        )
+        if duplicate_check.first() is None:
+            discrepancy_record = ProviderCallback(
+                integration_id=integration_pk,
+                payment_id=payment.id,
+                callback_type="c2b_confirmation",
+                dedupe_fingerprint=fingerprint,
+                safe_payload=safe_payload,
+                processing_status="discrepancy",
+                received_at=datetime.now(timezone.utc),
+                processed_at=datetime.now(timezone.utc),
+            )
+            session.add(discrepancy_record)
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
     return _ack()
 
 
