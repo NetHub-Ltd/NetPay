@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
 from typing import cast
 from uuid import UUID
@@ -16,9 +17,10 @@ from app.crypto import decrypt_secret
 from app.daraja.client import DarajaUnavailable, InvalidDarajaCredentials
 from app.daraja.stk import Environment, ProductType, STKOutcomeUnknown, STKRequestRejected, initiate_stk_push
 from app.db import get_session
-from app.models import DarajaIntegration, IdempotencyRecord, Payment, PaymentAttempt
+from app.models import DarajaIntegration, IdempotencyRecord, Payment, PaymentAttempt, ProviderCallback
 from app.payments.outbox import payment_event
 from app.payments.phone import InvalidPhoneNumber, normalize_ke_phone
+from app.payments.state import apply_status
 from app.schemas import PaymentCreate, PaymentSummary
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
@@ -60,6 +62,70 @@ async def _existing_idempotent_payment(
     if payment is None:
         raise HTTPException(status_code=409, detail={"code": "idempotency_resource_missing", "message": "The previous request resource is unavailable; contact support"})
     return payment
+
+
+async def _apply_early_callback(
+    session: AsyncSession,
+    integration: DarajaIntegration,
+    payment: Payment,
+    checkout_request_id: str,
+) -> str | None:
+    """Resolve a callback that arrived before the STK response was committed."""
+    result = await session.exec(
+        select(ProviderCallback).where(
+            ProviderCallback.integration_id == integration.id,
+            ProviderCallback.processing_status == "unmatched",
+        ).order_by(ProviderCallback.received_at.asc())
+    )
+    event_type: str | None = None
+    expected_phone_hash = hashlib.sha256(payment.phone_number.encode("utf-8")).hexdigest()
+    for callback in result.all():
+        safe = callback.safe_payload
+        if safe.get("checkout_request_id") != checkout_request_id:
+            continue
+        callback.payment_id = payment.id
+        try:
+            result_code = int(safe.get("result_code", -1))
+        except (TypeError, ValueError):
+            callback.processing_status = "discrepancy"
+            callback.processed_at = datetime.now(timezone.utc)
+            continue
+
+        if result_code != 0:
+            if apply_status(payment, "failed"):
+                payment.provider_result_code = str(result_code)[:32]
+                event_type = "payment.failed"
+            elif payment.status != "failed":
+                callback.processing_status = "discrepancy"
+                callback.processed_at = datetime.now(timezone.utc)
+                continue
+        else:
+            try:
+                amount_minor = Decimal(str(safe.get("amount"))) * Decimal(100)
+                valid_amount = amount_minor == Decimal(payment.amount_minor)
+            except (InvalidOperation, TypeError, ValueError):
+                valid_amount = False
+            valid_phone = safe.get("phone_hash") == expected_phone_hash
+            receipt = str(safe.get("receipt") or "")
+            if not valid_amount or not valid_phone or not receipt:
+                if apply_status(payment, "unknown"):
+                    event_type = "payment.unknown"
+                callback.processing_status = "discrepancy"
+                callback.processed_at = datetime.now(timezone.utc)
+                continue
+            if apply_status(payment, "succeeded"):
+                payment.provider_receipt = receipt[:64]
+                payment.provider_result_code = "0"
+                payment.provider_result_description = "Provider callback confirmed payment"
+                event_type = "payment.succeeded"
+            elif payment.status != "succeeded":
+                callback.processing_status = "discrepancy"
+                callback.processed_at = datetime.now(timezone.utc)
+                continue
+
+        callback.processing_status = "processed"
+        callback.processed_at = datetime.now(timezone.utc)
+    return event_type
 
 
 @router.post("/stk-push", response_model=PaymentSummary, status_code=status.HTTP_202_ACCEPTED)
@@ -167,7 +233,7 @@ async def create_stk_payment(
         attempt.outcome = "accepted"
         attempt.provider_result_code = "0"
         attempt.updated_at = datetime.now(timezone.utc)
-        event_type = "payment.pending"
+        event_type = await _apply_early_callback(session, integration, payment, accepted.checkout_request_id) or "payment.pending"
 
     payment.updated_at = datetime.now(timezone.utc)
     session.add(payment)
