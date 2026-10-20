@@ -5,7 +5,10 @@ unit tests; migrations and production deployment will use PostgreSQL.
 """
 
 from sqlalchemy import text
+from collections.abc import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
 
@@ -23,6 +26,11 @@ def get_engine() -> AsyncEngine:
             echo=False,
         )
     return _engine
+
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSession(get_engine(), expire_on_commit=False) as session:
+        yield session
 
 
 async def check_database() -> None:
