@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import create_engine, select
 from sqlmodel import Session
+
+import pytest
 
 from app.config import get_settings
 from app.crypto import encrypt_secret
@@ -15,34 +17,37 @@ from app.security import create_access_token, hash_client_secret
 
 
 CLIENT_SECRET = "integration-test-client-secret-that-is-long-enough"
+pytestmark = pytest.mark.skipif(get_settings().environment != "test", reason="API integration tests require ENVIRONMENT=test")
 
 
 def _sync_url() -> str:
     return get_settings().database_url.replace("sqlite+aiosqlite://", "sqlite://", 1)
 
 
-def _seed_client(scopes: list[str]) -> tuple[Merchant, str]:
+def _seed_client(scopes: list[str]) -> tuple[UUID, str]:
     engine = create_engine(_sync_url())
     now = datetime.now(timezone.utc)
     merchant = Merchant(name=f"Test merchant {uuid4()}", status="active", created_at=now, updated_at=now)
     client = M2MClient(
-        merchant_id=merchant.id,
+        merchant_id=merchant_id,
         client_id=f"test_{uuid4().hex}",
         secret_hash=hash_client_secret(CLIENT_SECRET),
         scopes=scopes,
         status="active",
         created_at=now,
     )
+    merchant_id = merchant.id
+    client_id = client.client_id
     with Session(engine) as session:
         session.add(merchant)
         session.add(client)
         session.commit()
-    token, _ = create_access_token(client.client_id, merchant.id, scopes)
+    token, _ = create_access_token(client_id, merchant_id, scopes)
     engine.dispose()
-    return merchant, token
+    return merchant_id, token
 
 
-def _seed_integration(merchant: Merchant) -> DarajaIntegration:
+def _seed_integration(merchant_id: UUID) -> str:
     engine = create_engine(_sync_url())
     settings = get_settings()
     now = datetime.now(timezone.utc)
@@ -69,13 +74,12 @@ def _seed_integration(merchant: Merchant) -> DarajaIntegration:
     with Session(engine) as session:
         session.add(integration)
         session.commit()
-        session.refresh(integration)
     engine.dispose()
-    return integration
+    return integration_id
 
 
 def test_integration_creation_never_returns_provider_secrets(monkeypatch) -> None:
-    merchant, token = _seed_client(["integrations:read", "integrations:write"])
+    _merchant_id, token = _seed_client(["integrations:read", "integrations:write"])
 
     async def fake_token(*args, **kwargs) -> str:
         return "temporary-token"
@@ -103,13 +107,13 @@ def test_integration_creation_never_returns_provider_secrets(monkeypatch) -> Non
 
 
 def test_cross_merchant_integration_lookup_is_denied() -> None:
-    owner, _ = _seed_client(["integrations:read"])
+    owner_id, _ = _seed_client(["integrations:read"])
     _, attacker_token = _seed_client(["integrations:read"])
-    integration = _seed_integration(owner)
+    integration_id = _seed_integration(owner_id)
 
     with TestClient(app) as client:
         response = client.get(
-            f"/api/v1/integrations/{integration.integration_id}",
+            f"/api/v1/integrations/{integration_id}",
             headers={"Authorization": f"Bearer {attacker_token}"},
         )
 
@@ -117,8 +121,8 @@ def test_cross_merchant_integration_lookup_is_denied() -> None:
 
 
 def test_stk_idempotency_and_callback_are_durable(monkeypatch) -> None:
-    merchant, token = _seed_client(["payments:read", "payments:write"])
-    integration = _seed_integration(merchant)
+    merchant_id, token = _seed_client(["payments:read", "payments:write"])
+    integration_id = _seed_integration(merchant_id)
     calls = 0
 
     async def fake_stk(**kwargs) -> STKAccepted:
@@ -132,7 +136,7 @@ def test_stk_idempotency_and_callback_are_durable(monkeypatch) -> None:
 
     monkeypatch.setattr("app.routers.payments.initiate_stk_push", fake_stk)
     request_body = {
-        "integration_id": integration.integration_id,
+        "integration_id": integration_id,
         "client_reference": "order-123",
         "amount_minor": 2500,
         "currency": "KES",
@@ -154,6 +158,7 @@ def test_stk_idempotency_and_callback_are_durable(monkeypatch) -> None:
         assert first.json()["status"] == "pending"
         assert conflicting.status_code == 409
         payment_id = first.json()["id"]
+        payment_uuid = UUID(payment_id)
         callback_payload = {
             "Body": {
                 "stkCallback": {
@@ -186,8 +191,8 @@ def test_stk_idempotency_and_callback_are_durable(monkeypatch) -> None:
 
     engine = create_engine(_sync_url())
     with Session(engine) as session:
-        payment_rows = session.exec(select(Payment).where(Payment.id == payment_id)).all()
-        events = session.exec(select(EventOutbox).where(EventOutbox.aggregate_id == payment_id)).all()
+        payment_rows = session.exec(select(Payment).where(Payment.id == payment_uuid)).all()
+        events = session.exec(select(EventOutbox).where(EventOutbox.aggregate_id == payment_uuid)).all()
     engine.dispose()
     assert len(payment_rows) == 1
     assert len(events) == 2
