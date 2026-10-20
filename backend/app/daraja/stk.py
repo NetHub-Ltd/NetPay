@@ -102,6 +102,8 @@ async def initiate_stk_push(
     except ValueError as exc:
         raise STKOutcomeUnknown("STK request outcome is unknown") from exc
 
+    if not isinstance(result, dict):
+        raise STKOutcomeUnknown("STK response was not a JSON object")
     raw_response_code = result.get("ResponseCode")
     if raw_response_code is None:
         raise STKOutcomeUnknown("STK response did not include a response code")
