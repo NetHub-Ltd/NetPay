@@ -42,9 +42,11 @@ jobs:
           DATABASE_URL: sqlite+aiosqlite:///./data/test.db
           REDIS_REQUIRED: "false"
           SECRET_KEY: test-secret
+          CREDENTIAL_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
           ENVIRONMENT: test
         run: |
           mkdir -p data static
+          alembic upgrade head
           pytest -q
 
   frontend:
@@ -57,21 +59,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
       - name: Install
         env:
           npm_config_registry: https://registry.npmjs.org/
         run: |
           npm config set registry https://registry.npmjs.org/
-          npm ci --prefer-offline=false
+          npm install --no-audit --no-fund
       - name: Lint
         run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
       - name: Build
         run: npm run build
       - name: Static path check
         run: |
-          test -f dist/index.html
+          test -f out/index.html
 
   version:
     needs: [backend, frontend]
@@ -195,12 +197,6 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          # Optional baked defaults — runtime OIDC_* on the container is preferred (GET /config.json).
-          build-args: |
-            OIDC_ISSUER=${{ vars.OIDC_ISSUER }}
-            OIDC_CLIENT_ID=${{ vars.OIDC_CLIENT_ID }}
-            OIDC_REDIRECT_URI=${{ vars.NETPAY_OIDC_REDIRECT_URI }}
-            OIDC_SCOPES=${{ vars.OIDC_SCOPES }}
           context: .
           file: backend/Dockerfile
           push: true
@@ -245,12 +241,13 @@ jobs:
             docker pull ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}
             docker run --rm -p 8000:8000 \
               -e DATABASE_URL=sqlite+aiosqlite:///./data/gateway.db \
-              -e REDIS_REQUIRED=false \
-              -e SECRET_KEY=change-me \
+              -e SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" \
+              -e CREDENTIAL_ENCRYPTION_KEY="$(python -c 'import secrets,base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())')" \
+              -e PUBLIC_BASE_URL=https://gateway.example.com \
               ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}
             ```
 
-            Health: `http://localhost:8000/health`
+            Health: `http://localhost:8000/health/live` (liveness), `http://localhost:8000/health/ready` (readiness). Run `alembic upgrade head` once against the target database before starting replicas.
 
             ### Notes
 
