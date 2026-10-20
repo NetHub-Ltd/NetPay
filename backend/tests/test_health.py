@@ -11,9 +11,9 @@ def test_liveness_does_not_require_database() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_root_exposes_api_metadata() -> None:
+def test_api_root_exposes_metadata() -> None:
     with TestClient(app) as client:
-        response = client.get("/")
+        response = client.get("/api")
 
     assert response.status_code == 200
     assert response.json()["docs"] == "/docs"
