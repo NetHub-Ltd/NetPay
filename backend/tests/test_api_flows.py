@@ -251,3 +251,89 @@ def test_opted_in_c2b_confirmation_creates_one_payment_and_event() -> None:
     assert payments[0].amount_minor == 1500
     assert payments[0].phone_number is None
     assert any(event.aggregate_id == payments[0].id for event in events)
+
+
+def test_c2b_registration_is_opt_in_and_unknown_outcomes_are_not_retried(monkeypatch) -> None:
+    merchant_id, token = _seed_client(["integrations:read", "integrations:write"])
+    integration_id = _seed_integration(merchant_id)
+    calls: list[dict[str, object]] = []
+
+    async def fake_registration(**kwargs) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr("app.routers.integrations.register_c2b_urls", fake_registration)
+    with TestClient(app) as client:
+        response = client.post(
+            f"/api/v1/integrations/{integration_id}/c2b/enable",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        second = client.post(
+            f"/api/v1/integrations/{integration_id}/c2b/enable",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["c2b_enabled"] is True
+    assert response.json()["c2b_registration_status"] == "registered"
+    assert second.status_code == 200
+    assert len(calls) == 1
+
+
+def test_unknown_c2b_registration_is_not_blindly_retried(monkeypatch) -> None:
+    from app.daraja.c2b import C2BRegistrationUnknown
+
+    merchant_id, token = _seed_client(["integrations:write"])
+    integration_id = _seed_integration(merchant_id)
+    calls = 0
+
+    async def unknown_registration(**kwargs) -> None:
+        nonlocal calls
+        calls += 1
+        raise C2BRegistrationUnknown("unknown")
+
+    monkeypatch.setattr("app.routers.integrations.register_c2b_urls", unknown_registration)
+    with TestClient(app) as client:
+        response = client.post(
+            f"/api/v1/integrations/{integration_id}/c2b/enable",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        retry = client.post(
+            f"/api/v1/integrations/{integration_id}/c2b/enable",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["c2b_registration_status"] == "unknown"
+    assert retry.status_code == 409
+    assert calls == 1
+
+
+def test_webhook_destination_secret_is_returned_once_and_encrypted(monkeypatch) -> None:
+    merchant_id, token = _seed_client(["events:read", "events:write"])
+    monkeypatch.setattr("app.routers.events.validate_public_https_url", lambda _url: None)
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/v1/event-destination",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"url": "https://hooks.example.com/netpay"},
+        )
+        fetched = client.get(
+            "/api/v1/event-destination",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        disabled = client.delete(
+            "/api/v1/event-destination",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert created.status_code == 200
+    assert created.json()["signing_secret"]
+    assert "signing_secret" not in fetched.json()
+    assert disabled.status_code == 204
+
+    engine = create_engine(_sync_url())
+    from app.models import EventDestination
+    with Session(engine) as session:
+        destination = session.exec(select(EventDestination).where(EventDestination.merchant_id == merchant_id)).one()
+    engine.dispose()
+    assert created.json()["signing_secret"].encode() not in destination.signing_secret_ciphertext
