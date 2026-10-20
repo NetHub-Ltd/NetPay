@@ -3,7 +3,7 @@
 import hashlib
 import json
 from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -11,12 +11,12 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.auth import MerchantPrincipal, require_scope
-from app.config import get_settings
 from app.crypto import decrypt_secret
 from app.daraja.client import DarajaUnavailable, InvalidDarajaCredentials
 from app.daraja.stk import STKOutcomeUnknown, STKRequestRejected, initiate_stk_push
 from app.db import get_session
 from app.models import DarajaIntegration, EventOutbox, IdempotencyRecord, Payment, PaymentAttempt
+from app.payments.outbox import payment_event
 from app.payments.phone import InvalidPhoneNumber, normalize_ke_phone
 from app.schemas import PaymentCreate, PaymentSummary
 
@@ -34,30 +34,6 @@ def _request_hash(payload: PaymentCreate, normalized_phone: str) -> str:
     }
     encoded = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
-
-
-def _payment_event(payment: Payment, event_type: str) -> EventOutbox:
-    event_id = uuid4()
-    return EventOutbox(
-        event_id=event_id,
-        merchant_id=payment.merchant_id,
-        aggregate_id=payment.id,
-        event_type=event_type,
-        schema_version=1,
-        payload={
-            "event_id": str(event_id),
-            "payment_id": str(payment.id),
-            "merchant_id": str(payment.merchant_id),
-            "client_reference": payment.client_reference,
-            "amount_minor": payment.amount_minor,
-            "currency": payment.currency,
-            "status": payment.status,
-        },
-        delivery_status="pending",
-        attempts=0,
-        next_attempt_at=datetime.now(timezone.utc),
-        created_at=datetime.now(timezone.utc),
-    )
 
 
 async def _existing_idempotent_payment(
@@ -195,7 +171,7 @@ async def create_stk_payment(
     payment.updated_at = datetime.now(timezone.utc)
     session.add(payment)
     session.add(attempt)
-    session.add(_payment_event(payment, event_type))
+    session.add(payment_event(payment, event_type))
     await session.commit()
     await session.refresh(payment)
     return payment
