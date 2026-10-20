@@ -4,8 +4,8 @@
 FROM node:22-alpine AS frontend-build
 WORKDIR /fe
 ENV npm_config_registry=https://registry.npmjs.org/
-COPY frontend/package.json frontend/.npmrc ./
-RUN npm install --no-audit --no-fund
+COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
+RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run lint && npm run typecheck && npm run build \
  && test -f out/index.html
