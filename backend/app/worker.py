@@ -53,7 +53,10 @@ async def reconcile_unmatched_callbacks(session: AsyncSession, batch_size: int =
         )
         payment = payment_result.first()
         if payment is None:
-            if callback.received_at <= stale_cutoff:
+            received_at = callback.received_at
+            if received_at.tzinfo is None:
+                received_at = received_at.replace(tzinfo=timezone.utc)
+            if received_at <= stale_cutoff:
                 callback.processing_status = "manual_review"
                 callback.processed_at = datetime.now(timezone.utc)
                 session.add(callback)
