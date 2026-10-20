@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def require_production_secrets(self) -> Self:
         if self.is_production:
+            if not self.public_base_url.startswith("https://"):
+                raise ValueError("PUBLIC_BASE_URL must use HTTPS in production")
             if len(self.secret_key.get_secret_value()) < 32 or self.secret_key.get_secret_value() == "development-only-change-me":
                 raise ValueError("SECRET_KEY must be at least 32 characters and non-default in production")
             if self.credential_encryption_key is None:
