@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
-from pydantic import SecretStr
 from sqlalchemy import create_engine, select
 from sqlmodel import Session
 
@@ -29,7 +28,7 @@ def _seed_client(scopes: list[str]) -> tuple[UUID, str]:
     now = datetime.now(timezone.utc)
     merchant = Merchant(name=f"Test merchant {uuid4()}", status="active", created_at=now, updated_at=now)
     client = M2MClient(
-        merchant_id=merchant_id,
+        merchant_id=merchant.id,
         client_id=f"test_{uuid4().hex}",
         secret_hash=hash_client_secret(CLIENT_SECRET),
         scopes=scopes,
@@ -54,7 +53,7 @@ def _seed_integration(merchant_id: UUID) -> str:
     integration_id = f"int_{uuid4().hex}"
     integration = DarajaIntegration(
         integration_id=integration_id,
-        merchant_id=merchant.id,
+        merchant_id=merchant_id,
         environment="sandbox",
         shortcode="174379",
         party_b_shortcode="174379",
@@ -177,7 +176,7 @@ def test_stk_idempotency_and_callback_are_durable(monkeypatch) -> None:
                 }
             }
         }
-        callback_url = f"/cb/stk/{integration.integration_id}"
+        callback_url = f"/cb/stk/{integration_id}"
         callback_first = client.post(callback_url, json=callback_payload)
         callback_second = client.post(callback_url, json=callback_payload)
         status_response = client.get(f"/api/v1/payments/{payment_id}", headers=auth)
