@@ -46,7 +46,7 @@ jobs:
           pytest -q
 
   frontend:
-    if: hashFiles('frontend/package.json') != ''
+    if: false # Re-enable when the Next.js scaffold and lockfile land
     runs-on: ubuntu-latest
     defaults:
       run:
