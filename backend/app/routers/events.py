@@ -5,6 +5,7 @@ import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -18,7 +19,7 @@ from app.webhooks.url_validation import UnsafeWebhookURL, validate_public_https_
 router = APIRouter(prefix="/api/v1/event-destination", tags=["events"])
 
 
-@router.put("", response_model=EventDestinationCreated)
+@router.post("", response_model=EventDestinationCreated)
 async def set_event_destination(
     payload: EventDestinationUpdate,
     principal: MerchantPrincipal = Depends(require_scope("events:write")),
@@ -31,7 +32,7 @@ async def set_event_destination(
         raise HTTPException(status_code=422, detail={"code": "unsafe_webhook_url", "message": str(exc)}) from exc
 
     result = await session.exec(
-        select(EventDestination).where(EventDestination.merchant_id == principal.merchant_id)
+        select(EventDestination).where(EventDestination.merchant_id == principal.merchant_id).with_for_update()
     )
     destination = result.first()
     signing_secret = secrets.token_urlsafe(32)
@@ -51,7 +52,11 @@ async def set_event_destination(
         destination.enabled = True
         destination.updated_at = now
     session.add(destination)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail={"code": "destination_conflict", "message": "A destination update conflicted with another request; retry to rotate the signing secret"}) from exc
     await session.refresh(destination)
     return EventDestinationCreated(
         id=destination.id,
