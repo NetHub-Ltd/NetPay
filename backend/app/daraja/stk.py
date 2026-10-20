@@ -82,7 +82,7 @@ async def initiate_stk_push(
     try:
         async with httpx.AsyncClient(timeout=15.0, transport=transport) as client:
             response = await client.post(url, json=body, headers={"Authorization": f"Bearer {token}"})
-    except (httpx.TimeoutException, httpx.NetworkError) as exc:
+    except httpx.RequestError as exc:
         raise STKOutcomeUnknown("STK request outcome is unknown") from exc
 
     if 400 <= response.status_code < 500:
