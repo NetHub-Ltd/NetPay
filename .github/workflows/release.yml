@@ -63,7 +63,7 @@ jobs:
           npm_config_registry: https://registry.npmjs.org/
         run: |
           npm config set registry https://registry.npmjs.org/
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
       - name: Lint
         run: npm run lint
       - name: Typecheck
