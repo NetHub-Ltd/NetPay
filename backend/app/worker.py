@@ -19,7 +19,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
 from app.crypto import CredentialEncryptionError, decrypt_secret
-from app.models import DarajaIntegration, EventDeliveryAttempt, EventDestination, EventOutbox, Payment, ProviderCallback
+from app.models import DarajaIntegration, EventDeliveryAttempt, EventDestination, EventOutbox, Payment, PaymentAttempt, ProviderCallback
 from app.payments.outbox import payment_event
 from app.routers.payments import _apply_early_callback
 from app.webhooks.url_validation import UnsafeWebhookURL, validate_public_https_url
@@ -61,6 +61,37 @@ async def reconcile_unmatched_callbacks(session: AsyncSession, batch_size: int =
         session.add(payment)
         if event_type is not None:
             session.add(payment_event(payment, event_type))
+        await session.commit()
+        recovered += 1
+    return recovered
+
+
+async def recover_stale_submissions(session: AsyncSession, batch_size: int = 100) -> int:
+    """Move abandoned provider submissions to unknown rather than retrying blindly."""
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
+    result = await session.exec(
+        select(PaymentAttempt)
+        .where(
+            PaymentAttempt.outcome == "submitting",
+            PaymentAttempt.updated_at <= cutoff,
+        )
+        .order_by(PaymentAttempt.updated_at.asc())
+        .limit(batch_size)
+        .with_for_update(skip_locked=True)
+    )
+    recovered = 0
+    for attempt in result.all():
+        payment = await session.get(Payment, attempt.payment_id)
+        if payment is None or payment.status != "pending" or payment.provider_checkout_request_id:
+            continue
+        payment.status = "unknown"
+        payment.updated_at = datetime.now(timezone.utc)
+        attempt.outcome = "unknown"
+        attempt.safe_error_code = "worker_recovered_stale_submission"
+        attempt.updated_at = datetime.now(timezone.utc)
+        session.add(payment)
+        session.add(attempt)
+        session.add(payment_event(payment, "payment.unknown"))
         await session.commit()
         recovered += 1
     return recovered
@@ -172,6 +203,7 @@ async def dispatch_outbox_once(
         destination = destination_result.first()
         if destination is None:
             event.delivery_status = "skipped"
+            event.attempts = max(0, event.attempts - 1)
             event.next_attempt_at = datetime.now(timezone.utc)
             session.add(event)
             await session.commit()
@@ -190,6 +222,7 @@ async def run_worker() -> None:
         while True:
             try:
                 async with session_factory() as session:
+                    await recover_stale_submissions(session)
                     await reconcile_unmatched_callbacks(session)
                     await dispatch_outbox_once(session)
             except Exception as exc:
