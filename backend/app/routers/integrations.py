@@ -54,6 +54,7 @@ async def create_integration(
         merchant_id=principal.merchant_id,
         environment=payload.environment,
         shortcode=payload.shortcode,
+        party_b_shortcode=payload.party_b_shortcode or payload.shortcode,
         product_type=payload.product_type,
         consumer_key_ciphertext=encrypt_secret(payload.consumer_key.get_secret_value()),
         consumer_secret_ciphertext=encrypt_secret(payload.consumer_secret.get_secret_value()),
