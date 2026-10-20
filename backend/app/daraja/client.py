@@ -40,7 +40,7 @@ async def request_access_token(
                 params={"grant_type": "client_credentials"},
                 auth=(consumer_key, consumer_secret),
             )
-    except (httpx.TimeoutException, httpx.NetworkError) as exc:
+    except httpx.RequestError as exc:
         raise DarajaUnavailable("Daraja OAuth endpoint is unavailable") from exc
 
     if response.status_code in {400, 401, 403}:
