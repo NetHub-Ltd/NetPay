@@ -25,7 +25,7 @@ Apply schema changes explicitly before starting the application:
 uv run alembic upgrade head
 ```
 
-PostgreSQL is the source of truth for payments, idempotency, callback deduplication, and the transactional event outbox. Redis is auxiliary and must not be required for correctness.
+PostgreSQL is the source of truth for payments, idempotency, callback deduplication, delivery attempts, and the transactional event outbox. The current worker uses PostgreSQL row locking and retry timestamps; Redis is deliberately omitted until a measurable coordination or caching need justifies it.
 
 ## Current implementation boundary
 
