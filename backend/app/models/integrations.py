@@ -21,6 +21,7 @@ class DarajaIntegration(SQLModel, table=True):
     merchant_id: UUID = Field(foreign_key="merchant.id", index=True)
     environment: str = Field(max_length=16)
     shortcode: str = Field(max_length=32, index=True)
+    party_b_shortcode: str = Field(max_length=32)
     product_type: str = Field(max_length=24)
     consumer_key_ciphertext: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     consumer_secret_ciphertext: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
