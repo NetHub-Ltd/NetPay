@@ -51,3 +51,17 @@ curl -u "$NETPAY_CLIENT_ID:$NETPAY_CLIENT_SECRET" \
 ```
 
 Use the returned access token as `Authorization: Bearer <token>`. Tokens expire after 15 minutes. Integration onboarding validates the Daraja OAuth consumer key/secret; it does not prove the shortcode permissions or passkey are valid. C2B URL registration remains opt-in.
+
+## Webhook delivery worker
+
+Run a separate worker process alongside the API:
+
+```bash
+uv run python -m app.worker
+```
+
+The worker recovers callbacks that arrived before STK correlation IDs were committed and drains the PostgreSQL outbox. No Redis or external broker is required for correctness. Configure one optional destination per merchant with `PUT /api/v1/event-destination` using the `events:write` scope. The response contains a newly generated signing secret once; save it immediately because the stored value is encrypted and cannot be retrieved. Repeating PUT rotates the signing secret.
+
+Webhook requests include `X-NetPay-Event-Id`, `Idempotency-Key`, and `X-NetPay-Signature: sha256=<hex>`. The signature is HMAC-SHA256 over the exact request body. Consumers should verify the signature and deduplicate by event ID. Failed deliveries retry with exponential backoff and eventually enter a dead-letter state; delivery attempts are retained in PostgreSQL.
+
+The public dashboard currently has a no-index entry screen only. Merchant sign-in/session integration is not yet wired; no merchant data is exposed by that page.
