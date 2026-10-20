@@ -23,6 +23,7 @@ def payment_event(payment: Payment, event_type: str) -> EventOutbox:
             "amount_minor": payment.amount_minor,
             "currency": payment.currency,
             "status": payment.status,
+            "payment_source": payment.payment_source,
             "provider_receipt": payment.provider_receipt,
         },
         delivery_status="pending",
