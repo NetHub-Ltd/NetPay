@@ -3,6 +3,7 @@
 import hashlib
 import json
 from datetime import datetime, timezone
+from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -13,9 +14,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.auth import MerchantPrincipal, require_scope
 from app.crypto import decrypt_secret
 from app.daraja.client import DarajaUnavailable, InvalidDarajaCredentials
-from app.daraja.stk import STKOutcomeUnknown, STKRequestRejected, initiate_stk_push
+from app.daraja.stk import Environment, ProductType, STKOutcomeUnknown, STKRequestRejected, initiate_stk_push
 from app.db import get_session
-from app.models import DarajaIntegration, EventOutbox, IdempotencyRecord, Payment, PaymentAttempt
+from app.models import DarajaIntegration, IdempotencyRecord, Payment, PaymentAttempt
 from app.payments.outbox import payment_event
 from app.payments.phone import InvalidPhoneNumber, normalize_ke_phone
 from app.schemas import PaymentCreate, PaymentSummary
@@ -126,13 +127,13 @@ async def create_stk_payment(
 
     try:
         accepted = await initiate_stk_push(
-            environment=integration.environment,
+            environment=cast(Environment, integration.environment),
             consumer_key=decrypt_secret(integration.consumer_key_ciphertext),
             consumer_secret=decrypt_secret(integration.consumer_secret_ciphertext),
             passkey=decrypt_secret(integration.passkey_ciphertext),
             business_shortcode=integration.shortcode,
             party_b_shortcode=integration.party_b_shortcode,
-            product_type=integration.product_type,
+            product_type=cast(ProductType, integration.product_type),
             amount_kes=payload.amount_minor // 100,
             phone_number=phone,
             callback_url=integration.stk_callback_url,
