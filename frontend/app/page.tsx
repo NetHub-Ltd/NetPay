@@ -5,12 +5,12 @@ const capabilities = [
   {
     icon: Smartphone,
     title: "M-Pesa checkout",
-    description: "Send a payment prompt to a customer's phone and track the provider-confirmed result.",
+    description: "Send a payment prompt to a customer’s phone and track the provider-confirmed result.",
   },
   {
     icon: Workflow,
     title: "One API, many merchants",
-    description: "Keep each merchant's Daraja integration isolated while your product uses one consistent API.",
+    description: "Keep each merchant’s Daraja integration isolated while your product uses one consistent API.",
   },
   {
     icon: ShieldCheck,
@@ -133,7 +133,7 @@ export default function HomePage() {
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#07836f]">Simple integration path</p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Connect once. Know what happened.</h2>
-            <p className="mt-5 text-lg leading-8 text-[#627087]">Use your merchant's Daraja credentials, initiate a payment from your application, and listen for a durable event when provider evidence changes its state.</p>
+            <p className="mt-5 text-lg leading-8 text-[#627087]">Use your merchant’s Daraja credentials, initiate a payment from your application, and listen for a durable event when provider evidence changes its state.</p>
             <div className="mt-8 space-y-5">
               {["Create a merchant-scoped API client", "Connect a Daraja shortcode and credentials", "Initiate STK Push with an idempotency key", "Consume payment events and reconcile exceptions"].map((step, index) => (
                 <div key={step} className="flex gap-4"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#142033] text-sm font-semibold text-white">{index + 1}</span><p className="pt-1 font-medium">{step}</p></div>
