@@ -53,6 +53,7 @@ def upgrade() -> None:
         sa.Column("merchant_id", sa.Uuid(), nullable=False),
         sa.Column("environment", sa.String(length=16), nullable=False),
         sa.Column("shortcode", sa.String(length=32), nullable=False),
+        sa.Column("party_b_shortcode", sa.String(length=32), nullable=False),
         sa.Column("product_type", sa.String(length=24), nullable=False),
         sa.Column("consumer_key_ciphertext", sa.LargeBinary(), nullable=False),
         sa.Column("consumer_secret_ciphertext", sa.LargeBinary(), nullable=False),
