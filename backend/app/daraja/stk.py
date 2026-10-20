@@ -102,10 +102,12 @@ async def initiate_stk_push(
     except ValueError as exc:
         raise STKOutcomeUnknown("STK request outcome is unknown") from exc
 
-    response_code = str(result.get("ResponseCode", ""))
+    raw_response_code = result.get("ResponseCode")
+    if raw_response_code is None:
+        raise STKOutcomeUnknown("STK response did not include a response code")
+    response_code = str(raw_response_code)
     if response_code != "0":
-        code = response_code[:32] if response_code else None
-        raise STKRequestRejected(code)
+        raise STKRequestRejected(response_code[:32])
 
     merchant_request_id = result.get("MerchantRequestID")
     checkout_request_id = result.get("CheckoutRequestID")
