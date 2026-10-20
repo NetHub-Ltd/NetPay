@@ -160,6 +160,7 @@ async def enable_c2b(
         integration.registration_error = "Registration outcome unknown; verify Daraja URL management before retrying"
     except C2BRegistrationRejected as exc:
         integration.c2b_registration_status = "failed"
+        integration.c2b_enabled = False
         integration.registration_error = "Daraja rejected URL registration"
         integration.updated_at = datetime.now(timezone.utc)
         session.add(integration)
@@ -167,6 +168,7 @@ async def enable_c2b(
         raise HTTPException(status_code=422, detail={"code": "c2b_registration_rejected", "message": "Daraja rejected C2B URL registration"}) from exc
     except InvalidDarajaCredentials as exc:
         integration.c2b_registration_status = "failed"
+        integration.c2b_enabled = False
         integration.registration_error = "Daraja rejected the consumer credentials"
         integration.updated_at = datetime.now(timezone.utc)
         session.add(integration)
@@ -174,6 +176,7 @@ async def enable_c2b(
         raise HTTPException(status_code=422, detail={"code": "invalid_daraja_credentials", "message": "Daraja rejected the consumer credentials"}) from exc
     except DarajaUnavailable as exc:
         integration.c2b_registration_status = "failed"
+        integration.c2b_enabled = False
         integration.registration_error = "Daraja OAuth was unavailable before registration was submitted"
         integration.updated_at = datetime.now(timezone.utc)
         session.add(integration)
