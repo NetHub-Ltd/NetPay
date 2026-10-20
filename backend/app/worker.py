@@ -68,22 +68,38 @@ async def reconcile_unmatched_callbacks(session: AsyncSession, batch_size: int =
 
 async def recover_stale_submissions(session: AsyncSession, batch_size: int = 100) -> int:
     """Move abandoned provider submissions to unknown rather than retrying blindly."""
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
-    result = await session.exec(
-        select(PaymentAttempt)
-        .where(
-            PaymentAttempt.outcome == "submitting",
-            PaymentAttempt.updated_at <= cutoff,
-        )
-        .order_by(PaymentAttempt.updated_at.asc())
-        .limit(batch_size)
-        .with_for_update(skip_locked=True)
-    )
     recovered = 0
-    for attempt in result.all():
+    for _ in range(batch_size):
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
+        result = await session.exec(
+            select(PaymentAttempt)
+            .where(
+                PaymentAttempt.outcome.in_(["submitting", "recovering"]),
+                PaymentAttempt.updated_at <= cutoff,
+            )
+            .order_by(PaymentAttempt.updated_at.asc())
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+        attempt = result.first()
+        if attempt is None:
+            break
+
+        # Lease one row at a time so a commit cannot release locks on a batch
+        # that another worker may then recover concurrently.
+        attempt.outcome = "recovering"
+        attempt.updated_at = datetime.now(timezone.utc)
+        session.add(attempt)
+        await session.commit()
+
         payment = await session.get(Payment, attempt.payment_id)
         if payment is None or payment.status != "pending" or payment.provider_checkout_request_id:
+            attempt.outcome = "recovered_noop"
+            attempt.updated_at = datetime.now(timezone.utc)
+            session.add(attempt)
+            await session.commit()
             continue
+
         payment.status = "unknown"
         payment.updated_at = datetime.now(timezone.utc)
         attempt.outcome = "unknown"
