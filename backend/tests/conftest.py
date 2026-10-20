@@ -15,7 +15,7 @@ from app import models  # noqa: F401
 def prepare_test_database() -> None:
     settings = get_settings()
     if settings.environment != "test":
-        pytest.skip("Database integration tests require ENVIRONMENT=test")
+        return
     if not settings.database_url.startswith("sqlite+aiosqlite:///"):
         raise RuntimeError("Tests require a dedicated SQLite DATABASE_URL; refusing to drop a non-test database")
 
