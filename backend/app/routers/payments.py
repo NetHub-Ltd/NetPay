@@ -3,7 +3,7 @@
 import hashlib
 import json
 from datetime import datetime, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -37,13 +37,15 @@ def _request_hash(payload: PaymentCreate, normalized_phone: str) -> str:
 
 
 def _payment_event(payment: Payment, event_type: str) -> EventOutbox:
+    event_id = uuid4()
     return EventOutbox(
+        event_id=event_id,
         merchant_id=payment.merchant_id,
         aggregate_id=payment.id,
         event_type=event_type,
         schema_version=1,
         payload={
-            "event_id": "assigned-on-insert",
+            "event_id": str(event_id),
             "payment_id": str(payment.id),
             "merchant_id": str(payment.merchant_id),
             "client_reference": payment.client_reference,
@@ -146,16 +148,15 @@ async def create_stk_payment(
             return duplicate
         raise HTTPException(status_code=409, detail={"code": "payment_conflict", "message": "A payment with this reference already exists"}) from exc
 
-    settings = get_settings()
     try:
         accepted = await initiate_stk_push(
-            environment=integration.environment,  # type: ignore[arg-type]
+            environment=integration.environment,
             consumer_key=decrypt_secret(integration.consumer_key_ciphertext),
             consumer_secret=decrypt_secret(integration.consumer_secret_ciphertext),
             passkey=decrypt_secret(integration.passkey_ciphertext),
             business_shortcode=integration.shortcode,
             party_b_shortcode=integration.party_b_shortcode,
-            product_type=integration.product_type,  # type: ignore[arg-type]
+            product_type=integration.product_type,
             amount_kes=payload.amount_minor // 100,
             phone_number=phone,
             callback_url=integration.stk_callback_url,
@@ -169,7 +170,6 @@ async def create_stk_payment(
         event_type = "payment.unknown"
     except STKRequestRejected as exc:
         payment.status = "failed"
-        payment.provider_result_code = exc.result_code
         payment.completed_at = datetime.now(timezone.utc)
         attempt.outcome = "rejected"
         attempt.provider_result_code = exc.result_code
@@ -185,7 +185,6 @@ async def create_stk_payment(
     else:
         payment.provider_checkout_request_id = accepted.checkout_request_id
         payment.provider_merchant_request_id = accepted.merchant_request_id
-        payment.provider_result_code = "0"
         payment.initiated_at = datetime.now(timezone.utc)
         payment.updated_at = datetime.now(timezone.utc)
         attempt.outcome = "accepted"
