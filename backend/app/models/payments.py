@@ -14,7 +14,7 @@ def utc_now() -> datetime:
 class Payment(SQLModel, table=True):
     __table_args__ = (
         CheckConstraint("amount_minor > 0", name="ck_payment_amount_positive"),
-        UniqueConstraint("merchant_id", "client_reference", name="uq_payment_merchant_client_reference"),
+        UniqueConstraint("integration_id", "provider_receipt", name="uq_payment_integration_provider_receipt"),
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
@@ -23,7 +23,8 @@ class Payment(SQLModel, table=True):
     client_reference: str = Field(max_length=100)
     amount_minor: int = Field(gt=0)
     currency: str = Field(default="KES", max_length=3)
-    phone_number: str = Field(max_length=20)
+    phone_number: str | None = Field(default=None, max_length=20, nullable=True)
+    payment_source: str = Field(default="stk", max_length=16, index=True)
     status: str = Field(default="pending", max_length=24, index=True)
     provider_checkout_request_id: str | None = Field(default=None, max_length=120, index=True)
     provider_merchant_request_id: str | None = Field(default=None, max_length=120, index=True)
