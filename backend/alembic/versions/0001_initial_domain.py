@@ -84,7 +84,8 @@ def upgrade() -> None:
         sa.Column("client_reference", sa.String(length=100), nullable=False),
         sa.Column("amount_minor", sa.Integer(), nullable=False),
         sa.Column("currency", sa.String(length=3), nullable=False),
-        sa.Column("phone_number", sa.String(length=20), nullable=False),
+        sa.Column("phone_number", sa.String(length=20), nullable=True),
+        sa.Column("payment_source", sa.String(length=16), nullable=False),
         sa.Column("status", sa.String(length=24), nullable=False),
         sa.Column("provider_checkout_request_id", sa.String(length=120), nullable=True),
         sa.Column("provider_merchant_request_id", sa.String(length=120), nullable=True),
@@ -99,9 +100,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["integration_id"], ["darajaintegration.id"]),
         sa.ForeignKeyConstraint(["merchant_id"], ["merchant.id"]),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("merchant_id", "client_reference", name="uq_payment_merchant_client_reference"),
+        sa.UniqueConstraint("integration_id", "provider_receipt", name="uq_payment_integration_provider_receipt"),
     )
-    for column in ("merchant_id", "integration_id", "status", "provider_checkout_request_id", "provider_merchant_request_id", "provider_receipt"):
+    for column in ("merchant_id", "integration_id", "payment_source", "status", "provider_checkout_request_id", "provider_merchant_request_id", "provider_receipt"):
         op.create_index(f"ix_payment_{column}", "payment", [column], unique=False)
 
     op.create_table(
