@@ -38,6 +38,7 @@ async def reconcile_unmatched_callbacks(session: AsyncSession, batch_size: int =
         .limit(batch_size)
     )
     recovered = 0
+    stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
     for callback in result.all():
         checkout_id = callback.safe_payload.get("checkout_request_id")
         if not isinstance(checkout_id, str) or not checkout_id:
@@ -52,6 +53,11 @@ async def reconcile_unmatched_callbacks(session: AsyncSession, batch_size: int =
         )
         payment = payment_result.first()
         if payment is None:
+            if callback.received_at <= stale_cutoff:
+                callback.processing_status = "manual_review"
+                callback.processed_at = datetime.now(timezone.utc)
+                session.add(callback)
+                await session.commit()
             continue
         integration = await session.get(DarajaIntegration, callback.integration_id)
         if integration is None:
