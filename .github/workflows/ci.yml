@@ -39,6 +39,7 @@ jobs:
           DATABASE_URL: sqlite+aiosqlite:///./data/test.db
           REDIS_REQUIRED: "false"
           SECRET_KEY: test-secret
+          CREDENTIAL_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
           ENVIRONMENT: test
         run: |
           mkdir -p data static
