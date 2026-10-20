@@ -42,9 +42,11 @@ jobs:
           ENVIRONMENT: test
         run: |
           mkdir -p data static
+          alembic upgrade head
           pytest -q
 
   frontend:
+    if: hashFiles('frontend/package.json') != ''
     runs-on: ubuntu-latest
     defaults:
       run:
