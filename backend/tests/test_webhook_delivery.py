@@ -6,8 +6,10 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
+from sqlmodel import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import Session
 
 from app.config import get_settings
@@ -62,7 +64,7 @@ async def test_outbox_delivery_is_signed_and_recorded(monkeypatch) -> None:
         return httpx.Response(204)
 
     async_engine = create_async_engine(get_settings().database_url)
-    session_factory = async_sessionmaker(async_engine, expire_on_commit=False)
+    session_factory = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
     try:
         async with session_factory() as session:
             processed = await dispatch_outbox_once(session, transport=httpx.MockTransport(handler))
