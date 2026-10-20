@@ -30,3 +30,24 @@ PostgreSQL is the source of truth for payments, idempotency, callback deduplicat
 ## Current implementation boundary
 
 The initial API/runtime foundation, credential encryption primitive, and first SQLModel schema are in place. Payment initiation, merchant authentication, callback state transitions, and event delivery are implemented in subsequent vertical slices; do not treat this foundation commit as a production-ready payment gateway.
+
+## M2M client bootstrap
+
+After migrations, provision the first merchant/client from a trusted operator environment:
+
+```bash
+MERCHANT_NAME="Example Merchant" uv run python -m scripts.provision_m2m_client
+```
+
+The command creates a merchant, stores only a scrypt hash of the generated client secret, and prints the client secret once. Transfer it to a secret manager immediately. The default scopes are `integrations:read`, `integrations:write`, `payments:read`, and `payments:write`; override them with `NETPAY_CLIENT_SCOPES` if needed.
+
+Exchange the client ID and secret for a short-lived bearer token:
+
+```bash
+curl -u "$NETPAY_CLIENT_ID:$NETPAY_CLIENT_SECRET" \
+  -X POST http://localhost:8000/api/v1/auth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data "grant_type=client_credentials"
+```
+
+Use the returned access token as `Authorization: Bearer <token>`. Tokens expire after 15 minutes. Integration onboarding validates the Daraja OAuth consumer key/secret; it does not prove the shortcode permissions or passkey are valid. C2B URL registration remains opt-in.
