@@ -13,7 +13,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db import get_session
-from app.models import DarajaIntegration, EventOutbox, Payment, ProviderCallback
+from app.models import DarajaIntegration, Payment, ProviderCallback
 from app.payments.outbox import payment_event
 from app.payments.phone import InvalidPhoneNumber, normalize_ke_phone
 from app.payments.state import apply_status
