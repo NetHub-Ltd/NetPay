@@ -46,6 +46,7 @@ jobs:
         run: |
           mkdir -p data static
           alembic upgrade head
+          python scripts/check_schema.py
           pytest -q
 
   frontend:
