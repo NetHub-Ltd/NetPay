@@ -30,6 +30,8 @@ NetPay is being rebuilt as a minimal, multi-merchant M-Pesa Daraja gateway.
 
 ## Repository and deployment
 
+The frontend npm lockfile is committed and CI uses `npm ci`. A backend `uv.lock` is still outstanding; the current backend install resolves the declared version ranges, so pin and commit the Python lock before treating builds as fully reproducible.
+
 Git history is preserved. The rebuild is developed on `work/minimal-netpay-rebuild`, created from `main`. The existing GHCR image identity and release intent are retained and the Docker/Kubernetes/Compose files are being adapted to the new API and static frontend.
 
 Do not merge the rebuild into `main` until migrations, backend tests, frontend lint/typecheck/build, container build, and the acceptance criteria in the implementation brief pass.
