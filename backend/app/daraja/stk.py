@@ -11,7 +11,7 @@ from typing import Literal
 
 import httpx
 
-from app.daraja.client import DarajaUnavailable, InvalidDarajaCredentials, request_access_token
+from app.daraja.client import DarajaUnavailable, request_access_token
 
 Environment = Literal["sandbox", "production"]
 ProductType = Literal["paybill", "till"]
