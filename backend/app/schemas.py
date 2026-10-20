@@ -49,6 +49,13 @@ class IntegrationList(BaseModel):
     items: list[IntegrationSummary]
 
 
+class AccessTokenResponse(BaseModel):
+    access_token: str
+    token_type: Literal["Bearer"] = "Bearer"
+    expires_in: int
+    scope: str
+
+
 class ErrorResponse(BaseModel):
     code: str
     message: str
