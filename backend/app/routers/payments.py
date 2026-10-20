@@ -83,6 +83,10 @@ async def _apply_early_callback(
         safe = callback.safe_payload
         if safe.get("checkout_request_id") != checkout_request_id:
             continue
+        if payment.provider_merchant_request_id and safe.get("merchant_request_id") != payment.provider_merchant_request_id:
+            callback.processing_status = "discrepancy"
+            callback.processed_at = datetime.now(timezone.utc)
+            continue
         callback.payment_id = payment.id
         try:
             result_code = int(safe.get("result_code", -1))
@@ -110,6 +114,10 @@ async def _apply_early_callback(
             if not valid_amount or not valid_phone or not receipt:
                 if apply_status(payment, "unknown"):
                     event_type = "payment.unknown"
+                callback.processing_status = "discrepancy"
+                callback.processed_at = datetime.now(timezone.utc)
+                continue
+            if payment.status == "succeeded" and payment.provider_receipt not in (None, receipt):
                 callback.processing_status = "discrepancy"
                 callback.processed_at = datetime.now(timezone.utc)
                 continue
