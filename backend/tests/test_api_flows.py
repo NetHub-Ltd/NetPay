@@ -46,7 +46,7 @@ def _seed_client(scopes: list[str]) -> tuple[UUID, str]:
     return merchant_id, token
 
 
-def _seed_integration(merchant_id: UUID) -> str:
+def _seed_integration(merchant_id: UUID, c2b_enabled: bool = False) -> str:
     engine = create_engine(_sync_url())
     settings = get_settings()
     now = datetime.now(timezone.utc)
@@ -62,8 +62,8 @@ def _seed_integration(merchant_id: UUID) -> str:
         consumer_secret_ciphertext=encrypt_secret("consumer-secret", settings),
         passkey_ciphertext=encrypt_secret("passkey", settings),
         credential_status="oauth_validated",
-        c2b_enabled=False,
-        c2b_registration_status="not_requested",
+        c2b_enabled=c2b_enabled,
+        c2b_registration_status="registered" if c2b_enabled else "not_requested",
         stk_callback_url=f"https://gateway.example.test/cb/stk/{integration_id}",
         c2b_validation_url=f"https://gateway.example.test/cb/c2b/validation/{integration_id}",
         c2b_confirmation_url=f"https://gateway.example.test/cb/c2b/confirmation/{integration_id}",
@@ -195,3 +195,40 @@ def test_stk_idempotency_and_callback_are_durable(monkeypatch) -> None:
     engine.dispose()
     assert len(payment_rows) == 1
     assert len(events) == 2
+
+
+def test_opted_in_c2b_confirmation_creates_one_payment_and_event() -> None:
+    merchant_id, _ = _seed_client(["payments:read"])
+    integration_id = _seed_integration(merchant_id, c2b_enabled=True)
+    payload = {
+        "TransactionType": "Pay Bill",
+        "TransID": "C2BRECEIPT001",
+        "TransTime": "20261020123000",
+        "TransAmount": "15.00",
+        "BusinessShortCode": "174379",
+        "BillRefNumber": "INV-22",
+        "MSISDN": 254712345678,
+    }
+
+    with TestClient(app) as client:
+        first = client.post(f"/cb/c2b/confirmation/{integration_id}", json=payload)
+        second = client.post(f"/cb/c2b/confirmation/{integration_id}", json=payload)
+        validation = client.post(
+            f"/cb/c2b/validation/{integration_id}",
+            json={"BusinessShortCode": "174379", "TransAmount": "15.00", "BillRefNumber": "INV-22"},
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert validation.json()["ResultCode"] == 0
+
+    engine = create_engine(_sync_url())
+    with Session(engine) as session:
+        payments = session.exec(select(Payment).where(Payment.provider_receipt == "C2BRECEIPT001")).all()
+        events = session.exec(select(EventOutbox).where(EventOutbox.event_type == "payment.succeeded")).all()
+    engine.dispose()
+    assert len(payments) == 1
+    assert payments[0].payment_source == "c2b"
+    assert payments[0].amount_minor == 1500
+    assert payments[0].phone_number is None
+    assert any(event.aggregate_id == payments[0].id for event in events)
