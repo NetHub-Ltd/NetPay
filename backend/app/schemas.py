@@ -75,6 +75,8 @@ class PaymentCreate(BaseModel):
 
 
 class PaymentSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     client_reference: str
     amount_minor: int
