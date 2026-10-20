@@ -28,6 +28,18 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Generate backend lockfile for reproducible install
+        run: |
+          pip install uv
+          uv lock
+          python - <<'PY'
+          import base64
+          from pathlib import Path
+          print("UV_LOCK_START")
+          print(base64.b64encode(Path("uv.lock").read_bytes()).decode("ascii"))
+          print("UV_LOCK_END")
+          PY
+
       - name: Install
         run: |
           pip install -U pip
