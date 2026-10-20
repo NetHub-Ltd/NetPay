@@ -58,6 +58,26 @@ class AccessTokenResponse(BaseModel):
     scope: str
 
 
+class EventDestinationUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(min_length=10, max_length=512)
+
+
+class EventDestinationPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    url: str
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class EventDestinationCreated(EventDestinationPublic):
+    signing_secret: str
+
+
 class ErrorResponse(BaseModel):
     code: str
     message: str
