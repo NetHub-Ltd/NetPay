@@ -30,7 +30,7 @@ async def main() -> None:
     client_secret = secrets.token_urlsafe(40)
     scopes = os.environ.get(
         "NETPAY_CLIENT_SCOPES",
-        "integrations:read integrations:write payments:read payments:write",
+        "integrations:read integrations:write payments:read payments:write events:read events:write",
     ).split()
     now = datetime.now(timezone.utc)
 
