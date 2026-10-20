@@ -59,6 +59,14 @@ def _safe_payload(
 ) -> dict[str, object]:
     phone_value = metadata.get("PhoneNumber")
     phone = str(phone_value) if phone_value is not None else ""
+    phone_hash = ""
+    if phone:
+        try:
+            normalized_phone = normalize_ke_phone(phone)
+            phone_hash = hashlib.sha256(normalized_phone.encode("utf-8")).hexdigest()
+            phone = normalized_phone
+        except InvalidPhoneNumber:
+            phone_hash = ""
     return {
         "checkout_request_id": checkout_id[:120],
         "merchant_request_id": merchant_request_id[:120],
@@ -66,7 +74,7 @@ def _safe_payload(
         "receipt": str(metadata.get("MpesaReceiptNumber", ""))[:64],
         "amount": str(metadata.get("Amount", ""))[:32],
         "phone_last_four": phone[-4:] if phone else "",
-        "phone_hash": hashlib.sha256(phone.encode("utf-8")).hexdigest() if phone else "",
+        "phone_hash": phone_hash,
     }
 
 
