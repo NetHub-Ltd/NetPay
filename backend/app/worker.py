@@ -72,12 +72,6 @@ async def _deliver_one(
     destination: EventDestination,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> None:
-    event.attempts += 1
-    event.delivery_status = "delivering"
-    event.next_attempt_at = datetime.now(timezone.utc) + _DELIVERY_LEASE
-    session.add(event)
-    await session.commit()
-
     attempt_number = event.attempts
     started = time.monotonic()
     http_status: int | None = None
@@ -160,6 +154,13 @@ async def dispatch_outbox_once(
         .with_for_update(skip_locked=True)
     )
     events = list(result.all())
+    for event in events:
+        event.attempts += 1
+        event.delivery_status = "delivering"
+        event.next_attempt_at = now + _DELIVERY_LEASE
+        session.add(event)
+    await session.commit()
+
     delivered_for_processing = 0
     for event in events:
         destination_result = await session.exec(
