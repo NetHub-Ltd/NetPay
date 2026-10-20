@@ -152,7 +152,7 @@ async def enable_c2b(
             environment=cast(Environment, integration.environment),
             consumer_key=decrypt_secret(integration.consumer_key_ciphertext),
             consumer_secret=decrypt_secret(integration.consumer_secret_ciphertext),
-            shortcode=integration.shortcode,
+            shortcode=integration.party_b_shortcode if integration.product_type == "till" else integration.shortcode,
             validation_url=integration.c2b_validation_url,
             confirmation_url=integration.c2b_confirmation_url,
         )
