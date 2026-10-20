@@ -222,9 +222,16 @@ async def stk_callback(
             )
         )
         if duplicate_check.first() is None:
+            existing_payment_after_conflict = await session.exec(
+                select(Payment).where(
+                    Payment.integration_id == integration_pk,
+                    Payment.provider_receipt == receipt,
+                )
+            )
+            conflicting_payment = existing_payment_after_conflict.first()
             discrepancy_record = ProviderCallback(
                 integration_id=integration_pk,
-                payment_id=payment_pk,
+                payment_id=conflicting_payment.id if conflicting_payment is not None else None,
                 callback_type="stk",
                 dedupe_fingerprint=fingerprint,
                 safe_payload=safe,
