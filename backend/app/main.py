@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from redis.asyncio import Redis
@@ -75,6 +76,14 @@ async def readiness(request: Request) -> dict[str, str]:
 # In backend-only development the export may not exist; the API remains runnable.
 frontend_static_dir = Path(__file__).resolve().parent / "static"
 if frontend_static_dir.is_dir():
+    # Next.js exports this generated PNG without a file extension. Expose a stable,
+    # correctly typed URL for social crawlers that expect a conventional image path.
+    generated_og_image = frontend_static_dir / "opengraph-image"
+    if generated_og_image.is_file():
+        @app.get("/opengraph-image.png", include_in_schema=False)
+        async def open_graph_image() -> FileResponse:
+            return FileResponse(generated_og_image, media_type="image/png")
+
     app.mount("/", StaticFiles(directory=frontend_static_dir, html=True), name="frontend")
 else:
     logger.info("frontend_static=not_built path={}", str(frontend_static_dir))

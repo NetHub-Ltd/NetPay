@@ -42,6 +42,9 @@ for attempt in $(seq 1 30); do
       grep -q "Sitemap:" /tmp/netpay-robots.txt
       curl --fail --silent --show-error http://127.0.0.1:8000/sitemap.xml -o /tmp/netpay-sitemap.xml
       grep -q "<urlset" /tmp/netpay-sitemap.xml
+      curl --fail --silent --show-error -D /tmp/netpay-og-headers http://127.0.0.1:8000/opengraph-image.png -o /tmp/netpay-og.png
+      grep -qi '^content-type: image/png' /tmp/netpay-og-headers
+      test -s /tmp/netpay-og.png
       echo "Container startup, health endpoints, and frontend static routes passed."
       exit 0
     fi

@@ -37,6 +37,6 @@ jobs:
           test -s out/dashboard/index.html
           test -s out/robots.txt
           test -s out/sitemap.xml
-          test -s out/opengraph-image.png
+          test -s out/opengraph-image
           grep -q 'name="robots"' out/dashboard/index.html
           grep -q 'noindex' out/dashboard/index.html
