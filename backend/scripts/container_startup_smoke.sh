@@ -26,7 +26,7 @@ for attempt in $(seq 1 30); do
   fi
   if curl --fail --silent --show-error http://127.0.0.1:8000/health/live; then
     logs="$(docker logs "$name" 2>&1)"
-    printf '%s\\n' "$logs"
+    printf '%s\n' "$logs"
     grep -q "Database connectivity verified" <<< "$logs"
     grep -q "Redis connectivity verified" <<< "$logs"
     curl --fail --silent --show-error http://127.0.0.1:8000/health/ready
