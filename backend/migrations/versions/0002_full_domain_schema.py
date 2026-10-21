@@ -53,6 +53,7 @@ def upgrade() -> None:
     op.add_column("providerintegration", sa.Column("credential_status", sa.String(24), server_default="pending", nullable=False))
     op.add_column("providerintegration", sa.Column("credentials_validated_at", AWARE_DATETIME, nullable=True))
     op.add_column("providerintegration", sa.Column("credential_version", sa.Integer(), server_default="1", nullable=False))
+    op.create_check_constraint("ck_providerintegration_credential_version_positive", "providerintegration", "credential_version >= 1")
     op.add_column("providerintegration", sa.Column("c2b_enabled", sa.Boolean(), server_default=sa.false(), nullable=False))
     op.add_column("providerintegration", sa.Column("c2b_registration_status", sa.String(24), server_default="not_requested", nullable=False))
     op.add_column("providerintegration", sa.Column("stk_callback_url", sa.String(512), nullable=True))
@@ -95,6 +96,7 @@ def upgrade() -> None:
     op.add_column("paymentattempt", sa.Column("provider_result_code", sa.String(32), nullable=True))
     op.add_column("paymentattempt", sa.Column("safe_error_code", sa.String(100), nullable=True))
     op.add_column("paymentattempt", sa.Column("safe_error_message", sa.String(500), nullable=True))
+    op.create_check_constraint("ck_paymentattempt_number_positive", "paymentattempt", "attempt_number >= 1")
     op.create_index("ix_paymentattempt_payment_id", "paymentattempt", ["payment_id"])
     op.create_index("ix_paymentattempt_status", "paymentattempt", ["status"])
 
@@ -152,6 +154,7 @@ def upgrade() -> None:
     op.add_column("eventoutbox", sa.Column("merchant_id", UUID, nullable=True))
     op.create_foreign_key("fk_eventoutbox_merchant_id_merchant", "eventoutbox", "merchant", ["merchant_id"], ["id"])
     op.add_column("eventoutbox", sa.Column("schema_version", sa.Integer(), server_default="1", nullable=False))
+    op.create_check_constraint("ck_eventoutbox_attempt_count_nonnegative", "eventoutbox", "attempt_count >= 0")
     op.create_unique_constraint("uq_eventoutbox_event_id", "eventoutbox", ["event_id"])
     op.create_index("ix_eventoutbox_merchant_id", "eventoutbox", ["merchant_id"])
     op.create_index("ix_eventoutbox_event_type", "eventoutbox", ["event_type"])
@@ -183,7 +186,6 @@ def upgrade() -> None:
         sa.Column("response_metadata", JSON, nullable=False),
         sa.Column("started_at", AWARE_DATETIME, nullable=False),
         sa.Column("completed_at", AWARE_DATETIME, nullable=True),
-        sa.UniqueConstraint("correlation_id", name="uq_providerrequest_correlation_id"),
     )
     for column in ("merchant_id", "integration_id", "payment_id", "payment_attempt_id", "operation", "provider_request_id", "outcome"):
         op.create_index(f"ix_providerrequest_{column}", "providerrequest", [column])
@@ -292,6 +294,7 @@ def upgrade() -> None:
         sa.Column("response_excerpt", sa.String(500), nullable=True),
         sa.Column("error_code", sa.String(100), nullable=True),
         sa.UniqueConstraint("event_delivery_id", "attempt_number", name="uq_delivery_attempt_number"),
+        sa.CheckConstraint("attempt_number >= 1", name="ck_eventdeliveryattempt_number_positive"),
     )
     op.create_index("ix_eventdeliveryattempt_event_delivery_id", "eventdeliveryattempt", ["event_delivery_id"])
     op.create_index("ix_eventdeliveryattempt_status", "eventdeliveryattempt", ["status"])
@@ -316,6 +319,7 @@ def downgrade() -> None:
 
     for index in ("ix_eventoutbox_published_at", "ix_eventoutbox_aggregate_id", "ix_eventoutbox_event_type", "ix_eventoutbox_merchant_id"):
         op.drop_index(index, table_name="eventoutbox")
+    op.drop_constraint("ck_eventoutbox_attempt_count_nonnegative", "eventoutbox", type_="check")
     op.drop_constraint("uq_eventoutbox_event_id", "eventoutbox", type_="unique")
     op.drop_constraint("fk_eventoutbox_merchant_id_merchant", "eventoutbox", type_="foreignkey")
     for column in ("schema_version", "merchant_id", "event_id"):
@@ -337,6 +341,7 @@ def downgrade() -> None:
     for index in ("ix_paymentattempt_status", "ix_paymentattempt_payment_id"):
         op.drop_index(index, table_name="paymentattempt")
     op.drop_constraint("uq_paymentattempt_correlation_id", "paymentattempt", type_="unique")
+    op.drop_constraint("ck_paymentattempt_number_positive", "paymentattempt", type_="check")
     for column in ("safe_error_message", "safe_error_code", "provider_result_code", "correlation_id"):
         op.drop_column("paymentattempt", column)
 
@@ -349,6 +354,7 @@ def downgrade() -> None:
 
     for index in ("ix_providerintegration_credential_status", "ix_providerintegration_shortcode", "ix_providerintegration_merchant_id"):
         op.drop_index(index, table_name="providerintegration")
+    op.drop_constraint("ck_providerintegration_credential_version_positive", "providerintegration", type_="check")
     op.drop_constraint("uq_providerintegration_integration_id", "providerintegration", type_="unique")
     for column in ("registration_error", "c2b_registered_at", "c2b_confirmation_url", "c2b_validation_url", "stk_callback_url", "c2b_registration_status", "c2b_enabled", "credential_version", "credentials_validated_at", "credential_status", "passkey_ciphertext", "consumer_secret_ciphertext", "consumer_key_ciphertext", "product_type", "party_b_shortcode", "shortcode", "integration_id"):
         op.drop_column("providerintegration", column)
