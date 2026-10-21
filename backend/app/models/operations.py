@@ -108,7 +108,10 @@ class EventDelivery(BaseMixin, table=True):
     """Current delivery state for one outbox event and one webhook endpoint."""
 
     __tablename__ = "eventdelivery"
-    __table_args__ = (UniqueConstraint("outbox_event_id", "webhook_endpoint_id", name="uq_event_delivery_event_endpoint"),)
+    __table_args__ = (
+        UniqueConstraint("outbox_event_id", "webhook_endpoint_id", name="uq_event_delivery_event_endpoint"),
+        CheckConstraint("attempt_count >= 0", name="ck_eventdelivery_attempt_count_nonnegative"),
+    )
 
     merchant_id: UUID = Field(foreign_key="merchant.id", index=True)
     outbox_event_id: UUID = Field(foreign_key="eventoutbox.id", index=True)
