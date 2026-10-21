@@ -43,6 +43,8 @@ class Settings(BaseSettings):
             raise ValueError("LOG_LEVEL must be a supported Loguru log level")
 
         if self.is_production:
+            if not self.database_url.get_secret_value().startswith("postgresql+asyncpg://"):
+                raise ValueError("DATABASE_URL must use PostgreSQL with asyncpg in production")
             if not self.public_base_url.startswith("https://"):
                 raise ValueError("PUBLIC_BASE_URL must use HTTPS in production")
             secret = self.secret_key.get_secret_value()
