@@ -18,16 +18,6 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -42,6 +32,19 @@ jobs:
         run: |
           pip install -U pip
           pip install -e ".[dev]"
+
+      - name: Start Redis for connectivity tests
+        run: |
+          set -euo pipefail
+          docker run --detach --name netpay-test-redis --publish 6379:6379 redis:7-alpine
+          for attempt in $(seq 1 20); do
+            if docker exec netpay-test-redis redis-cli ping | grep -qx PONG; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Redis did not become ready."
+          exit 1
 
       - name: Startup smoke tests (fresh suite only)
         env:
@@ -85,29 +88,6 @@ jobs:
   container:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: gateway
-          POSTGRES_PASSWORD: gateway
-          POSTGRES_DB: gateway
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U gateway -d gateway"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -122,6 +102,26 @@ jobs:
           push: false
           load: true
           tags: ghcr.io/nethub-ltd/netpay:ci
+
+      - name: Start PostgreSQL and Redis for image smoke test
+        run: |
+          set -euo pipefail
+          docker run --detach --name netpay-test-postgres \
+            --publish 5432:5432 \
+            --env POSTGRES_USER=gateway \
+            --env POSTGRES_PASSWORD=gateway \
+            --env POSTGRES_DB=gateway \
+            postgres:16-alpine
+          docker run --detach --name netpay-test-redis --publish 6379:6379 redis:7-alpine
+          for attempt in $(seq 1 30); do
+            if docker exec netpay-test-postgres pg_isready -U gateway -d gateway >/dev/null 2>&1 \
+              && docker exec netpay-test-redis redis-cli ping | grep -qx PONG; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "PostgreSQL or Redis did not become ready."
+          exit 1
 
       - name: Run image startup smoke test
         run: bash backend/scripts/container_startup_smoke.sh
