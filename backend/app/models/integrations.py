@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, LargeBinary, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, DateTime, LargeBinary, UniqueConstraint
 from sqlmodel import Field
 
 from app.models.base import BaseMixin
@@ -21,6 +21,7 @@ class DarajaIntegration(BaseMixin, table=True):
     __table_args__ = (
         UniqueConstraint("merchant_id", "provider", "environment", name="uq_integration_provider_environment"),
         UniqueConstraint("integration_id", name="uq_providerintegration_integration_id"),
+        CheckConstraint("credential_version >= 1", name="ck_providerintegration_credential_version_positive"),
     )
 
     merchant_id: UUID = Field(foreign_key="merchant.id", index=True)
