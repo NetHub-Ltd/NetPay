@@ -98,6 +98,25 @@ def upgrade() -> None:
     op.create_index("ix_paymentattempt_payment_id", "paymentattempt", ["payment_id"])
     op.create_index("ix_paymentattempt_status", "paymentattempt", ["status"])
 
+    # New machine-to-machine client credentials are merchant-scoped.
+    op.create_table(
+        "m2mclient",
+        *_common_columns(),
+        sa.Column("merchant_id", UUID, sa.ForeignKey("merchant.id"), nullable=False),
+        sa.Column("client_id", sa.String(80), nullable=False),
+        sa.Column("secret_hash", sa.String(255), nullable=False),
+        sa.Column("scopes", JSON, nullable=False),
+        sa.Column("status", sa.String(24), nullable=False),
+        sa.Column("last_used_at", AWARE_DATETIME, nullable=True),
+        sa.Column("expires_at", AWARE_DATETIME, nullable=True),
+        sa.Column("revoked_at", AWARE_DATETIME, nullable=True),
+        sa.UniqueConstraint("client_id", name="uq_m2mclient_client_id"),
+    )
+    op.create_index("ix_m2mclient_merchant_id", "m2mclient", ["merchant_id"])
+    op.create_index("ix_m2mclient_status", "m2mclient", ["status"])
+    op.create_index("ix_m2mclient_expires_at", "m2mclient", ["expires_at"])
+
+
     # Tie idempotency records to the calling client and resulting resource.
     op.add_column("idempotencyrecord", sa.Column("client_id", UUID, nullable=True))
     op.create_foreign_key("fk_idempotencyrecord_client_id_m2mclient", "idempotencyrecord", "m2mclient", ["client_id"], ["id"])
@@ -146,24 +165,6 @@ def upgrade() -> None:
     op.create_index("ix_auditevent_action", "auditevent", ["action"])
     op.create_index("ix_auditevent_resource_id", "auditevent", ["resource_id"])
     op.create_index("ix_auditevent_occurred_at", "auditevent", ["occurred_at"])
-
-    # New machine-to-machine client credentials are merchant-scoped.
-    op.create_table(
-        "m2mclient",
-        *_common_columns(),
-        sa.Column("merchant_id", UUID, sa.ForeignKey("merchant.id"), nullable=False),
-        sa.Column("client_id", sa.String(80), nullable=False),
-        sa.Column("secret_hash", sa.String(255), nullable=False),
-        sa.Column("scopes", JSON, nullable=False),
-        sa.Column("status", sa.String(24), nullable=False),
-        sa.Column("last_used_at", AWARE_DATETIME, nullable=True),
-        sa.Column("expires_at", AWARE_DATETIME, nullable=True),
-        sa.Column("revoked_at", AWARE_DATETIME, nullable=True),
-        sa.UniqueConstraint("client_id", name="uq_m2mclient_client_id"),
-    )
-    op.create_index("ix_m2mclient_merchant_id", "m2mclient", ["merchant_id"])
-    op.create_index("ix_m2mclient_status", "m2mclient", ["status"])
-    op.create_index("ix_m2mclient_expires_at", "m2mclient", ["expires_at"])
 
     op.create_table(
         "providerrequest",
