@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, JSON, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, DateTime, JSON, UniqueConstraint
 from sqlmodel import Field
 
 from app.models.base import BaseMixin, utc_now
@@ -14,7 +14,10 @@ class EventOutbox(BaseMixin, table=True):
     """Durable event committed in the same transaction as its domain change."""
 
     __tablename__ = "eventoutbox"
-    __table_args__ = (UniqueConstraint("event_id", name="uq_eventoutbox_event_id"),)
+    __table_args__ = (
+        UniqueConstraint("event_id", name="uq_eventoutbox_event_id"),
+        CheckConstraint("attempt_count >= 0", name="ck_eventoutbox_attempt_count_nonnegative"),
+    )
     __table_args__ = (UniqueConstraint("event_id", name="uq_eventoutbox_event_id"),)
 
     event_id: UUID = Field(default_factory=uuid4)
