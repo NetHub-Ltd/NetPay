@@ -18,6 +18,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
+from app.logging_config import configure_logging
 from app.crypto import CredentialEncryptionError, decrypt_secret
 from app.models import DarajaIntegration, EventDeliveryAttempt, EventDestination, EventOutbox, Payment, PaymentAttempt, ProviderCallback
 from app.payments.outbox import payment_event
@@ -256,6 +257,7 @@ async def dispatch_outbox_once(
 
 async def run_worker() -> None:
     settings = get_settings()
+    configure_logging(settings.log_level)
     engine = create_async_engine(settings.database_url.get_secret_value(), pool_pre_ping=True)
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     logger.info("Starting NetPay durable event worker")
