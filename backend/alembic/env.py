@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -32,7 +31,7 @@ def _sync_database_url(url: str) -> str:
     return url
 
 
-database_url = os.environ.get("DATABASE_URL") or get_settings().database_url.get_secret_value()
+database_url = get_settings().database_url.get_secret_value()
 config.set_main_option("sqlalchemy.url", _sync_database_url(database_url).replace("%", "%%"))
 
 
