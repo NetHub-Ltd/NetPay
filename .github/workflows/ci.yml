@@ -4,9 +4,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, "work/minimal-netpay-rebuild"]
   push:
-    branches: [main, dev, "work/**", "chore/**"]
+    branches: [main, dev, "work/**", "chore/**", "fix/**"]
 
 permissions:
   contents: read
