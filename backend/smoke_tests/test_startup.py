@@ -3,8 +3,6 @@
 These tests deliberately live outside backend/tests to avoid loading the legacy
 integration-test conftest. No migrations or schema creation are performed here.
 """
-from collections.abc import AsyncIterator
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -12,20 +10,12 @@ from app import main
 from app.db import check_database, dispose_engine
 
 
-@pytest.fixture(autouse=True)
-def clean_database_engine() -> AsyncIterator[None]:
-    """Ensure no async engine leaks between lifecycle tests."""
-    yield
-    import asyncio
-
-    asyncio.run(dispose_engine())
-
-
 def test_lifespan_checks_database_and_redis_then_closes_resources(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[str] = []
     real_check_database = main.check_database
+    real_dispose_engine = main.dispose_engine
 
     async def database_check() -> None:
         calls.append("database")
@@ -39,6 +29,7 @@ def test_lifespan_checks_database_and_redis_then_closes_resources(
 
     async def database_dispose() -> None:
         calls.append("close_database")
+        await real_dispose_engine()
 
     monkeypatch.setattr(main, "check_database", database_check)
     monkeypatch.setattr(main, "check_redis", redis_check)
@@ -113,7 +104,10 @@ def test_database_failure_aborts_startup_and_still_cleans_up(
 async def test_database_connectivity_check_executes_query() -> None:
     # The CI database URL is an isolated in-memory SQLite database; this tests
     # the actual SQLAlchemy connection path without migrations or external state.
-    await check_database()
+    try:
+        await check_database()
+    finally:
+        await dispose_engine()
 
 
 @pytest.mark.asyncio
