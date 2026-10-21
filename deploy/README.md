@@ -13,7 +13,7 @@ The public landing page is a static Next.js export served by FastAPI. API routes
 The secret `nethub-gateway-secrets` must contain at least:
 
 - `DATABASE_URL` — PostgreSQL async URL (`postgresql+asyncpg://...`)
-- `REDIS_URL` — Redis URL (`redis://...`); auxiliary, not a payment-state source of truth
+- Optional `REDIS_URL` — Redis URL (`redis://...`); auxiliary, not a payment-state source of truth
 - `SECRET_KEY` — random string of at least 32 characters
 - `CREDENTIAL_ENCRYPTION_KEY` — valid Fernet key
 - `PUBLIC_BASE_URL` — public HTTPS origin, e.g. `https://pay.nethub.co.ke`
