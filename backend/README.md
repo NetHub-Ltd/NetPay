@@ -24,9 +24,10 @@ PostgreSQL is required at startup. Redis is auxiliary: an unavailable Redis inst
 - Connection URLs are secret-wrapped and must never be logged.
 - Datetimes use timezone-aware UTC values and PostgreSQL `TIMESTAMPTZ` columns.
 - Money is stored as integer minor units plus currency code.
-- Constraints enforce unique merchant references, idempotency keys, provider event IDs, and positive payment amounts.
+- The 16-table schema covers merchants, Daraja integrations, M2M clients, payments/attempts, idempotency, provider requests/callbacks/verification, reconciliation runs/items, outbox events, webhook endpoints, deliveries/attempts, and audit events.
+- Constraints enforce unique merchant references, idempotency keys, provider callback fingerprints, stable outbox event IDs, positive payment amounts, valid reconciliation windows, and nonnegative retry counts.
 - `deleted_at` is the sole soft-delete marker.
-- Never edit an applied migration; add a new revision for later schema changes.
+- Never edit an applied migration; add a new revision for later schema changes. The full domain schema is revision `0002_full_domain_schema`.
 
 ## Health
 
