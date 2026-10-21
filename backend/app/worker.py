@@ -256,7 +256,7 @@ async def dispatch_outbox_once(
 
 async def run_worker() -> None:
     settings = get_settings()
-    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    engine = create_async_engine(settings.database_url.get_secret_value(), pool_pre_ping=True)
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     logger.info("Starting NetPay durable event worker")
     try:
