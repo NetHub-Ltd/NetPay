@@ -1,1 +1,0 @@
-"""NetPay API application package."""
