@@ -25,7 +25,7 @@ async def main() -> None:
         raise SystemExit("MERCHANT_NAME is required")
 
     settings = get_settings()
-    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    engine = create_async_engine(settings.database_url.get_secret_value(), pool_pre_ping=True)
     client_id = os.environ.get("NETPAY_CLIENT_ID", f"nph_{secrets.token_urlsafe(12)}")
     client_secret = secrets.token_urlsafe(40)
     scopes = os.environ.get(
