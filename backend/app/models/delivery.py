@@ -3,6 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field
 
 from app.models.base import BaseMixin, utc_now
@@ -14,6 +15,10 @@ class EventDeliveryAttempt(BaseMixin, table=True):
     outbox_event_id remains for compatibility with the existing worker.
     New endpoint-specific delivery flows also populate event_delivery_id.
     """
+
+    __table_args__ = (
+        UniqueConstraint("outbox_event_id", "attempt_number", name="uq_delivery_attempt_number"),
+    )
 
     outbox_event_id: UUID = Field(foreign_key="eventoutbox.id", index=True)
     event_delivery_id: UUID | None = Field(default=None, foreign_key="eventdelivery.id", index=True)
