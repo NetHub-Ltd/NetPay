@@ -12,7 +12,11 @@ class PaymentAttempt(BaseMixin, table=True):
     """One attempt associated with a canonical payment."""
 
     __tablename__ = "paymentattempt"
-    __table_args__ = (\n        UniqueConstraint("payment_id", "attempt_number", name="uq_payment_attempt_number"),\n        UniqueConstraint("correlation_id", name="uq_paymentattempt_correlation_id"),\n    )
+    __table_args__ = (
+        UniqueConstraint("payment_id", "attempt_number", name="uq_payment_attempt_number"),
+        UniqueConstraint("correlation_id", name="uq_paymentattempt_correlation_id"),
+        CheckConstraint("attempt_number >= 1", name="ck_paymentattempt_number_positive"),
+    )
 
     payment_id: UUID = Field(foreign_key="payment.id", index=True)
     attempt_number: int = Field(ge=1)
