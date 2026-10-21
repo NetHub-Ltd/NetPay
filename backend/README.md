@@ -1,22 +1,41 @@
 # NetPay backend
 
-Minimal FastAPI service for the clean backend restart. This stage deliberately contains no database, cache, payment-provider, authentication, or legacy compatibility implementation. Those components will be designed and introduced in separate reviewed steps.
+Fresh FastAPI service using PostgreSQL as durable storage, SQLModel for typed persistence, Alembic for versioned schema changes, and Redis for auxiliary caching/coordination. This phase does not restore legacy backend code.
 
 ## Local development
 
-    python -m venv .venv
-    . .venv/bin/activate
-    python -m pip install -e ".[dev]"
-    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+1. Start PostgreSQL and Redis locally.
+2. Copy `.env.example` to `.env` and adjust local-only values.
+3. Install, migrate, and run:
 
-Copy `.env.example` to `.env` for documented local configuration. The initial bootstrap does not consume environment variables yet.
+```bash
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -e ".[dev]"
+alembic upgrade head
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-## Health checks
+PostgreSQL is required at startup. Redis is auxiliary: an unavailable Redis instance is logged and reported by readiness but does not block startup. Payment correctness must never rely on Redis durability.
 
-- `GET /health/live` — process liveness.
-- `GET /health/ready` — initial process readiness. Database and other dependency checks are intentionally deferred to the next stage.
-- `GET /docs` — generated OpenAPI documentation.
+## Database contract
+
+- Runtime `DATABASE_URL` uses `postgresql+asyncpg`; Alembic derives `postgresql+psycopg` from the same validated settings.
+- Connection URLs are secret-wrapped and must never be logged.
+- Datetimes use timezone-aware UTC values and PostgreSQL `TIMESTAMPTZ` columns.
+- Money is stored as integer minor units plus currency code.
+- Constraints enforce unique merchant references, idempotency keys, provider event IDs, and positive payment amounts.
+- `deleted_at` is the sole soft-delete marker.
+- Never edit an applied migration; add a new revision for later schema changes.
+
+## Health
+
+- `GET /health/live`: process liveness.
+- `GET /health/ready`: PostgreSQL required; Redis status reported separately.
+- `GET /docs`: OpenAPI docs.
 
 ## Tests
 
-    pytest -q smoke_tests/test_startup.py
+```bash
+pytest -q smoke_tests
+```
