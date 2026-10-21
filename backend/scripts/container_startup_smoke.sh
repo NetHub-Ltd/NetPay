@@ -3,8 +3,6 @@ set -euo pipefail
 
 image="${1:-ghcr.io/nethub-ltd/netpay:ci}"
 name="netpay-startup-smoke"
-encryption_key="$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
-
 cleanup() {
   docker logs "$name" || true
   docker stop "$name" >/dev/null 2>&1 || true
@@ -12,11 +10,13 @@ cleanup() {
 trap cleanup EXIT
 
 docker run --detach --rm --name "$name" \
+  --add-host=host.docker.internal:host-gateway \
   -p 127.0.0.1:8000:8000 \
   -e ENVIRONMENT=production \
-  -e DATABASE_URL=sqlite+aiosqlite:////app/data/gateway.db \
+  -e DATABASE_URL=postgresql+asyncpg://gateway:gateway@host.docker.internal:5432/gateway \
+  -e REDIS_URL=redis://host.docker.internal:6379/0 \
   -e SECRET_KEY=ci-only-startup-secret-key-not-for-production \
-  -e "CREDENTIAL_ENCRYPTION_KEY=$encryption_key" \
+  -e CREDENTIAL_ENCRYPTION_KEY=MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA= \
   -e PUBLIC_BASE_URL=https://example.invalid \
   "$image"
 
