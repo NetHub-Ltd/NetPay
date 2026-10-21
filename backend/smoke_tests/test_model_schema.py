@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import CheckConstraint
+from sqlalchemy import CheckConstraint, DateTime
 from sqlmodel import SQLModel
 
 from app import models  # noqa: F401 — register every table before inspecting metadata
@@ -19,9 +19,9 @@ def test_all_domain_tables_inherit_shared_persistence_columns() -> None:
     for table in SQLModel.metadata.tables.values():
         assert expected.issubset(set(table.columns.keys())), table.name
         assert table.columns["id"].primary_key, table.name
-        for name in ("created_at", "updated_at", "deleted_at"):
-            column = table.columns[name]
-            assert column.type.timezone is True, f"{table.name}.{name} must be timezone-aware"
+        for column in table.columns:
+            if isinstance(column.type, DateTime):
+                assert column.type.timezone is True, f"{table.name}.{column.name} must be timezone-aware"
 
 
 def test_utc_clock_returns_aware_utc_datetime() -> None:

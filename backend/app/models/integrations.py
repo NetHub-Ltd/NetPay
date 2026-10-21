@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Column, LargeBinary, UniqueConstraint
+from sqlalchemy import Column, DateTime, LargeBinary, UniqueConstraint
 from sqlmodel import Field
 
 from app.models.base import BaseMixin
@@ -30,12 +30,12 @@ class DarajaIntegration(BaseMixin, table=True):
     consumer_secret_ciphertext: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     passkey_ciphertext: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     credential_status: str = Field(default="pending", max_length=24, index=True)
-    credentials_validated_at: datetime | None = Field(default=None)
+    credentials_validated_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     credential_version: int = Field(default=1, ge=1, nullable=False)
     c2b_enabled: bool = Field(default=False, nullable=False)
     c2b_registration_status: str = Field(default="not_requested", max_length=24)
     stk_callback_url: str = Field(max_length=512)
     c2b_validation_url: str = Field(max_length=512)
     c2b_confirmation_url: str = Field(max_length=512)
-    c2b_registered_at: datetime | None = Field(default=None)
+    c2b_registered_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     registration_error: str | None = Field(default=None, max_length=500)

@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, JSON
+from sqlalchemy import Column, DateTime, JSON
 from sqlmodel import Field
 
 from app.models.base import BaseMixin
@@ -34,6 +34,6 @@ class M2MClient(BaseMixin, table=True):
     secret_hash: str = Field(max_length=255)
     scopes: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     status: str = Field(default="active", max_length=24, index=True)
-    last_used_at: datetime | None = Field(default=None)
-    expires_at: datetime | None = Field(default=None)
-    revoked_at: datetime | None = Field(default=None)
+    last_used_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    revoked_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))

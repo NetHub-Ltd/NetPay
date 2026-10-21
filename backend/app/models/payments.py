@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import JSON, Column, CheckConstraint, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, CheckConstraint, UniqueConstraint
 from sqlmodel import Field
 
 from app.models.base import BaseMixin, utc_now
@@ -39,11 +39,11 @@ class Payment(BaseMixin, table=True):
     provider_receipt: str | None = Field(default=None, max_length=64, index=True)
     provider_result_code: str | None = Field(default=None, max_length=32)
     provider_result_description: str | None = Field(default=None, max_length=250)
-    initiated_at: datetime | None = Field(default=None)
-    completed_at: datetime | None = Field(default=None)
-    succeeded_at: datetime | None = Field(default=None)
-    failed_at: datetime | None = Field(default=None)
-    cancelled_at: datetime | None = Field(default=None)
+    initiated_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    completed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    succeeded_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    failed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    cancelled_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 
 class IdempotencyRecord(BaseMixin, table=True):
@@ -59,7 +59,7 @@ class IdempotencyRecord(BaseMixin, table=True):
     resource_id: UUID | None = Field(default=None, index=True)
     response_status: int | None = Field(default=None)
     response_snapshot: dict[str, object] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
-    expires_at: datetime | None = Field(default=None, index=True)
+    expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), index=True)
 
 
 class ProviderCallback(BaseMixin, table=True):
@@ -79,5 +79,5 @@ class ProviderCallback(BaseMixin, table=True):
     safe_payload: dict[str, object] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     processing_status: str = Field(default="received", max_length=24, index=True)
     processing_error: str | None = Field(default=None, max_length=500)
-    received_at: datetime = Field(default_factory=utc_now, nullable=False)
-    processed_at: datetime | None = Field(default=None)
+    received_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True), nullable=False)
+    processed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))

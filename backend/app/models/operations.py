@@ -8,7 +8,7 @@ than a substitute for typed fields used in matching and integrity constraints.
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, Column, CheckConstraint, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, CheckConstraint, UniqueConstraint
 from sqlmodel import Field
 
 from app.models.base import BaseMixin, utc_now
@@ -28,8 +28,8 @@ class ProviderRequest(BaseMixin, table=True):
     outcome: str = Field(default="started", max_length=32, index=True)
     request_metadata: dict[str, object] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     response_metadata: dict[str, object] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
-    started_at: datetime = Field(default_factory=utc_now, nullable=False)
-    completed_at: datetime | None = Field(default=None)
+    started_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True), nullable=False)
+    completed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 
 class PaymentVerification(BaseMixin, table=True):
@@ -41,7 +41,7 @@ class PaymentVerification(BaseMixin, table=True):
     provider_request_id: UUID | None = Field(default=None, foreign_key="providerrequest.id", index=True)
     status: str = Field(default="requested", max_length=32, index=True)
     provider_transaction_id: str | None = Field(default=None, max_length=120, index=True)
-    checked_at: datetime = Field(default_factory=utc_now, nullable=False)
+    checked_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True), nullable=False)
     evidence: dict[str, object] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     error_code: str | None = Field(default=None, max_length=100)
     error_message: str | None = Field(default=None, max_length=500)
@@ -57,11 +57,11 @@ class ReconciliationRun(BaseMixin, table=True):
     merchant_id: UUID = Field(foreign_key="merchant.id", index=True)
     integration_id: UUID = Field(foreign_key="darajaintegration.id", index=True)
     source: str = Field(max_length=48)
-    window_start: datetime = Field(nullable=False)
-    window_end: datetime = Field(nullable=False)
+    window_start: datetime = Field(sa_type=DateTime(timezone=True), nullable=False)
+    window_end: datetime = Field(sa_type=DateTime(timezone=True), nullable=False)
     status: str = Field(default="pending", max_length=32, index=True)
-    started_at: datetime | None = Field(default=None)
-    completed_at: datetime | None = Field(default=None)
+    started_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    completed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     summary: dict[str, object] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     error_summary: str | None = Field(default=None, max_length=500)
 
@@ -87,7 +87,7 @@ class ReconciliationItem(BaseMixin, table=True):
     provider_status: str | None = Field(default=None, max_length=48)
     netpay_status: str | None = Field(default=None, max_length=48)
     details: dict[str, object] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
-    resolved_at: datetime | None = Field(default=None)
+    resolved_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     resolution_note: str | None = Field(default=None, max_length=500)
 
 
@@ -101,7 +101,7 @@ class WebhookEndpoint(BaseMixin, table=True):
     # Ciphertext or secret-manager reference only; never serialize this field to APIs.
     signing_secret_ciphertext: bytes | None = Field(default=None)
     signing_secret_reference: str | None = Field(default=None, max_length=255)
-    last_success_at: datetime | None = Field(default=None)
+    last_success_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 
 class EventDelivery(BaseMixin, table=True):
@@ -116,10 +116,10 @@ class EventDelivery(BaseMixin, table=True):
     webhook_endpoint_id: UUID = Field(foreign_key="webhookendpoint.id", index=True)
     status: str = Field(default="pending", max_length=32, index=True)
     attempt_count: int = Field(default=0, ge=0, nullable=False)
-    next_attempt_at: datetime = Field(default_factory=utc_now, index=True, nullable=False)
+    next_attempt_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True), index=True, nullable=False)
     last_http_status: int | None = Field(default=None)
     last_error: str | None = Field(default=None, max_length=500)
-    delivered_at: datetime | None = Field(default=None)
+    delivered_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 
 class AuditLog(BaseMixin, table=True):
@@ -131,5 +131,5 @@ class AuditLog(BaseMixin, table=True):
     action: str = Field(max_length=100, index=True)
     target_type: str = Field(max_length=100)
     target_id: str | None = Field(default=None, max_length=120, index=True)
-    occurred_at: datetime = Field(default_factory=utc_now, index=True, nullable=False)
+    occurred_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True), index=True, nullable=False)
     metadata_json: dict[str, object] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))

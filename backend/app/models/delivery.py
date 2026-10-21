@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import DateTime, UniqueConstraint
 from sqlmodel import Field
 
 from app.models.base import BaseMixin, utc_now
@@ -27,4 +27,4 @@ class EventDeliveryAttempt(BaseMixin, table=True):
     http_status: int | None = Field(default=None)
     safe_error_code: str | None = Field(default=None, max_length=100)
     duration_ms: int = Field(default=0, ge=0, nullable=False)
-    attempted_at: datetime = Field(default_factory=utc_now, nullable=False)
+    attempted_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True), nullable=False)

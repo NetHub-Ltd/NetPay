@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, JSON, UniqueConstraint
+from sqlalchemy import Column, DateTime, JSON, UniqueConstraint
 from sqlmodel import Field
 
 from app.models.base import BaseMixin, utc_now
@@ -23,7 +23,7 @@ class EventOutbox(BaseMixin, table=True):
     payload: dict[str, object] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     delivery_status: str = Field(default="pending", max_length=24, index=True)
     attempts: int = Field(default=0, ge=0, nullable=False)
-    next_attempt_at: datetime = Field(default_factory=utc_now, index=True, nullable=False)
+    next_attempt_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True), index=True, nullable=False)
     last_error_code: str | None = Field(default=None, max_length=100)
-    published_at: datetime | None = Field(default=None)
-    delivered_at: datetime | None = Field(default=None)
+    published_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    delivered_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
