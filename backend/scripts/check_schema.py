@@ -8,7 +8,7 @@ from app import models  # noqa: F401 — register every table in SQLModel.metada
 
 
 def main() -> None:
-    database_url = get_settings().database_url
+    database_url = get_settings().database_url.get_secret_value()
     sync_url = database_url.replace("sqlite+aiosqlite://", "sqlite://", 1).replace(
         "postgresql+asyncpg://", "postgresql+psycopg2://", 1
     )
