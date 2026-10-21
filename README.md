@@ -26,7 +26,23 @@ NetPay is being rebuilt as a minimal, multi-merchant M-Pesa Daraja gateway.
 - Daraja Transaction Status requires additional initiator/authorization configuration. NetPay must not claim provider verification until the relevant product and credentials are confirmed for a merchant.
 - C2B registration is optional. Do not enable production external validation when merchant-specific account validation rules are required; that policy is not implemented yet.
 - The dashboard does not yet include NetHub identity/session integration and must not expose merchant data until that is completed.
-- A frontend package lockfile still needs to be generated and committed; CI currently installs the pinned direct dependency versions with npm install.
+
+## Frontend and local development
+
+The production image builds the Next.js App Router frontend as a static export, then copies the exported files into the FastAPI application image. FastAPI serves the public site and dashboard preview from the same origin; API, OpenAPI, and health routes are registered before the static-file fallback. Node.js is used only during the image build, not in the runtime container.
+
+For frontend-only development:
+
+```bash
+cd frontend
+cp .env.example .env.local
+npm ci
+npm run dev
+```
+
+The Next.js development server listens on port 3000. The backend API runs separately on port 8000 during development. The production container startup smoke test verifies that FastAPI serves the home page, dashboard preview, robots file, sitemap, and generated social image.
+
+The build-time `NEXT_PUBLIC_SITE_URL` value controls canonical URLs, metadata, JSON-LD, robots, and the sitemap. Set it to the public site origin when building a non-production image.
 
 ## Repository and deployment
 
