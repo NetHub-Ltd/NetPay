@@ -1,67 +1,41 @@
 # NetPay backend
 
-FastAPI service for the multi-merchant M-Pesa Daraja gateway.
+Fresh FastAPI service using PostgreSQL as durable storage, SQLModel for typed persistence, Alembic for versioned schema changes, and Redis for auxiliary caching/coordination. This phase does not restore legacy backend code.
 
 ## Local development
 
-Run from this directory:
+1. Start PostgreSQL and Redis locally.
+2. Copy `.env.example` to `.env` and adjust local-only values.
+3. Install, migrate, and run:
 
 ```bash
-uv sync --extra dev
-uv run uvicorn app.main:app --reload --port 8000
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -e ".[dev]"
+alembic upgrade head
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API exposes OpenAPI docs at `/docs`, process liveness at `/health/live`, and dependency readiness at `/health/ready`. The compatibility `/health` endpoint remains for existing deployment probes.
+PostgreSQL is required at startup. Redis is auxiliary: an unavailable Redis instance is logged and reported by readiness but does not block startup. Payment correctness must never rely on Redis durability.
 
-Set `DATABASE_URL` to PostgreSQL for integration and production work. Database and Redis URLs are loaded as `SecretStr` values by Pydantic Settings, so they are masked in settings representations and validation errors. SQLite is intended for isolated unit tests. `REDIS_URL` defaults to `redis://localhost:6379/0`; Redis is auxiliary, and an unavailable Redis instance is logged as a degraded dependency rather than preventing API startup. PostgreSQL connectivity is mandatory at startup. Production requires a non-default `SECRET_KEY` and a valid Fernet `CREDENTIAL_ENCRYPTION_KEY`; generate the latter with:
+## Database contract
+
+- Runtime `DATABASE_URL` uses `postgresql+asyncpg`; Alembic derives `postgresql+psycopg` from the same validated settings.
+- Connection URLs are secret-wrapped and must never be logged.
+- Datetimes use timezone-aware UTC values and PostgreSQL `TIMESTAMPTZ` columns.
+- Money is stored as integer minor units plus currency code.
+- Constraints enforce unique merchant references, idempotency keys, provider event IDs, and positive payment amounts.
+- `deleted_at` is the sole soft-delete marker.
+- Never edit an applied migration; add a new revision for later schema changes.
+
+## Health
+
+- `GET /health/live`: process liveness.
+- `GET /health/ready`: PostgreSQL required; Redis status reported separately.
+- `GET /docs`: OpenAPI docs.
+
+## Tests
 
 ```bash
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+pytest -q smoke_tests
 ```
-
-Apply schema changes explicitly before starting the application:
-
-```bash
-uv run alembic upgrade head
-```
-
-PostgreSQL is the source of truth for payments, idempotency, callback deduplication, delivery attempts, and the transactional event outbox. The API verifies PostgreSQL and Redis connectivity during lifespan startup. PostgreSQL failure prevents startup; Redis failure is logged and tolerated because Redis is auxiliary and not required for payment correctness or recovery. The worker uses PostgreSQL row locking and retry timestamps.
-
-## Current implementation boundary
-
-The initial API/runtime foundation, credential encryption primitive, and first SQLModel schema are in place. Payment initiation, merchant authentication, callback state transitions, and event delivery are implemented in subsequent vertical slices; do not treat this foundation commit as a production-ready payment gateway.
-
-## M2M client bootstrap
-
-After migrations, provision the first merchant/client from a trusted operator environment:
-
-```bash
-MERCHANT_NAME="Example Merchant" uv run python -m scripts.provision_m2m_client
-```
-
-The command creates a merchant, stores only a scrypt hash of the generated client secret, and prints the client secret once. Transfer it to a secret manager immediately. The default scopes are `integrations:read`, `integrations:write`, `payments:read`, `payments:write`, `events:read`, and `events:write`; override them with `NETPAY_CLIENT_SCOPES` if needed.
-
-Exchange the client ID and secret for a short-lived bearer token:
-
-```bash
-curl -u "$NETPAY_CLIENT_ID:$NETPAY_CLIENT_SECRET" \
-  -X POST http://localhost:8000/api/v1/auth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  --data "grant_type=client_credentials"
-```
-
-Use the returned access token as `Authorization: Bearer <token>`. Tokens expire after 15 minutes. Integration onboarding validates the Daraja OAuth consumer key/secret; it does not prove the shortcode permissions or passkey are valid. C2B URL registration remains opt-in.
-
-## Webhook delivery worker
-
-Run a separate worker process alongside the API:
-
-```bash
-uv run python -m app.worker
-```
-
-The worker recovers callbacks that arrived before STK correlation IDs were committed and drains the PostgreSQL outbox. No Redis or external broker is required for correctness. Configure one optional destination per merchant with `POST /api/v1/event-destination` using the `events:write` scope. The response contains a newly generated signing secret once; save it immediately because the stored value is encrypted and cannot be retrieved. Repeating PUT rotates the signing secret.
-
-Webhook requests include `X-NetPay-Event-Id`, `Idempotency-Key`, and `X-NetPay-Signature: sha256=<hex>`. The signature is HMAC-SHA256 over the exact request body. Consumers should verify the signature and deduplicate by event ID. Failed deliveries retry with exponential backoff and eventually enter a dead-letter state; delivery attempts are retained in PostgreSQL.
-
-The public dashboard currently has a no-index entry screen only. Merchant sign-in/session integration is not yet wired; no merchant data is exposed by that page.

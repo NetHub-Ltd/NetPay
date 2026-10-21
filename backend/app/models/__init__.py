@@ -1,8 +1,7 @@
-"""SQLModel tables used by NetPay's durable domain layer."""
+"""Register the complete NetPay SQLModel schema for runtime and Alembic."""
 
 from app.models.attempts import PaymentAttempt
 from app.models.base import BaseMixin
-from app.models.destinations import EventDestination
 from app.models.delivery import EventDeliveryAttempt
 from app.models.events import EventOutbox
 from app.models.integrations import DarajaIntegration
@@ -24,7 +23,6 @@ __all__ = [
     "DarajaIntegration",
     "EventDelivery",
     "EventDeliveryAttempt",
-    "EventDestination",
     "EventOutbox",
     "IdempotencyRecord",
     "M2MClient",

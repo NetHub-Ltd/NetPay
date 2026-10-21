@@ -1,1 +1,1 @@
-"""NetPay API application package."""
+"""NetPay backend application package."""

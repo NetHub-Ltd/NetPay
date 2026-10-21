@@ -1,118 +1,70 @@
-"""NetPay FastAPI entrypoint and operational health endpoints."""
-
+"""NetPay API and database/cache lifecycle."""
 from contextlib import asynccontextmanager
-import os
-from pathlib import Path
-from collections.abc import AsyncIterator
-
-from fastapi import FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from typing import AsyncIterator
+from fastapi import FastAPI, HTTPException, Request
 from loguru import logger
-
-from app.config import get_settings
-from app.db import check_database, dispose_engine
-from app.logging_config import configure_logging
-from app.redis_client import check_redis, dispose_redis
-from app.routers.auth import router as auth_router
-from app.routers.callbacks import router as callbacks_router
-from app.routers.events import router as events_router
-from app.routers.integrations import router as integrations_router
-from app.routers.payments import router as payments_router
-
-settings = get_settings()
-configure_logging(settings.log_level)
-
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncEngine
+from app.core.cache import check_redis, create_redis_client
+from app.core.config import Settings, get_settings
+from app.core.database import check_database, create_database_engine, create_session_factory
+from app import models  # noqa: F401 - register SQLModel metadata
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    logger.info("Starting {} in {} mode", settings.app_name, settings.environment)
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    """Initialize required PostgreSQL and optional Redis; dispose clients on shutdown."""
+    settings: Settings = get_settings()
+    engine: AsyncEngine = create_database_engine(settings)
+    redis_client: Redis | None = None
+    application.state.engine = engine
+    application.state.session_factory = create_session_factory(engine)
+    application.state.redis = None
     try:
-        # PostgreSQL is the financial source of truth: do not accept traffic if
-        # its configured connection cannot execute a trivial query.
-        await check_database()
-        logger.info("Database connectivity verified")
-
-        # Redis is auxiliary, so report degradation without blocking API startup.
-        try:
-            await check_redis()
-            logger.info("Redis connectivity verified")
-        except Exception as exc:
-            logger.warning(
-                "Redis unavailable; continuing without Redis-dependent features ({})",
-                type(exc).__name__,
-            )
-
-        yield
-    except Exception as exc:
-        logger.error("Application startup or lifespan failed ({})", type(exc).__name__)
-        raise
-    finally:
-        try:
-            await dispose_redis()
-        finally:
+        await check_database(engine)
+        logger.info("database_connectivity=ok")
+        if settings.redis_enabled:
+            candidate = create_redis_client(settings)
             try:
-                await dispose_engine()
-            finally:
-                logger.info("Stopped {}", settings.app_name)
+                await check_redis(candidate)
+                redis_client = candidate
+                application.state.redis = candidate
+                logger.info("redis_connectivity=ok")
+            except Exception as exc:
+                logger.warning("redis_connectivity=unavailable error_type={}", type(exc).__name__)
+                await candidate.aclose()
+        yield
+    finally:
+        if redis_client is not None:
+            await redis_client.aclose()
+        await engine.dispose()
+        application.state.engine = None
+        application.state.session_factory = None
+        application.state.redis = None
 
+app = FastAPI(title="NetPay API", version="0.2.0", description="NetPay payment gateway API.", docs_url="/docs", redoc_url=None, lifespan=lifespan)
 
-app = FastAPI(
-    title=settings.app_name,
-    version="0.1.0",
-    description="Multi-merchant M-Pesa Daraja gateway API",
-    lifespan=lifespan,
-)
-
-
-app.include_router(auth_router)
-app.include_router(integrations_router)
-app.include_router(payments_router)
-app.include_router(callbacks_router)
-app.include_router(events_router)
-
-allowed_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
-if allowed_origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=allowed_origins,
-        allow_credentials=False,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
-    )
-
-
-@app.get("/health/live", tags=["health"], include_in_schema=False)
+@app.get("/health/live", tags=["health"], summary="Liveness probe")
 async def liveness() -> dict[str, str]:
-    """Process liveness only; do not depend on external services."""
+    """Report process liveness without external dependency calls."""
     return {"status": "ok"}
 
-
-@app.get("/health/ready", tags=["health"], include_in_schema=False)
-async def readiness() -> dict[str, str]:
-    """Readiness requires PostgreSQL/DB, not optional Redis."""
+@app.get("/health/ready", tags=["health"], summary="Dependency readiness")
+async def readiness(request: Request) -> dict[str, str]:
+    """Require PostgreSQL and report Redis separately as an auxiliary dependency."""
+    engine: AsyncEngine | None = getattr(request.app.state, "engine", None)
+    if engine is None:
+        raise HTTPException(status_code=503, detail="database_not_initialized")
     try:
-        await check_database()
+        await check_database(engine)
     except Exception as exc:
-        logger.warning("Readiness database check failed: {}", type(exc).__name__)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"status": "not_ready", "dependency": "database"},
-        ) from exc
-    return {"status": "ready"}
-
-
-@app.get("/health", tags=["health"], include_in_schema=False)
-async def health_compatibility() -> dict[str, str]:
-    """Compatibility endpoint for existing deployment probes."""
-    return await readiness()
-
-
-@app.get("/api", tags=["meta"])
-async def api_root() -> dict[str, str]:
-    return {"name": settings.app_name, "status": "running", "docs": "/docs"}
-
-
-static_dir = Path(os.environ.get("STATIC_DIR", ""))
-if static_dir.is_dir() and (static_dir / "index.html").is_file():
-    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="frontend")
+        logger.error("database_readiness=failed error_type={}", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="database_unavailable") from exc
+    redis_client: Redis | None = getattr(request.app.state, "redis", None)
+    redis_status = "disabled" if not get_settings().redis_enabled else "unavailable"
+    if redis_client is not None:
+        try:
+            await check_redis(redis_client)
+            redis_status = "ok"
+        except Exception as exc:
+            logger.warning("redis_readiness=failed error_type={}", type(exc).__name__)
+    return {"status": "ok", "database": "ok", "redis": redis_status}

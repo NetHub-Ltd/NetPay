@@ -1,90 +1,71 @@
 # NetPay database schema
 
-## Purpose
+## Source of truth
 
-This document describes the initial durable persistence boundary for NetPay's
-multi-merchant Daraja gateway. PostgreSQL is authoritative for payment state,
-provider evidence, reconciliation work, and outbound events. Redis is only an
-auxiliary coordination mechanism.
+PostgreSQL is authoritative for merchant configuration, payment state, provider
+evidence, reconciliation history, idempotency, audit records, and durable event
+delivery. Redis is auxiliary and must never be the only place where pending
+financial or delivery work exists.
 
-## Shared table contract
+## Shared record contract
 
-All SQLModel table models inherit `BaseMixin`:
+All 16 SQLModel tables inherit a UUID primary key and timezone-aware UTC
+`created_at`, `updated_at`, and nullable `deleted_at` lifecycle fields.
+The timestamp factory returns aware UTC instants. Database timestamps use
+PostgreSQL `TIMESTAMP WITH TIME ZONE`. Monetary values are integers in minor
+units; currency is stored separately.
 
-- `id`: application-generated UUID primary key.
-- `created_at`: timezone-aware UTC instant.
-- `updated_at`: timezone-aware UTC instant, refreshed by SQLAlchemy on ORM updates.
-- `deleted_at`: nullable soft-deletion timestamp; `NULL` means active.
-
-The mixin does not automatically filter deleted rows. Application queries must
-explicitly scope active records, and immutable financial evidence/audit records
-must not expose ordinary delete operations. PostgreSQL stores these timestamps
-as `TIMESTAMP WITH TIME ZONE` (`timestamptz`); normalize values to UTC at
-application boundaries and reject naive datetimes.
+Soft deletion is not an automatic query filter. Callers must scope active rows
+explicitly. Payment, callback, reconciliation, outbox, delivery-attempt, and
+audit evidence must not be hard-deleted by ordinary application operations.
 
 ## Tables
 
-| Table / model | Responsibility |
+| Table | Responsibility |
 |---|---|
-| `merchant` / `Merchant` | Tenant identity, status, default currency, contact details and non-critical attributes |
-| `m2mclient` / `M2MClient` | Merchant-scoped machine credentials; only a one-way secret hash is stored |
-| `darajaintegration` / `DarajaIntegration` | Encrypted provider credentials, environment, shortcode, callback URLs and optional C2B registration state |
-| `payment` / `Payment` | Canonical merchant-owned payment and verified outcome |
-| `paymentattempt` / `PaymentAttempt` | Individual provider execution attempts |
-| `idempotencyrecord` / `IdempotencyRecord` | Request identity and safe replay metadata |
-| `providercallback` / `ProviderCallback` | Deduplicated inbound provider evidence |
-| `providerrequest` / `ProviderRequest` | Outbound provider request/response metadata with secrets removed |
-| `paymentverification` / `PaymentVerification` | Appendable history of transaction-status verification |
-| `reconciliationrun` / `ReconciliationRun` | Bounded reconciliation job and summary |
-| `reconciliationitem` / `ReconciliationItem` | Matched, unmatched and discrepant provider records |
-| `eventoutbox` / `EventOutbox` | Durable domain events committed with payment changes |
-| `webhookendpoint` / `WebhookEndpoint` | Multi-endpoint merchant event subscription configuration |
-| `eventdelivery` / `EventDelivery` | Current delivery state for one event/endpoint pair |
-| `eventdeliveryattempt` / `EventDeliveryAttempt` | Append-only delivery attempt evidence |
-| `eventdestination` / `EventDestination` | Compatibility table for the existing single-destination API |
-| `auditlog` / `AuditLog` | Append-only security-sensitive administrative history |
+| `merchant` | Merchant identity and default currency |
+| `providerintegration` (`DarajaIntegration`) | Merchant-scoped Daraja environment, encrypted credentials, shortcode/product configuration, generated callback URLs and opt-in C2B registration state |
+| `m2mclient` | Hashed machine-client secret, merchant ownership, scopes, expiry and revocation |
+| `payment` | Canonical payment intent, amount, currency, provider identifiers and verified status |
+| `paymentattempt` | Attempt-level status, correlation ID and safe error metadata |
+| `idempotencyrecord` | Merchant/client request fingerprint and replay snapshot |
+| `providercallback` | Deduplicated provider callback evidence and processing status |
+| `paymentverification` | Historical provider verification evidence |
+| `providerrequest` | Safe request/response metadata for outbound provider operations |
+| `reconciliationrun` | Bounded reconciliation window and execution result |
+| `reconciliationitem` | Individual match or discrepancy and resolution details |
+| `eventoutbox` | Transactional, stable-ID event records |
+| `webhookendpoint` | Merchant-owned event destination and encrypted signing-secret material |
+| `eventdelivery` | Current state and retry schedule for an event/endpoint pair |
+| `eventdeliveryattempt` | Append-only HTTP delivery attempt history |
+| `auditevent` (`AuditLog`) | Security-sensitive actor/action/resource audit evidence |
 
-The compatibility `EventDestination` table remains because the current API and
-worker depend on it. The new `WebhookEndpoint` and `EventDelivery` tables
-establish the normalized multi-endpoint model; switching the dispatcher to that
-model is a separate behavior change and must be tested before the compatibility
-path is retired.
+## Safety invariants
 
-## Financial and provider invariants
+- An accepted STK initiation request is not payment success.
+- Provider callbacks are untrusted; an integration ID is a routing identifier,
+  not authentication. Match callbacks to known payment attempts and process
+  duplicates idempotently.
+- A callback fingerprint and provider event key are database-unique within an
+  integration.
+- Idempotency keys are unique within a merchant. Request hashes are stored so
+  reusing a key with a different request can be rejected.
+- Payment amounts must be positive integer minor units.
+- Reconciliation windows must have a start before their end; reported amounts
+  cannot be negative.
+- Outbox state is stored in PostgreSQL so dispatch can resume after Redis or
+  application restarts.
+- Daraja consumer keys, consumer secrets, passkeys and webhook signing secrets
+  are ciphertext or secret references only; plaintext must never be logged or
+  returned from an API.
+- C2B URL registration is optional and must only be attempted when a merchant
+  explicitly enables C2B. STK-only integrations remain valid.
 
-- Monetary values are integer minor units; never use binary floating point.
-  Provider-specific accepted precision must be validated before making a request.
-- A successful STK initiation response is not proof of payment success.
-- An ambiguous timeout stays unresolved until authoritative evidence resolves it.
-- Match STK results using the provider request identifiers and the correct
-  integration/attempt. Match C2B with provider transaction identity where
-  available. Never match only by amount and phone.
-- Callback deduplication keys must use stable, flow-specific identifiers.
-  The integration ID is routing data, not authentication.
-- Idempotency conflicts are arbitrated by PostgreSQL uniqueness constraints.
-  Reusing a key with a different canonical request is a conflict.
-- Payment state and its outbox event must be written in the same transaction.
-- Provider evidence, reconciliation findings and audit history are preserved;
-  corrections are represented as new evidence/resolution, not silent erasure.
-- Never cascade-delete a merchant's payment or provider history.
+## Migration workflow
 
-## Migration and runtime conventions
-
-- Application sessions use SQLAlchemy async sessions with `asyncpg`.
-- Alembic may use the synchronous `psycopg2` URL derived from the same
-  `DATABASE_URL` setting.
-- Revision `0002_durable_domain_records` is additive and leaves revision
-  `0001_initial_domain` intact.
-- Run migrations before the schema drift checker. The checker currently
-  verifies table and column presence; it does not prove all constraints,
-  indexes or state-machine behavior are correct.
-- Migration validation, callback concurrency tests, idempotency race tests,
-  tenant-isolation tests and outbox transaction tests are required before
-  considering this schema production-ready.
-
-## Deliberately deferred
-
-The double-entry ledger is not created until NetPay holds merchant balances,
-owes funds, accounts for fees, or performs settlement accounting. Payouts,
-automated reversals, broker infrastructure and unrelated payment products are
-outside the initial scope.
+Use `alembic upgrade head` to apply the versioned schema. The initial revision
+is retained; `0002_full_domain_schema` expands existing records and creates
+the remaining domain tables without dropping the original foundation tables.
+The backend uses an async SQLAlchemy/SQLModel engine and request-scoped
+`AsyncSession` instances. Alembic uses the same validated database URL through
+the synchronous psycopg driver.
