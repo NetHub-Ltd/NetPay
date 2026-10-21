@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime
+from sqlalchemy import DateTime
 from sqlmodel import Field, SQLModel
 
 
@@ -22,24 +22,29 @@ def require_aware_utc(value: datetime) -> datetime:
 class BaseMixin(SQLModel):
     """Provide shared identity, UTC timestamps, and soft-deletion behavior.
 
-    Table models inherit these fields and lifecycle methods. Queries must still
-    explicitly exclude soft-deleted rows; this mixin cannot safely impose a
-    global filter on every administrative, audit, or reconciliation query.
+    Table models inherit these fields and lifecycle methods. Use SQLModel's
+    sa_type mapping instead of sharing SQLAlchemy Column instances across
+    tables; each inheriting table must receive its own independent columns.
+    Queries must still explicitly exclude soft-deleted rows.
     """
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     created_at: datetime = Field(
         default_factory=utc_now,
-        sa_column=Column(DateTime(timezone=True), nullable=False),
+        sa_type=DateTime(timezone=True),
+        nullable=False,
     )
     updated_at: datetime = Field(
         default_factory=utc_now,
-        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=utc_now),
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+        sa_column_kwargs={"onupdate": utc_now},
     )
     # NULL denotes active. Financial evidence must not expose ordinary deletion.
     deleted_at: datetime | None = Field(
         default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True),
+        sa_type=DateTime(timezone=True),
+        nullable=True,
     )
 
     def soft_delete(self, when: datetime | None = None) -> None:
