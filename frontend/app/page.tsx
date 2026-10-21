@@ -79,7 +79,7 @@ const capabilities = [
 
 export default function HomePage() {
   return (
-    <main id="main-content">
+    <>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:font-semibold focus:text-[#101b2d] focus:shadow-lg">Skip to content</a>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <header className="border-b border-white/10 bg-[#101b2d] text-white">
@@ -97,6 +97,8 @@ export default function HomePage() {
             Dashboard preview <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </nav>
+      </header>
+      <main id="main-content" tabIndex={-1}>
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute -right-24 top-8 size-96 rounded-full bg-[#20b89a]/15 blur-3xl" />
           <div className="mx-auto grid max-w-7xl gap-14 px-6 pb-24 pt-20 md:grid-cols-[1.05fr_0.95fr] md:items-center md:pb-32 md:pt-28 lg:px-8">
@@ -161,7 +163,6 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-      </header>
 
       <section id="capabilities" className="mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-28">
         <div className="max-w-2xl">
@@ -222,12 +223,14 @@ Content-Type: application/json
         </div>
       </section>
 
+      </main>
+
       <footer className="border-t border-[#e3e8ef]">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-8 text-sm text-[#627087] sm:flex-row sm:items-center sm:justify-between lg:px-8">
           <p>© {new Date().getFullYear()} NetPay by NetHub.</p>
           <p>Payment state you can build on.</p>
         </div>
       </footer>
-    </main>
+    </>
   );
 }
