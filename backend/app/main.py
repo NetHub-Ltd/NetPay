@@ -48,9 +48,13 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         logger.error("Application startup or lifespan failed ({})", type(exc).__name__)
         raise
     finally:
-        await dispose_redis()
-        await dispose_engine()
-        logger.info("Stopped {}", settings.app_name)
+        try:
+            await dispose_redis()
+        finally:
+            try:
+                await dispose_engine()
+            finally:
+                logger.info("Stopped {}", settings.app_name)
 
 
 app = FastAPI(
