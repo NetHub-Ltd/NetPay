@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import main
+from app.config import Settings
 from app.db import check_database, dispose_engine
 
 
@@ -118,3 +119,16 @@ async def test_redis_connectivity_check_pings_configured_service() -> None:
         await check_redis()
     finally:
         await dispose_redis()
+
+
+def test_database_and_redis_urls_are_masked_in_settings_repr() -> None:
+    settings = Settings(
+        database_url="postgresql+asyncpg://gateway:db-password@db:5432/gateway",
+        redis_url="redis://:redis-password@redis:6379/0",
+        environment="test",
+    )
+
+    rendered = repr(settings)
+    assert "db-password" not in rendered
+    assert "redis-password" not in rendered
+    assert "SecretStr('**********')" in rendered
