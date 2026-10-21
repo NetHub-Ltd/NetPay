@@ -33,6 +33,16 @@ def _add_common_columns(table: str, *, add_updated_at: bool = False) -> None:
 
 
 def upgrade() -> None:
+    # The original callback/delivery tables used received_at/attempted_at rather
+    # than created_at. Backfill the shared creation timestamp from those source
+    # timestamps before the common updated_at backfill runs.
+    op.add_column("providercallback", sa.Column("created_at", AWARE_DATETIME, nullable=True))
+    op.execute(sa.text("UPDATE providercallback SET created_at = received_at WHERE created_at IS NULL"))
+    op.alter_column("providercallback", "created_at", existing_type=AWARE_DATETIME, nullable=False)
+    op.add_column("eventdeliveryattempt", sa.Column("created_at", AWARE_DATETIME, nullable=True))
+    op.execute(sa.text("UPDATE eventdeliveryattempt SET created_at = attempted_at WHERE created_at IS NULL"))
+    op.alter_column("eventdeliveryattempt", "created_at", existing_type=AWARE_DATETIME, nullable=False)
+
     # Existing models receive the common soft-delete column. Tables that
     # previously lacked updated_at receive it with a backfill from created_at.
     for table in (
@@ -305,3 +315,5 @@ def downgrade() -> None:
         op.drop_column(table, "deleted_at")
     for table in ("m2mclient", "idempotencyrecord", "providercallback", "eventoutbox", "eventdeliveryattempt"):
         op.drop_column(table, "updated_at")
+    op.drop_column("providercallback", "created_at")
+    op.drop_column("eventdeliveryattempt", "created_at")
