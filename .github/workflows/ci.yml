@@ -33,17 +33,12 @@ jobs:
           pip install -U pip
           pip install -e ".[dev]"
 
-      - name: Pytest
+      - name: Startup smoke tests (fresh suite only)
         env:
-          DATABASE_URL: sqlite+aiosqlite:///./data/test.db
-          SECRET_KEY: test-secret
-          CREDENTIAL_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+          DATABASE_URL: sqlite+aiosqlite:///./data/startup-test.db
+          SECRET_KEY: startup-test-secret
           ENVIRONMENT: test
-        run: |
-          mkdir -p data static
-          alembic upgrade head
-          python scripts/check_schema.py
-          pytest -q
+        run: pytest -q smoke_tests/test_startup.py
 
   frontend:
     runs-on: ubuntu-latest
@@ -84,10 +79,15 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build production image (no push)
+      - name: Build production image for startup smoke test (no push)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: backend/Dockerfile
+          platforms: linux/amd64
           push: false
+          load: true
           tags: ghcr.io/nethub-ltd/netpay:ci
+
+      - name: Run image startup smoke test
+        run: bash backend/scripts/container_startup_smoke.sh
