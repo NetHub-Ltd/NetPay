@@ -153,6 +153,7 @@ def upgrade() -> None:
     op.create_foreign_key("fk_eventoutbox_merchant_id_merchant", "eventoutbox", "merchant", ["merchant_id"], ["id"])
     op.add_column("eventoutbox", sa.Column("schema_version", sa.Integer(), server_default="1", nullable=False))
     op.create_unique_constraint("uq_eventoutbox_event_id", "eventoutbox", ["event_id"])
+    op.create_index("ix_eventoutbox_merchant_id", "eventoutbox", ["merchant_id"])
     op.create_index("ix_eventoutbox_event_type", "eventoutbox", ["event_type"])
     op.create_index("ix_eventoutbox_aggregate_id", "eventoutbox", ["aggregate_id"])
     op.create_index("ix_eventoutbox_published_at", "eventoutbox", ["published_at"])
@@ -305,13 +306,15 @@ def downgrade() -> None:
     op.drop_table("reconciliationrun")
     op.drop_table("paymentverification")
     op.drop_table("providerrequest")
+    op.drop_constraint("fk_idempotencyrecord_client_id_m2mclient", "idempotencyrecord", type_="foreignkey")
+    op.drop_column("idempotencyrecord", "client_id")
     op.drop_table("m2mclient")
 
     for index in ("ix_auditevent_occurred_at", "ix_auditevent_resource_id", "ix_auditevent_action", "ix_auditevent_merchant_id"):
         op.drop_index(index, table_name="auditevent")
     op.drop_column("auditevent", "occurred_at")
 
-    for index in ("ix_eventoutbox_published_at", "ix_eventoutbox_aggregate_id", "ix_eventoutbox_event_type"):
+    for index in ("ix_eventoutbox_published_at", "ix_eventoutbox_aggregate_id", "ix_eventoutbox_event_type", "ix_eventoutbox_merchant_id"):
         op.drop_index(index, table_name="eventoutbox")
     op.drop_constraint("uq_eventoutbox_event_id", "eventoutbox", type_="unique")
     op.drop_constraint("fk_eventoutbox_merchant_id_merchant", "eventoutbox", type_="foreignkey")
@@ -328,8 +331,7 @@ def downgrade() -> None:
 
     for index in ("ix_idempotencyrecord_expires_at", "ix_idempotencyrecord_resource_id", "ix_idempotencyrecord_client_id", "ix_idempotencyrecord_merchant_id"):
         op.drop_index(index, table_name="idempotencyrecord")
-    op.drop_constraint("fk_idempotencyrecord_client_id_m2mclient", "idempotencyrecord", type_="foreignkey")
-    for column in ("resource_id", "client_id"):
+    for column in ("resource_id",):
         op.drop_column("idempotencyrecord", column)
 
     for index in ("ix_paymentattempt_status", "ix_paymentattempt_payment_id"):
