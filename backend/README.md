@@ -13,7 +13,7 @@ uv run uvicorn app.main:app --reload --port 8000
 
 The API exposes OpenAPI docs at `/docs`, process liveness at `/health/live`, and dependency readiness at `/health/ready`. The compatibility `/health` endpoint remains for existing deployment probes.
 
-Set `DATABASE_URL` to PostgreSQL for integration and production work. SQLite is intended for isolated unit tests. Production requires a non-default `SECRET_KEY` and a valid Fernet `CREDENTIAL_ENCRYPTION_KEY`; generate the latter with:
+Set `DATABASE_URL` to PostgreSQL for integration and production work. Database and Redis URLs are loaded as `SecretStr` values by Pydantic Settings, so they are masked in settings representations and validation errors. SQLite is intended for isolated unit tests. `REDIS_URL` defaults to `redis://localhost:6379/0`; Redis is auxiliary, and an unavailable Redis instance is logged as a degraded dependency rather than preventing API startup. PostgreSQL connectivity is mandatory at startup. Production requires a non-default `SECRET_KEY` and a valid Fernet `CREDENTIAL_ENCRYPTION_KEY`; generate the latter with:
 
 ```bash
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
@@ -25,7 +25,7 @@ Apply schema changes explicitly before starting the application:
 uv run alembic upgrade head
 ```
 
-PostgreSQL is the source of truth for payments, idempotency, callback deduplication, delivery attempts, and the transactional event outbox. The current worker uses PostgreSQL row locking and retry timestamps; Redis is deliberately omitted until a measurable coordination or caching need justifies it.
+PostgreSQL is the source of truth for payments, idempotency, callback deduplication, delivery attempts, and the transactional event outbox. The API verifies PostgreSQL and Redis connectivity during lifespan startup. PostgreSQL failure prevents startup; Redis failure is logged and tolerated because Redis is auxiliary and not required for payment correctness or recovery. The worker uses PostgreSQL row locking and retry timestamps.
 
 ## Current implementation boundary
 
