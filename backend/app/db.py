@@ -1,12 +1,8 @@
-"""Async database engine and readiness check.
+"""Async SQLModel database engine, sessions, and connectivity checks."""
 
-PostgreSQL is the production source of truth. SQLite remains useful for fast
-unit tests; migrations and production deployment will use PostgreSQL.
-"""
-
-from sqlalchemy import text
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -21,7 +17,7 @@ def get_engine() -> AsyncEngine:
     if _engine is None:
         settings = get_settings()
         _engine = create_async_engine(
-            settings.database_url,
+            settings.database_url.get_secret_value(),
             pool_pre_ping=True,
             echo=False,
         )
