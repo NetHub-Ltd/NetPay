@@ -80,7 +80,7 @@ if frontend_static_dir.is_dir():
     # correctly typed URL for social crawlers that expect a conventional image path.
     generated_og_image = frontend_static_dir / "opengraph-image"
     if generated_og_image.is_file():
-        @app.get("/opengraph-image.png", include_in_schema=False)
+        @app.get("/opengraph-image", include_in_schema=False)
         async def open_graph_image() -> FileResponse:
             return FileResponse(generated_og_image, media_type="image/png")
 

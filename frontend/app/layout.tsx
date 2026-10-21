@@ -30,13 +30,11 @@ export const metadata: Metadata = {
     title: "NetPay | M-Pesa payment API for business software",
     description:
       "A consistent M-Pesa payments API for merchants, POS systems, and business applications.",
-    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "NetPay payment infrastructure" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "NetPay | M-Pesa payment API for business software",
     description: "Merchant-owned Daraja integrations and payment events for business software.",
-    images: ["/opengraph-image.png"],
   },
 };
 
