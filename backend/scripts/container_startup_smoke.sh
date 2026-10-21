@@ -34,10 +34,14 @@ for attempt in $(seq 1 30); do
   if docker logs "$api" 2>&1 | grep -q 'database_connectivity=ok'; then
     if curl --fail --silent http://127.0.0.1:8000/health/live >/dev/null; then
       curl --fail --silent http://127.0.0.1:8000/health/ready | grep -q '"database":"ok"'
-      curl --fail --silent --show-error http://127.0.0.1:8000/ | grep -q "NetPay"
-      curl --fail --silent --show-error http://127.0.0.1:8000/dashboard/ | grep -q "Merchant dashboard preview"
-      curl --fail --silent --show-error http://127.0.0.1:8000/robots.txt | grep -q "Sitemap:"
-      curl --fail --silent --show-error http://127.0.0.1:8000/sitemap.xml | grep -q "<urlset"
+      curl --fail --silent --show-error http://127.0.0.1:8000/ -o /tmp/netpay-home.html
+      grep -q "NetPay" /tmp/netpay-home.html
+      curl --fail --silent --show-error http://127.0.0.1:8000/dashboard/ -o /tmp/netpay-dashboard.html
+      grep -q "Merchant dashboard preview" /tmp/netpay-dashboard.html
+      curl --fail --silent --show-error http://127.0.0.1:8000/robots.txt -o /tmp/netpay-robots.txt
+      grep -q "Sitemap:" /tmp/netpay-robots.txt
+      curl --fail --silent --show-error http://127.0.0.1:8000/sitemap.xml -o /tmp/netpay-sitemap.xml
+      grep -q "<urlset" /tmp/netpay-sitemap.xml
       echo "Container startup, health endpoints, and frontend static routes passed."
       exit 0
     fi
