@@ -132,3 +132,16 @@ def test_database_and_redis_urls_are_masked_in_settings_repr() -> None:
     assert "db-password" not in rendered
     assert "redis-password" not in rendered
     assert "SecretStr('**********')" in rendered
+
+
+def test_production_settings_reject_sqlite_database() -> None:
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="DATABASE_URL must use PostgreSQL"):
+        Settings(
+            environment="production",
+            database_url="sqlite+aiosqlite:///./gateway.db",
+            public_base_url="https://pay.example.invalid",
+            secret_key="a-long-non-default-secret-for-test-only",
+            credential_encryption_key="MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
+        )
