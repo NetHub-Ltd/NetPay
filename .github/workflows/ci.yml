@@ -1,12 +1,12 @@
 name: CI
 
-# Test, lint, frontend build, and container build on PRs and branch pushes.
+# Verify fresh backend startup, frontend quality, and production image startup.
 
 on:
   pull_request:
     branches: [main, dev, "work/minimal-netpay-rebuild"]
   push:
-    branches: [main, dev, "work/**", "chore/**", "fix/**"]
+    branches: [main, dev, "work/**", "chore/**", "fix/**", "feat/**"]
 
 permissions:
   contents: read
@@ -18,50 +18,19 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: gateway
-          POSTGRES_PASSWORD: gateway
-          POSTGRES_DB: gateway
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U gateway -d gateway"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
     defaults:
       run:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install
-        run: |
-          pip install -U pip
-          pip install -e ".[dev]"
-
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend and fresh test dependencies
+        run: python -m pip install -e ".[dev]"
       - name: Startup smoke tests (fresh suite only)
-        env:
-          DATABASE_URL: postgresql+asyncpg://gateway:gateway@localhost:5432/gateway
-          REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: startup-test-secret
-          ENVIRONMENT: test
         run: pytest -q smoke_tests/test_startup.py
 
   frontend:
@@ -71,27 +40,21 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-
       - name: Install
         env:
           npm_config_registry: https://registry.npmjs.org/
         run: |
           npm config set registry https://registry.npmjs.org/
           npm ci --no-audit --no-fund
-
       - name: Lint
         run: npm run lint
-
       - name: Typecheck
         run: npm run typecheck
-
       - name: Build
         run: npm run build
-
       - name: Static path check
         run: test -f out/index.html
 
@@ -100,9 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: docker/setup-buildx-action@v3
-
       - name: Build production image for startup smoke test (no push)
         uses: docker/build-push-action@v6
         with:
@@ -112,26 +73,5 @@ jobs:
           push: false
           load: true
           tags: ghcr.io/nethub-ltd/netpay:ci
-
-      - name: Start PostgreSQL and Redis for image smoke test
-        run: |
-          set -euo pipefail
-          docker run --detach --name netpay-test-postgres \
-            --publish 5432:5432 \
-            --env POSTGRES_USER=gateway \
-            --env POSTGRES_PASSWORD=gateway \
-            --env POSTGRES_DB=gateway \
-            postgres:16-alpine
-          docker run --detach --name netpay-test-redis --publish 6379:6379 redis:7-alpine
-          for attempt in $(seq 1 30); do
-            if docker exec netpay-test-postgres pg_isready -U gateway -d gateway >/dev/null 2>&1 \
-              && docker exec netpay-test-redis redis-cli ping | grep -qx PONG; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "PostgreSQL or Redis did not become ready."
-          exit 1
-
       - name: Run image startup smoke test
         run: bash backend/scripts/container_startup_smoke.sh
