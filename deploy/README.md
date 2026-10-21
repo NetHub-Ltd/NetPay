@@ -4,7 +4,7 @@
 
 1. Copy `backend/.env.example` to `backend/.env` and generate a real `SECRET_KEY` and `CREDENTIAL_ENCRYPTION_KEY`.
 2. Set `PUBLIC_BASE_URL` to a publicly reachable HTTPS origin for Daraja callbacks (for local sandbox work, use a secure tunnel URL rather than `localhost`).
-3. Run `docker compose -f deploy/docker-compose.yml up --build` from the repository root. Compose waits for PostgreSQL, runs the one-shot Alembic migration service, then starts the API and the durable event worker. Redis is included as auxiliary infrastructure; the API checks its connectivity during lifespan startup but does not fail startup if Redis is unavailable.
+3. Run `docker compose -f deploy/docker-compose.yml up --build` from the repository root. Compose waits for PostgreSQL, runs the one-shot Alembic migration service, then starts the API and the durable event worker.
 
 The public landing page is a static Next.js export served by FastAPI. API routes and callback routes share the same origin.
 
@@ -13,7 +13,6 @@ The public landing page is a static Next.js export served by FastAPI. API routes
 The secret `nethub-gateway-secrets` must contain at least:
 
 - `DATABASE_URL` — PostgreSQL async URL (`postgresql+asyncpg://...`)
-- Optional `REDIS_URL` — Redis URL (`redis://...`); auxiliary, not a payment-state source of truth
 - `SECRET_KEY` — random string of at least 32 characters
 - `CREDENTIAL_ENCRYPTION_KEY` — valid Fernet key
 - `PUBLIC_BASE_URL` — public HTTPS origin, e.g. `https://pay.nethub.co.ke`
@@ -30,7 +29,7 @@ kubectl apply -f deploy/k8s/deployment.yaml
 
 The API liveness probe checks `/health/live`; readiness checks `/health/ready`. A database outage should remove pods from service without triggering liveness restarts. The worker uses PostgreSQL row locking and durable retry timestamps; it is deployed separately from API replicas.
 
-Redis is checked during application lifespan and is included in local Compose. Redis failure is logged as degraded but does not block startup. PostgreSQL remains authoritative for payment state, callback deduplication, idempotency, outbox events, and delivery attempts.
+PostgreSQL remains authoritative for payment state, callback deduplication, idempotency, outbox events, and delivery attempts.
 
 ## Important rollout boundary
 
