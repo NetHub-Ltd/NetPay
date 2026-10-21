@@ -4,7 +4,6 @@ These tests deliberately live outside backend/tests to avoid loading the legacy
 integration-test conftest. No migrations or schema creation are performed here.
 """
 from collections.abc import AsyncIterator
-from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -115,3 +114,13 @@ async def test_database_connectivity_check_executes_query() -> None:
     # The CI database URL is an isolated in-memory SQLite database; this tests
     # the actual SQLAlchemy connection path without migrations or external state.
     await check_database()
+
+
+@pytest.mark.asyncio
+async def test_redis_connectivity_check_pings_configured_service() -> None:
+    from app.redis_client import check_redis, dispose_redis
+
+    try:
+        await check_redis()
+    finally:
+        await dispose_redis()
