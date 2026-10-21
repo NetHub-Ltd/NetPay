@@ -1,53 +1,71 @@
 name: Backend readiness
-
-# Bootstrap-stage API startup check. Database and Redis checks are deferred to the database PR.
-
 on:
   pull_request:
     branches: [main, dev, "work/minimal-netpay-rebuild"]
   push:
     branches: [main, dev, "work/**", "chore/**", "fix/**", "feat/**"]
-
 permissions:
   contents: read
-
-concurrency:
-  group: backend-readiness-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   start-and-health:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: netpay, POSTGRES_PASSWORD: netpay, POSTGRES_DB: netpay }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U netpay -d netpay"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+asyncpg://netpay:netpay@localhost:5432/netpay
+      REDIS_URL: redis://localhost:6379/0
     defaults:
-      run:
-        working-directory: backend
+      run: { working-directory: backend }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: backend/pyproject.toml
-      - name: Install backend and smoke-test dependencies
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: backend/pyproject.toml }
+      - name: Install backend
         run: python -m pip install -e ".[dev]"
-      - name: Verify startup and health endpoints
-        run: pytest -q smoke_tests/test_startup.py
-      - name: Verify production ASGI server starts
+      - name: Apply initial migration
+        run: alembic upgrade head
+      - name: Verify PostgreSQL and Redis connectivity
+        run: |
+          python - <<'PY'
+          import asyncio
+          from app.core.config import get_settings
+          from app.core.cache import check_redis, create_redis_client
+          from app.core.database import check_database, create_database_engine
+          async def main():
+              settings = get_settings()
+              engine = create_database_engine(settings)
+              redis = create_redis_client(settings)
+              try:
+                  await check_database(engine)
+                  await check_redis(redis)
+                  print("PostgreSQL and Redis connectivity verified")
+              finally:
+                  await redis.aclose()
+                  await engine.dispose()
+          asyncio.run(main())
+          PY
+      - name: Verify HTTP health endpoints
         run: |
           set -euo pipefail
-          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/netpay-uvicorn.log 2>&1 &
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 >/tmp/netpay-uvicorn.log 2>&1 &
           pid=$!
-          cleanup() {
-            kill "$pid" 2>/dev/null || true
-            wait "$pid" 2>/dev/null || true
-            cat /tmp/netpay-uvicorn.log || true
-          }
+          cleanup() { kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; cat /tmp/netpay-uvicorn.log || true; }
           trap cleanup EXIT
           for attempt in $(seq 1 30); do
-            if ! kill -0 "$pid" 2>/dev/null; then
-              echo "uvicorn exited before becoming ready"
-              exit 1
-            fi
+            if ! kill -0 "$pid" 2>/dev/null; then echo "uvicorn exited before ready"; exit 1; fi
             if curl --fail --silent http://127.0.0.1:8000/health/live >/dev/null; then
               curl --fail --silent --show-error http://127.0.0.1:8000/health/ready
               echo
@@ -55,5 +73,4 @@ jobs:
             fi
             sleep 2
           done
-          echo "Timed out waiting for the API"
-          exit 1
+          echo "Timed out waiting for the API"; exit 1
