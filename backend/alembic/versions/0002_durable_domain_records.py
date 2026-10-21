@@ -58,6 +58,9 @@ def upgrade() -> None:
     op.alter_column("merchant", "slug", existing_type=sa.String(length=100), nullable=False)
     op.create_index("ix_merchant_slug", "merchant", ["slug"], unique=True)
 
+    op.add_column("m2mclient", sa.Column("expires_at", AWARE_DATETIME, nullable=True))
+    op.add_column("m2mclient", sa.Column("revoked_at", AWARE_DATETIME, nullable=True))
+
     op.add_column("darajaintegration", sa.Column("credentials_validated_at", AWARE_DATETIME, nullable=True))
     op.add_column("darajaintegration", sa.Column("credential_version", sa.Integer(), server_default="1", nullable=False))
     op.add_column("darajaintegration", sa.Column("c2b_registered_at", AWARE_DATETIME, nullable=True))
@@ -287,6 +290,8 @@ def downgrade() -> None:
     op.drop_column("idempotencyrecord", "client_id")
     for column in ("direction", "description", "succeeded_at", "failed_at", "cancelled_at"):
         op.drop_column("payment", column)
+    op.drop_column("m2mclient", "revoked_at")
+    op.drop_column("m2mclient", "expires_at")
     for column in ("credentials_validated_at", "credential_version", "c2b_registered_at"):
         op.drop_column("darajaintegration", column)
     op.drop_index("ix_merchant_slug", table_name="merchant")
