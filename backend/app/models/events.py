@@ -15,8 +15,9 @@ class EventOutbox(BaseMixin, table=True):
 
     __tablename__ = "eventoutbox"
     __table_args__ = (UniqueConstraint("event_id", name="uq_eventoutbox_event_id"),)
+    __table_args__ = (UniqueConstraint("event_id", name="uq_eventoutbox_event_id"),)
 
-    event_id: UUID = Field(default_factory=uuid4, unique=True)
+    event_id: UUID = Field(default_factory=uuid4)
     merchant_id: UUID | None = Field(default=None, foreign_key="merchant.id", index=True)
     aggregate_type: str = Field(default="payment", max_length=50)
     aggregate_id: UUID = Field(index=True)
