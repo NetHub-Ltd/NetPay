@@ -1,4 +1,4 @@
-"""Validated application settings."""
+"""Validated application settings with secret-safe database and Redis URLs."""
 
 from functools import lru_cache
 from typing import Self
@@ -18,7 +18,13 @@ class Settings(BaseSettings):
 
     app_name: str = "NetPay"
     environment: str = "development"
-    database_url: str = "sqlite+aiosqlite:///./gateway.db"
+    # URLs can contain usernames/passwords, so Pydantic masks them in repr/errors.
+    database_url: SecretStr = Field(
+        default=SecretStr("sqlite+aiosqlite:///./gateway.db")
+    )
+    redis_url: SecretStr = Field(default=SecretStr("redis://localhost:6379/0"))
+    redis_connect_timeout_seconds: float = Field(default=1.0, gt=0, le=10)
+    redis_socket_timeout_seconds: float = Field(default=1.0, gt=0, le=10)
     secret_key: SecretStr = Field(default=SecretStr("development-only-change-me"))
     credential_encryption_key: SecretStr | None = None
     public_base_url: str = "http://localhost:8000"
@@ -30,11 +36,17 @@ class Settings(BaseSettings):
         return self.environment.lower() in {"production", "prod"}
 
     @model_validator(mode="after")
-    def require_production_secrets(self) -> Self:
+    def validate_runtime_settings(self) -> Self:
+        if self.log_level.upper() not in {
+            "TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "WARN", "ERROR", "CRITICAL"
+        }:
+            raise ValueError("LOG_LEVEL must be a supported Loguru log level")
+
         if self.is_production:
             if not self.public_base_url.startswith("https://"):
                 raise ValueError("PUBLIC_BASE_URL must use HTTPS in production")
-            if len(self.secret_key.get_secret_value()) < 32 or self.secret_key.get_secret_value() == "development-only-change-me":
+            secret = self.secret_key.get_secret_value()
+            if len(secret) < 32 or secret == "development-only-change-me":
                 raise ValueError("SECRET_KEY must be at least 32 characters and non-default in production")
             if self.credential_encryption_key is None:
                 raise ValueError("CREDENTIAL_ENCRYPTION_KEY is required in production")
