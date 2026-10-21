@@ -1,5 +1,16 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim
+
+# Build Next.js once as a static export; the runtime does not need Node.js.
+FROM node:22-alpine AS frontend-build
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+ARG NEXT_PUBLIC_SITE_URL=https://pay.nethub.co.ke
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+RUN npm run build
+
+FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -10,6 +21,7 @@ RUN groupadd --system app && useradd --system --gid app --home-dir /app app
 
 COPY backend/pyproject.toml backend/README.md ./
 COPY backend/app ./app
+COPY --from=frontend-build /frontend/out ./app/static
 RUN python -m pip install --upgrade pip \
     && python -m pip install . \
     && chown -R app:app /app

@@ -7,24 +7,36 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "NetPay — Payments that fit your business",
+    default: "NetPay | M-Pesa payment API for business software",
     template: "%s | NetPay",
   },
   description:
-    "Accept M-Pesa payments through a dependable gateway built for merchants, apps, and business software.",
+    "Connect business software to M-Pesa with merchant-owned Daraja integrations, STK Push, and payment events grounded in provider results.",
   applicationName: "NetPay",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
     type: "website",
     siteName: "NetPay",
-    title: "NetPay — Payments that fit your business",
+    title: "NetPay | M-Pesa payment API for business software",
     description:
-      "A dependable M-Pesa payment gateway for merchants, apps, and business software.",
-    url: "/",
+      "A consistent M-Pesa payments API for merchants, POS systems, and business applications.",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "NetPay payment infrastructure" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NetPay — Payments that fit your business",
-    description: "A dependable M-Pesa payment gateway for your business.",
+    title: "NetPay | M-Pesa payment API for business software",
+    description: "Merchant-owned Daraja integrations and payment events for business software.",
+    images: ["/opengraph-image.png"],
   },
 };
 

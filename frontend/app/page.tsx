@@ -1,5 +1,60 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowDownRight, ArrowRight, CheckCircle2, Code2, ShieldCheck, Smartphone, Workflow } from "lucide-react";
+
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
+
+export const metadata: Metadata = {
+  title: "M-Pesa payment API for business software",
+  description:
+    "Connect business software to M-Pesa with merchant-owned Daraja integrations, STK Push, and payment events grounded in provider results.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "en_KE",
+    url: "/",
+    title: "NetPay | M-Pesa payment API for business software",
+    description:
+      "A consistent M-Pesa payments API for merchants, POS systems, and business applications.",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "NetPay payment infrastructure" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NetPay | M-Pesa payment API for business software",
+    description: "Merchant-owned Daraja integrations and payment events for business software.",
+    images: ["/opengraph-image.png"],
+  },
+};
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
+      name: "NetHub",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      url: siteUrl,
+      name: "NetPay",
+      publisher: { "@id": `${siteUrl}/#organization` },
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${siteUrl}/#software`,
+      name: "NetPay",
+      url: siteUrl,
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "Web",
+      description:
+        "An M-Pesa payments gateway for merchant-owned Daraja integrations, STK Push, and provider-informed payment status.",
+      publisher: { "@id": `${siteUrl}/#organization` },
+    },
+  ],
+};
 
 const capabilities = [
   {
@@ -26,7 +81,9 @@ const capabilities = [
 
 export default function HomePage() {
   return (
-    <main>
+    <main id="main-content">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:font-semibold focus:text-[#101b2d] focus:shadow-lg">Skip to content</a>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <header className="border-b border-white/10 bg-[#101b2d] text-white">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-8" aria-label="Main navigation">
           <Link href="/" className="flex items-center gap-3" aria-label="NetPay home">
@@ -39,7 +96,7 @@ export default function HomePage() {
             <a href="#developers" className="transition hover:text-white">Developers</a>
           </div>
           <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold transition hover:border-white/50 hover:bg-white/5">
-            Open dashboard <ArrowRight size={16} aria-hidden="true" />
+            Dashboard preview <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </nav>
         <section className="relative overflow-hidden">
@@ -50,14 +107,14 @@ export default function HomePage() {
                 <span className="size-1.5 rounded-full bg-[#20b89a]" /> Payments infrastructure for business
               </p>
               <h1 className="max-w-3xl text-5xl font-semibold leading-[1.06] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
-                Move from payment prompt to <span className="text-[#55d6b9]">payment certainty.</span>
+                Move from payment prompt to <span className="text-[#55d6b9]">payment clarity.</span>
               </h1>
               <p className="mt-7 max-w-xl text-lg leading-8 text-slate-300">
                 NetPay connects your business software to M-Pesa with a consistent API, merchant-owned integrations, and payment events your systems can rely on.
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#20b89a] px-6 py-3.5 font-semibold text-[#101b2d] transition hover:bg-[#42d0b0]">
-                  Get started <ArrowRight size={17} aria-hidden="true" />
+                <Link href="#how-it-works" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#20b89a] px-6 py-3.5 font-semibold text-[#101b2d] transition hover:bg-[#42d0b0]">
+                  See how it works <ArrowRight size={17} aria-hidden="true" />
                 </Link>
                 <a href="#capabilities" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-6 py-3.5 font-semibold text-white transition hover:bg-white/5">
                   Explore capabilities <ArrowDownRight size={17} aria-hidden="true" />
@@ -163,7 +220,7 @@ Content-Type: application/json
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-24">
         <div className="flex flex-col gap-8 rounded-[2rem] bg-[#142033] px-7 py-10 text-white sm:px-10 md:flex-row md:items-center md:justify-between lg:px-14 lg:py-12">
           <div className="max-w-2xl"><p className="text-sm font-bold uppercase tracking-[0.16em] text-[#55d6b9]">For builders and businesses</p><h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Make payments a reliable part of your product.</h2><p className="mt-4 leading-7 text-slate-300">Start with the API and add optional event delivery when your workflow needs it.</p></div>
-          <Link href="/dashboard" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#20b89a] px-6 py-3.5 font-semibold text-[#101b2d] transition hover:bg-[#42d0b0]">Open NetPay <ArrowRight size={17} aria-hidden="true" /></Link>
+          <Link href="/dashboard" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#20b89a] px-6 py-3.5 font-semibold text-[#101b2d] transition hover:bg-[#42d0b0]">View dashboard preview <ArrowRight size={17} aria-hidden="true" /></Link>
         </div>
       </section>
 

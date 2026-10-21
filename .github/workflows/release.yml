@@ -68,34 +68,14 @@ jobs:
           ENVIRONMENT: test
         run: pytest -q smoke_tests/test_startup.py
 
-  frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Install
-        env:
-          npm_config_registry: https://registry.npmjs.org/
-        run: |
-          npm config set registry https://registry.npmjs.org/
-          npm ci --no-audit --no-fund
-      - name: Lint
-        run: npm run lint
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Build
-        run: npm run build
-      - name: Static path check
-        run: |
-          test -f out/index.html
+  frontend-lint:
+    uses: ./.github/workflows/frontend-lint.yml
+
+  frontend-build:
+    uses: ./.github/workflows/frontend-build.yml
 
   version:
-    needs: [backend, frontend]
+    needs: [backend, frontend-lint, frontend-build]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}

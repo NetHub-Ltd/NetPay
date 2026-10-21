@@ -1,7 +1,9 @@
 """NetPay API and database/cache lifecycle."""
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncIterator
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -68,3 +70,11 @@ async def readiness(request: Request) -> dict[str, str]:
         except Exception as exc:
             logger.warning("redis_readiness=failed error_type={}", type(exc).__name__)
     return {"status": "ok", "database": "ok", "redis": redis_status}
+
+# Serve the prebuilt Next.js export only after API, docs, and health routes are registered.
+# In backend-only development the export may not exist; the API remains runnable.
+frontend_static_dir = Path(__file__).resolve().parent / "static"
+if frontend_static_dir.is_dir():
+    app.mount("/", StaticFiles(directory=frontend_static_dir, html=True), name="frontend")
+else:
+    logger.info("frontend_static=not_built path={}", str(frontend_static_dir))
