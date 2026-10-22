@@ -111,7 +111,7 @@ These are historical reports, not fresh verification performed during tracker cr
 
 ## Current verified state — issue #180 (2026-10-22)
 
-- Latest observed working branch tip: `90951334628987c10cb77fb6f06f80bdedf9fe1f`.
+- Latest verified application-code commit: `90951334628987c10cb77fb6f06f80bdedf9fe1f`. Tracker-only commits have since advanced `work/minimal-netpay-rebuild`; query the branch API for the live tip.
 - Latest CI [#615](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724936) passed: 15 backend tests passed, 1 warning, no skipped tests; migration application, PostgreSQL/Redis connectivity, container build and smoke passed.
 - Backend readiness [#169](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724918), frontend lint [#61](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724989), and frontend build [#61](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724933) passed.
 - The first CI attempt exposed a real driver mismatch: asyncpg rejects `sslmode`; fixed by emitting `ssl` in the async URL and retaining `sslmode` for psycopg. Later checks passed.
