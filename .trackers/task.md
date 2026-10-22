@@ -27,7 +27,7 @@ A handoff is not complete merely because files exist: another agent must be able
 
 - Rebuild against `docs/REBUILD_SPEC.md`; do not restore pruned legacy application code.
 - Work on `work/minimal-netpay-rebuild`; do not push directly to `dev` or `main`.
-- Target future review PRs at `dev) once the working branch has commits not already on `dev`.
+- Target future review PRs at `dev` once the working branch has commits not already on `dev`.
 - Do not modify deployment manifests; Flux owns deployment reconciliation.
 - Preserve frontend and backend `.env.example` files.
 - Preserve CI, GHCR release/image publishing, and runtime contracts unless an approved change requires otherwise.
