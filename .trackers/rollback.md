@@ -44,3 +44,13 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - No database reset, table drop, destructive migration, secret exposure, deployment manifest edit, or production database action is authorized.
 - Render/Aiven runtime verification may require user-visible deployment logs/metadata. Do not change the database or claim the startup bug fixed solely from source inspection.
 - If separate connection fields replace `DATABASE_URL`, document the required Render environment-variable update; do not silently assume Render has those variables configured. Keep the env example and code changes consistent.
+
+
+## Implementation rollback/evidence update — 2026-10-22
+
+- Implemented changes are on `work/minimal-netpay-rebuild`, latest observed tip `90951334628987c10cb77fb6f06f80bdedf9fe1f`; `dev` and `main` were rechecked and unchanged.
+- CI #615 passed (15 passed, 1 warning), including Alembic migration and container smoke; backend readiness #169 and frontend lint/build #61 passed.
+- Revert the settings/pool/Docker/test/workflow changes via reviewed commits if needed. Revert the Alembic directory/config/image-copy changes together so migrations remain discoverable as one unit.
+- The compatibility bridge is temporary; removing it requires coordinated updates to external Render variables and deployment-owned secrets/manifests. Do not edit those manifests here.
+- No database reset, schema drop, production DB action, Flux resource edit, branch reset, or history rewrite occurred.
+- Actual Render/Aiven DB-off startup and Render schema remain unverified; do not treat CI's mocked failure test or CI PostgreSQL schema as production evidence.
