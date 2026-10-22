@@ -54,3 +54,11 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - The compatibility bridge is temporary; removing it requires coordinated updates to external Render variables and deployment-owned secrets/manifests. Do not edit those manifests here.
 - No database reset, schema drop, production DB action, Flux resource edit, branch reset, or history rewrite occurred.
 - Actual Render/Aiven DB-off startup and Render schema remain unverified; do not treat CI's mocked failure test or CI PostgreSQL schema as production evidence.
+
+
+## PR/security state — 2026-10-22
+
+- PR #181 is open against `dev`, not merged.
+- Latest implementation/config/test tree commit `4f0123e9ed1f4d8d2e6d67a9cb86462c261a2e75` passed CI #634/#635, readiness #188 and frontend lint/build #81.
+- GitGuardian still fails because earlier commits contain six detected local/test placeholder values. Current tree occurrences were removed. Do not rewrite history or dismiss findings without approval; do not merge while the required security check fails.
+- No Render/Aiven outage reproduction has been obtained. Do not roll back or alter the user's database as part of diagnosis.
