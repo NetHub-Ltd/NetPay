@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     redis_url: SecretStr = SecretStr("redis://localhost:6379/0")
     redis_enabled: bool = True
 
+    # Daraja credential keyring is provided by secret management, never stored in PostgreSQL.
+    mpesa_credential_encryption_keys: SecretStr | None = Field(default=None, repr=False, exclude=True)
+    mpesa_credential_active_key_id: str = "v1"
+    mpesa_public_base_url: str | None = None
+    mpesa_http_timeout_seconds: float = 10.0
+    mpesa_sandbox_certificate_pem: SecretStr | None = Field(default=None, repr=False, exclude=True)
+    mpesa_production_certificate_pem: SecretStr | None = Field(default=None, repr=False, exclude=True)
+
     @model_validator(mode="before")
     @classmethod
     def bridge_legacy_database_url(cls, values: Any) -> Any:
@@ -122,6 +130,14 @@ class Settings(BaseSettings):
         """Require a positive connection recycle interval."""
         if value <= 0:
             raise ValueError("DB_POOL_RECYCLE must be positive")
+        return value
+
+    @field_validator("mpesa_http_timeout_seconds")
+    @classmethod
+    def validate_mpesa_http_timeout(cls, value: float) -> float:
+        """Require a bounded positive timeout for external Daraja calls."""
+        if value <= 0 or value > 60:
+            raise ValueError("MPESA_HTTP_TIMEOUT_SECONDS must be between 0 and 60")
         return value
 
     @field_validator("redis_url")

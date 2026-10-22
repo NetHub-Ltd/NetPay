@@ -38,7 +38,12 @@ async def test_alembic_head_contains_all_sixteen_domain_tables() -> None:
             tables = await connection.run_sync(lambda sync: set(inspect(sync).get_table_names()))
             assert EXPECTED_TABLES.issubset(tables)
             revision = await connection.execute(text("SELECT version_num FROM alembic_version"))
-            assert revision.scalar_one() == "0002_full_domain_schema"
+            assert revision.scalar_one() == "0003_mpesa_core_capabilities"
+
+            integration_columns = await connection.run_sync(
+                lambda sync: {column["name"] for column in inspect(sync).get_columns("providerintegration")}
+            )
+            assert {"initiator_name", "initiator_password_ciphertext", "enabled_capabilities"}.issubset(integration_columns)
 
             for table_name in EXPECTED_TABLES:
                 columns = await connection.run_sync(
