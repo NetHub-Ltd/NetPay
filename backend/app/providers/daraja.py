@@ -2,7 +2,15 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
+from uuid import UUID
+
+from pydantic import SecretStr
+from sqlalchemy import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from app.core.credentials import CredentialEncryptionError, decrypt_credential, encrypt_credential
+from app.models.integrations import DarajaIntegration
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -72,14 +80,14 @@ class DarajaStkUncertain(RuntimeError):
     """Raised when the STK outcome cannot be determined safely."""
 
 
-async def _get_access_token(
+async def _request_access_token(
     *,
     environment: str,
     consumer_key: str,
     consumer_secret: str,
     timeout_seconds: float,
-) -> str:
-    """Obtain a short-lived OAuth token without exposing provider response details."""
+) -> tuple[str, int]:
+    """Request an OAuth token and return its validated lifetime in seconds."""
     base_url = _DARAJA_BASE_URLS.get(environment)
     if base_url is None:
         raise ValueError("Unsupported Daraja environment")
@@ -101,8 +109,79 @@ async def _get_access_token(
     except ValueError as exc:
         raise DarajaUnavailable("Daraja authorization response was not valid JSON") from exc
     token = payload.get("access_token") if isinstance(payload, dict) else None
-    if not isinstance(token, str) or not token:
-        raise DarajaUnavailable("Daraja authorization response did not contain a token")
+    raw_expiry = payload.get("expires_in") if isinstance(payload, dict) else None
+    try:
+        expires_in = int(raw_expiry)
+    except (TypeError, ValueError):
+        raise DarajaUnavailable("Daraja authorization response did not contain a valid expiry") from None
+    if not isinstance(token, str) or not token or not 60 < expires_in <= 86_400:
+        raise DarajaUnavailable("Daraja authorization response was unusable")
+    return token, expires_in
+
+
+async def _get_access_token(
+    *,
+    environment: str,
+    consumer_key: str,
+    consumer_secret: str,
+    timeout_seconds: float,
+) -> str:
+    """Compatibility helper for direct provider-adapter use."""
+    token, _ = await _request_access_token(
+        environment=environment,
+        consumer_key=consumer_key,
+        consumer_secret=consumer_secret,
+        timeout_seconds=timeout_seconds,
+    )
+    return token
+
+
+async def get_or_refresh_access_token(
+    session: AsyncSession,
+    *,
+    integration_id: UUID,
+    environment: str,
+    consumer_key: str,
+    consumer_secret: str,
+    encryption_key: SecretStr,
+    timeout_seconds: float,
+) -> str:
+    """Reuse the shared encrypted token cache and serialize refreshes with a row lock."""
+    result = await session.exec(
+        select(DarajaIntegration)
+        .where(DarajaIntegration.id == integration_id, DarajaIntegration.deleted_at.is_(None))
+        .with_for_update()
+    )
+    integration = result.first()
+    if integration is None:
+        raise DarajaUnavailable("Daraja integration is unavailable")
+
+    now = datetime.now(UTC)
+    if (
+        integration.provider_access_token_ciphertext
+        and integration.provider_token_expires_at is not None
+        and integration.provider_token_expires_at > now + timedelta(seconds=30)
+    ):
+        try:
+            cached_token = decrypt_credential(
+                integration.provider_access_token_ciphertext,
+                key=encryption_key,
+            )
+        except CredentialEncryptionError:
+            cached_token = ""
+        if cached_token:
+            await session.commit()
+            return cached_token
+
+    token, expires_in = await _request_access_token(
+        environment=environment,
+        consumer_key=consumer_key,
+        consumer_secret=consumer_secret,
+        timeout_seconds=timeout_seconds,
+    )
+    integration.provider_access_token_ciphertext = encrypt_credential(token, key=encryption_key)
+    integration.provider_token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in - 30)
+    await session.commit()
     return token
 
 
@@ -121,22 +200,26 @@ async def initiate_stk_push(
     account_reference: str,
     transaction_description: str,
     timeout_seconds: float,
+    access_token: str | None = None,
 ) -> dict[str, str]:
     """Initiate one STK request; an acknowledgement is not proof of payment success."""
     base_url = _DARAJA_BASE_URLS.get(environment)
     if base_url is None:
         raise ValueError("Unsupported Daraja environment")
-    try:
-        token = await _get_access_token(
-            environment=environment,
-            consumer_key=consumer_key,
-            consumer_secret=consumer_secret,
-            timeout_seconds=timeout_seconds,
-        )
-    except DarajaCredentialsRejected as exc:
-        raise DarajaStkRejected("daraja_auth_rejected") from exc
-    except DarajaUnavailable as exc:
-        raise DarajaStkUncertain("daraja_authorization_uncertain") from exc
+    if access_token is None:
+        try:
+            token = await _get_access_token(
+                environment=environment,
+                consumer_key=consumer_key,
+                consumer_secret=consumer_secret,
+                timeout_seconds=timeout_seconds,
+            )
+        except DarajaCredentialsRejected as exc:
+            raise DarajaStkRejected("daraja_auth_rejected") from exc
+        except DarajaUnavailable as exc:
+            raise DarajaStkUncertain("daraja_authorization_uncertain") from exc
+    else:
+        token = access_token
 
     timestamp = datetime.now(ZoneInfo("Africa/Nairobi")).strftime("%Y%m%d%H%M%S")
     password = base64.b64encode((shortcode + passkey + timestamp).encode("utf-8")).decode("ascii")
