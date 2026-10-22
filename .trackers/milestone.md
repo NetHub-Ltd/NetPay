@@ -80,11 +80,17 @@ Model source inventory: 16 SQLModel table classes are declared/exported across g
 |---|---|---|
 | DB.1 | GitHub issue created before tracker and application changes | VERIFIED — [#180](https://github.com/NetHub-Ltd/NetPay/issues/180) |
 | DB.2 | Reproduce/investigate Render startup when Aiven is unavailable | OPEN — exact deployment commit/logs/effective host not yet established |
-| DB.3 | Negative regression test proves required PostgreSQL failure blocks completed backend startup | OPEN |
-| DB.4 | Separate validated DB connection fields construct async and sync URLs safely | OPEN |
-| DB.5 | Rename migration directory to `backend/alembic/` and update all references without changing revisions | OPEN |
-| DB.6 | Reduce idle/peak connections and account for worker/instance multiplication | OPEN |
-| DB.7 | Run tests, migration checks, reference audit, and relevant CI/build checks | OPEN — no new tests run yet |
-| DB.8 | Update/re-fetch trackers and issue with exact outcomes | OPEN |
+| DB.3 | Negative regression test proves required PostgreSQL failure blocks completed backend startup | VERIFIED IN CI — lifespan test passes when required DB check raises; real Render outage still unverified |
+| DB.4 | Separate validated DB connection fields construct async and sync URLs safely | VERIFIED IN CI — URL/reserved-character/driver SSL/legacy bridge tests pass |
+| DB.5 | Rename migration directory to `backend/alembic/` and update all references without changing revisions | VERIFIED IN CI — Alembic upgrade and container smoke pass; revision IDs/content preserved |
+| DB.6 | Reduce idle/peak connections and account for worker/instance multiplication | IMPLEMENTED + TESTED — default pool size 1, overflow 0; runtime load profile not measured |
+| DB.7 | Run tests, migration checks, reference audit, and relevant CI/build checks | VERIFIED — CI #615 success (15 passed, 1 warning; no skipped migration-schema test), backend readiness #169 success, frontend lint/build #61 success |
+| DB.8 | Update/re-fetch trackers and issue with exact outcomes | IN PROGRESS — issue comment updated; final tracker writes and read-back remain |
 
 **Pool decision pending verification:** proposed initial `pool_size=1`, `max_overflow=0`, `pool_pre_ping=True`, `pool_use_lifo=True`, configurable timeout/recycle. This retains one idle connection per active engine after first use; `NullPool` would be required if the goal is to retain no idle connections, at the cost of connection setup per checkout.
+
+
+### Verification update — 2026-10-22
+- CI #615 passed at commit `90951334628987c10cb77fb6f06f80bdedf9fe1f`: 15 passed, 1 warning, no skipped tests; migration application, PostgreSQL/Redis checks, Docker build and container smoke passed.
+- Backend readiness #169 and frontend lint/build #61 passed on the same commit.
+- Real Render/Aiven DB-off behavior and actual Render schema remain unknown. Do not mark DB.2 or the Render portion of DB.9 verified.
