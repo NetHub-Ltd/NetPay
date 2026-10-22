@@ -78,3 +78,10 @@ pytest -q smoke_tests
 - An STK acceptance response leaves the payment pending; it is not proof of payment. A timeout or ambiguous provider response leaves the payment `unknown` and is never retried automatically.
 - `POST /v1/callbacks/stk/{integration_id}` stores only allow-listed callback evidence and deduplicates by provider request ID/fingerprint. Callback bodies are untrusted: even a callback with result code zero cannot mark a payment successful. Matched callbacks move non-terminal payments to `unknown` pending provider-authoritative verification; mismatches and conflicts remain for reconciliation. This slice does not yet implement STK query verification or outbox event publication.
 - Daraja request format is based on the official [M-Pesa Express documentation](https://developer.safaricom.co.ke/apis/MpesaExpressSimulate). The [Authorization API](https://developer.safaricom.co.ke/apis/Authorization) issues the short-lived OAuth token used for provider requests.
+
+
+### Daraja access-token cache
+
+- STK initiation reuses an encrypted access-token cache stored in PostgreSQL on the integration record and refreshes it before expiry. A row lock serializes refreshes for the same integration; tokens are never logged or returned to API clients.
+- Safaricom's [Authorization API documentation](https://developer.safaricom.co.ke/apis/Authorization) describes the OAuth client-credentials flow and token expiry. Treat each integration as owning its own Daraja app credentials; do not share one Daraja app credential set across unrelated merchants. A future shared-credential deployment would need a cache keyed by credential fingerprint across integrations.
+- Alembic revision `0003_provider_token_cache` adds the encrypted token and expiry fields without changing prior revision IDs.
