@@ -30,7 +30,7 @@ def _string_or_none(value: object) -> str | None:
     if value is None or isinstance(value, (dict, list, bool)):
         return None
     result = str(value)
-    return result[:120] if result else None
+    return result if result and len(result) <= 120 else None
 
 
 @router.post("/stk/{integration_id}", response_model=CallbackAck, summary="Receive Daraja STK callback")
@@ -82,7 +82,7 @@ async def receive_stk_callback(
             if name == "Amount":
                 amount = value
             elif name == "MpesaReceiptNumber":
-                receipt = value[:64] if value else None
+                receipt = value if value and len(value) <= 64 else None
             elif name == "TransactionDate":
                 transaction_date = value
 
@@ -155,7 +155,18 @@ async def receive_stk_callback(
         await session.flush()
         await session.commit()
     except IntegrityError:
-        # Concurrent duplicate delivery: uniqueness constraints make the first
-        # persisted event authoritative. Do not apply a second state transition.
+        # Concurrent duplicate delivery: acknowledge only when the competing
+        # transaction actually persisted the matching event/fingerprint.
         await session.rollback()
+        duplicate_after_race = await session.exec(
+            select(ProviderCallback).where(
+                ProviderCallback.integration_id == integration.id,
+                or_(
+                    ProviderCallback.provider_event_id == event_id,
+                    ProviderCallback.dedupe_fingerprint == fingerprint,
+                ),
+            )
+        )
+        if duplicate_after_race.first() is None:
+            raise
     return CallbackAck()
