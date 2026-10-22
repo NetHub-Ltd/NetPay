@@ -178,3 +178,17 @@ These are historical reports, not fresh verification performed during tracker cr
 - Branch search confirmed `work/minimal-netpay-rebuild` exists but did not expose its SHA. `5efc356...` remains the latest recorded tracker commit, not a freshly confirmed branch head.
 - CORE engineering skill refreshed from `NetHub-Ltd/skills-` current README and `CORE-AI-Product-Engineering-Skill-v1.0.0.md`; apply evidence-first verification, smallest reversible changes, security review, and Changed/Verified/Not verified/Risks/Rollback/Follow-ups reporting.
 - Render/Aiven behavior remains unknown; no runtime metadata/logs/schema were inspected. No application or deployment changes made in this verification pass.
+
+
+## Live handoff refresh — 2026-10-23
+
+- **User-confirmed:** PR #181 merged; Render deployment works; GitGuardian findings are test credentials and not a blocker. This supersedes older stale text in this file that says PR #181 is open/unmerged or GitGuardian blocks the merge.
+- Merged foundation commit: `72a9d108dde93c208a1330a87962bd9e47f4606e` on `dev`.
+- The previous `work/minimal-netpay-rebuild` ref was deleted after merge. Recreated the same branch name from `dev` to honor the single-working-branch operating model.
+- Current PR: [#184](https://github.com/NetHub-Ltd/NetPay/pull/184), draft, target `dev`; tracking issue [#183](https://github.com/NetHub-Ltd/NetPay/issues/183).
+- Current branch head last observed: `14134f360865c9d360e702abaa4306400cecaf25`.
+- Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a`: backend workflow completed successfully, `24 passed, 1 warning`; latest head adds scope allow-list and more tests, with its workflows queued at last read.
+- GitGuardian check on PR #184 completed successfully. Treat that as scanner status only, not a substitute for reviewing credential-handling behavior.
+- Local clone was unavailable due to DNS resolution failure for github.com; edits were made through GitHub's file API. Local tests were not run.
+- No production database, deployment variables, deployment manifests, Flux resources, `main`, or `dev` were modified by this phase.
+- Next: refresh latest checks, then add route-level tests and authenticated operator provisioning before integrating encrypted credentials with Daraja onboarding/STK Push.
