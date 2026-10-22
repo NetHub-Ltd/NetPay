@@ -62,3 +62,10 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - Latest implementation/config/test tree commit `4f0123e9ed1f4d8d2e6d67a9cb86462c261a2e75` passed CI #634/#635, readiness #188 and frontend lint/build #81.
 - GitGuardian still fails because earlier commits contain six detected local/test placeholder values. Current tree occurrences were removed. Do not rewrite history or dismiss findings without approval; do not merge while the required security check fails.
 - No Render/Aiven outage reproduction has been obtained. Do not roll back or alter the user's database as part of diagnosis.
+
+
+## GitGuardian resolution boundary — 2026-10-22
+
+- User explicitly chose to preserve Git history for PR #181. Do not rewrite commits, rebase, squash, force-push, or reset the branch to remove scanner findings.
+- Keep PR #181 open/unmerged until the findings are reviewed and the required security check passes. Any real credential exposure should be handled through the appropriate secret rotation/remediation process without rewriting history.
+- No production database, deployment manifest, `dev`, or `main` changes are authorized by this decision.
