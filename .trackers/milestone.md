@@ -108,3 +108,15 @@ Model source inventory: 16 SQLModel table classes are declared/exported across g
 - **VERIFIED:** User explicitly chose to preserve Git history. No history rewrite, force-push, or squash/rebase is authorized for resolving the PR #181 GitGuardian finding.
 - PR #181 remains open/unmerged until the existing GitGuardian finding is reviewed and the required security gate is green.
 - Fresh branch-associated workflow runs at `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`: CI #643, readiness #197, frontend lint #90, frontend build #89 all completed successfully. GitGuardian's current result still needs separate verification; do not infer it from these workflow runs.
+
+
+## New-chat handoff — 2026-10-22 21:05 UTC
+
+- **User decision (VERIFIED):** Preserve Git history. Do not rebase, squash, force-push, reset, rewrite commits, or dismiss GitGuardian findings as a shortcut.
+- PR #181 remains open against `dev`, unmerged: https://github.com/NetHub-Ltd/NetPay/pull/181. Issue #180: https://github.com/NetHub-Ltd/NetPay/issues/180.
+- Implementation/config/test changes described above are in the working branch; no deployment manifests, Flux resources, `dev`, `main`, or production database were changed.
+- Last confirmed green run set on prior tip `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`: CI #643, readiness #197, frontend lint #90, frontend build #89.
+- Subsequent tracker-only commit `d2d9eb371f4f6f9d8928fdf0dc22c8d814f169f2` had queued runs CI #651, readiness #205, frontend lint #98, frontend build #97 at last query. Recheck latest live branch and outcomes.
+- GitGuardian: prior evidence reports six findings from earlier PR commits; current check status was not returned by workflow-run API. Review exact findings and preserve history. Do not merge until the required security gate passes.
+- Render/Aiven database-off behavior and actual deployed schema remain **UNKNOWN**.
+- Next milestone action: refresh live refs/checks, inspect GitGuardian finding context, and record verified outcomes before any merge/release decision.
