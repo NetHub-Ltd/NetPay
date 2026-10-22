@@ -163,3 +163,11 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 - **VERIFIED:** backend readiness [#188](https://github.com/NetHub-Ltd/NetPay/actions/runs/39786001722), frontend lint [#81](https://github.com/NetHub-Ltd/NetPay/actions/runs/39786009723), and frontend build [#81](https://github.com/NetHub-Ltd/NetPay/actions/runs/39786009393) passed.
 - **BLOCKED:** GitGuardian check fails on six detections from earlier commits in PR #181. The current tree was cleaned (blank example password, removed workflow/container password literals, synthetic reserved-character test value assembled from fragments), but GitGuardian scans earlier commits too. The detections are the local/test placeholders introduced during this work, not verified production credentials. No history rewrite or finding dismissal was performed. Do not merge until the check is resolved through an approved path.
 - **UNKNOWN:** actual Render startup when Aiven was disabled; no Render deployment metadata/logs or Aiven schema query have been inspected.
+
+
+## User decision — Git history preservation (2026-10-22)
+
+- **VERIFIED (user decision):** Preserve all existing Git history for PR #181. Do not rebase, squash, force-push, or rewrite prior commits to clear GitGuardian findings.
+- Keep PR #181 open and unmerged while the GitGuardian check is unresolved. Review the findings through the existing security workflow; do not dismiss them or claim they are harmless without reviewing the actual finding context.
+- **Fresh workflow evidence at branch commit `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`:** CI run #643, backend readiness #197, frontend lint #90, and frontend build #89 completed successfully. The GitHub Actions workflow-run query does not report GitGuardian, so its current state must be checked separately in the PR checks UI/API before declaring the security gate resolved.
+- **UNKNOWN:** Render/Aiven DB-off behavior remains unverified.
