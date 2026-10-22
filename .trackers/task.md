@@ -74,3 +74,31 @@ Do not mark a checkbox complete based only on intended implementation or a claim
 
 - 2026-10-22: Created a fresh rebuild-specific tracker baseline after discovering the legacy `.trackers/` files on `main` were absent from the rebuild branch. Initial status is deliberately conservative; verification items remain open until checked against current evidence.
 - 2026-10-22: Elevated agent handoff to Priority 0. Required reading order, freshness checks, evidence rules, and a resumability acceptance check are now explicit.
+
+## Investigation opened — database-disabled startup and model count (2026-10-22)
+
+**User-observed behavior (OBSERVED by user, not independently reproduced here):** the application appeared to start after the user disabled their database. Exact runtime, image/commit, endpoint, and logs have not yet been established.
+
+**Current source inspection (OBSERVED):**
+- `backend/app/main.py` calls `await check_database(engine)` in FastAPI lifespan before `yield`.
+- `backend/app/core/database.py` implements that check using `SELECT 1`.
+- Therefore, for this exact source, normal FastAPI lifespan, and the same unreachable configured PostgreSQL endpoint, successful application startup is not the expected outcome. Diagnose runtime/configuration/image mismatch or lifecycle behavior before claiming a root cause.
+- `backend/Dockerfile` healthcheck probes `/health/live`, not `/health/ready`; liveness alone does not establish database readiness.
+- `backend/smoke_tests/test_startup.py` covers successful startup with PostgreSQL available and readiness returning 200; it does not test startup with PostgreSQL unavailable.
+- CI provisions PostgreSQL and Redis, applies migrations, and the container smoke script starts both dependencies. The existing CI path therefore does not exercise the user's database-off scenario.
+
+**Model count (VERIFIED by source inventory):**
+- `backend/app/models/` has 8 Python files including `__init__.py` and `base.py`; domain models are grouped into modules rather than one file per model.
+- `__init__.py` imports/exports 16 SQLModel table classes; `BaseMixin` is a shared mixin, not a table.
+- `test_database_foundation.py` explicitly expects 16 table names, and migration `0002_full_domain_schema` describes the full 16-table schema. The number of files alone does not show a model deficit.
+- This verifies declared model/table count in source, not that the user's running database actually has all 16 tables or that migration application is correct in that runtime.
+
+**Next safe actions:**
+1. Establish whether the test used the local backend, Docker container, frontend dev server, or deployed site; record the actual image/commit and effective `DATABASE_URL` host without exposing credentials.
+2. Reproduce with the exact PostgreSQL endpoint unavailable and capture startup logs plus process/container exit/health state.
+3. Add a negative startup regression test that asserts the app does not complete startup when PostgreSQL is unavailable.
+4. Separate liveness from readiness in operational health checks; review whether the container healthcheck should use `/health/ready` for the deployment's actual health semantics.
+5. Verify actual applied migration revision and 16 table names in the tested database.
+6. Update this tracker and issue #179 with exact evidence before implementing a fix.
+
+No application code has been changed as part of this investigation yet.
