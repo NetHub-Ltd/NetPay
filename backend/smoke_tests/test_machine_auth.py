@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 
 from app.core.config import Settings
+from app.api.oauth import TokenRequest, create_access_token
 from app.core.machine_auth import (
     decode_machine_access_token,
     create_m2m_client,
@@ -13,6 +14,7 @@ from app.core.machine_auth import (
     issue_machine_access_token,
     verify_client_secret,
 )
+from app.models.merchants import M2MClient, Merchant
 
 
 def _settings(**overrides: object) -> Settings:
@@ -134,3 +136,73 @@ def test_production_rejects_the_development_signing_key() -> None:
             scopes=["payments:read"],
             settings=settings,
         )
+
+
+def _scalar_result(value: object) -> MagicMock:
+    """Build the minimal SQLModel result surface used by the token endpoint."""
+    result = MagicMock()
+    result.first.return_value = value
+    return result
+
+
+@pytest.mark.asyncio
+async def test_token_endpoint_issues_token_only_after_client_and_merchant_validation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Token endpoint validates stored secret and active merchant before issuing a token."""
+    settings = _settings()
+    monkeypatch.setattr("app.api.oauth.get_settings", lambda: settings)
+    merchant = Merchant(name="Example Merchant", slug="example-merchant", status="active")
+    secret = "nms_" + "a" * 48
+    client = M2MClient(
+        merchant_id=merchant.id,
+        client_id="nmc_test-client",
+        secret_hash=hash_client_secret(secret),
+        scopes=["payments:read"],
+        status="active",
+    )
+    session = MagicMock()
+    session.exec = AsyncMock(side_effect=[_scalar_result(client), _scalar_result(merchant)])
+    session.commit = AsyncMock()
+
+    response = await create_access_token(
+        TokenRequest(grant_type="client_credentials", client_id=client.client_id, client_secret=secret),
+        session,
+    )
+    principal = decode_machine_access_token(response.access_token, settings=settings)
+    assert response.token_type == "Bearer"
+    assert response.expires_in == 300
+    assert principal.client_id == client.client_id
+    assert principal.merchant_id == merchant.id
+    assert principal.scopes == frozenset({"payments:read"})
+    session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_token_endpoint_rejects_invalid_client_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Invalid secrets do not produce tokens or commit client usage."""
+    from fastapi import HTTPException
+
+    settings = _settings()
+    monkeypatch.setattr("app.api.oauth.get_settings", lambda: settings)
+    merchant = Merchant(name="Example Merchant", slug="example-merchant", status="active")
+    client = M2MClient(
+        merchant_id=merchant.id,
+        client_id="nmc_test-client",
+        secret_hash=hash_client_secret("nms_" + "a" * 48),
+        scopes=["payments:read"],
+        status="active",
+    )
+    session = MagicMock()
+    session.exec = AsyncMock(side_effect=[_scalar_result(client), _scalar_result(merchant)])
+    session.commit = AsyncMock()
+
+    with pytest.raises(HTTPException) as error:
+        await create_access_token(
+            TokenRequest(
+                grant_type="client_credentials",
+                client_id=client.client_id,
+                client_secret="nms_" + "b" * 48,
+            ),
+            session,
+        )
+    assert error.value.status_code == 401
+    session.commit.assert_not_awaited()
