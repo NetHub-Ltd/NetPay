@@ -1,6 +1,6 @@
 # NetPay rebuild rollback notes
 
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-23
 
 ## Current change
 
@@ -89,3 +89,12 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - GitGuardian bot comment currently lists three detections in prior commits: two test URL credential-pattern detections and one smoke-test password literal. Inspect full incidents and verify current check conclusion before choosing a resolution. Do not dismiss findings, rewrite history, or assert production credential exposure without evidence. Earlier tracker wording says six detections; reconcile count.
 - Render/Aiven startup and actual schema remain unverified. Do not change DB settings in deployment or touch manifests without authorization.
 - Next safe action is evidence gathering only: confirm live branch head SHA, fetch PR required checks / GitGuardian check result and full incident context, then update issue and trackers. If a real credential is established, follow approved rotation/revocation procedures while preserving Git history.
+
+
+## M-Pesa Core implementation rollback boundary — issue #187 (2026-10-23)
+
+- Pre-change working-branch tip: `8960d3c0d0911474e195f212e0bb68c6b474d860`; preserve history and use reviewed revert commits.
+- Add only new Alembic revisions; never edit applied migrations or reset/replace the database.
+- No production credentials, production transactions, database writes, deployment manifests, Flux resources, `dev`, or `main` changes are authorized by this implementation task.
+- Revert Core application files, configuration, tests, documentation and the corresponding migration together if rollback is required. Do not remove schema objects with live data without a separately reviewed migration.
+- A passing GitHub CI run validates the tested commit in CI, not Render/Aiven production behavior. Local tests cannot be run from this environment unless repository access/network becomes available.
