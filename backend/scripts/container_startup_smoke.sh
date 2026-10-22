@@ -31,7 +31,6 @@ docker run --detach --name "$api" --network "$network" --publish 127.0.0.1:8000:
   --env DB_PORT=5432 \
   --env DB_NAME=netpay \
   --env DB_USER=netpay \
-  --env DB_PASSWORD=netpay \
   --env DB_SSL_MODE=disable \
   --env DB_POOL_SIZE=1 \
   --env DB_MAX_OVERFLOW=0 \
