@@ -45,12 +45,14 @@ def test_connection_urls_are_built_from_split_secret_settings() -> None:
 
     assert async_url.drivername == "postgresql+asyncpg"
     assert sync_url.drivername == "postgresql+psycopg"
+    assert async_url.username == "private-user"
+    assert sync_url.username == "private-user"
     for url in (async_url, sync_url):
-        assert url.username == "private-user"
         assert url.password == "p@ss:/% word"
         assert url.host == "db.example.test"
         assert url.database == "netpay"
-        assert url.query["sslmode"] == "require"
+    assert async_url.query["ssl"] == "require"
+    assert sync_url.query["sslmode"] == "require"
     assert "p@ss:/% word" not in repr(settings)
     assert "private-user" not in repr(settings)
 
@@ -63,6 +65,20 @@ def test_database_configuration_validates_pool_and_port() -> None:
         Settings(db_pool_size=0)
     with pytest.raises(ValueError):
         Settings(db_max_overflow=-1)
+
+
+def test_legacy_database_url_can_bridge_existing_deployments() -> None:
+    """An existing DATABASE_URL remains usable during the environment migration."""
+    settings = Settings(
+        database_url="postgresql+asyncpg://legacy-user:legacy-pass@db.internal:5433/gateway?sslmode=require"
+    )
+    url = make_url(settings.async_database_url())
+    assert url.host == "db.internal"
+    assert url.port == 5433
+    assert url.database == "gateway"
+    assert url.username == "legacy-user"
+    assert url.password == "legacy-pass"
+    assert url.query["ssl"] == "require"
 
 
 def test_conservative_pool_defaults() -> None:
