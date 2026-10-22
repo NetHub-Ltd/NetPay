@@ -1,11 +1,11 @@
 """Integration checks for the applied Alembic schema."""
 
 import asyncio
-import os
-
 import pytest
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import create_async_engine
+
+from app.core.config import get_settings
 
 
 EXPECTED_TABLES = {
@@ -31,10 +31,7 @@ EXPECTED_TABLES = {
 @pytest.mark.asyncio
 async def test_alembic_head_contains_all_sixteen_domain_tables() -> None:
     """CI verifies the real PostgreSQL schema after `alembic upgrade head`."""
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        pytest.skip("DATABASE_URL is not configured; PostgreSQL integration test skipped")
-
+    database_url = get_settings().async_database_url()
     engine = create_async_engine(database_url, pool_pre_ping=True)
     try:
         async with engine.connect() as connection:
