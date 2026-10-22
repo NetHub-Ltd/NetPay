@@ -1,6 +1,6 @@
 # NetPay rebuild milestones
 
-**Last updated:** 2026-10-22  
+**Last updated:** 2026-10-23  
 **Branch:** `work/minimal-netpay-rebuild`  
 **Specification:** [`docs/REBUILD_SPEC.md`](../docs/REBUILD_SPEC.md)  
 **Status principle:** Do not mark a milestone complete without evidence.
@@ -138,3 +138,21 @@ Model source inventory: 16 SQLModel table classes are declared/exported across g
 | R1.1–R1.6, R2.1, R2.5, R3.x | Broader rebuild acceptance | **OPEN** — current successful workflow results do not close the full diff, delivery, payment-security, browser UX, metadata, and release/rollback review |
 
 Evidence refresh date: 2026-10-23. Runs above are associated with recorded commit `5efc356fc4a217f78a5d7851e53ed9f52f93869a`; branch head SHA was not exposed by branch search and must be re-queried.
+
+
+## M-Pesa Core — issue #187 (2026-10-23)
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| MP.1 | Current branch/baseline and existing models/migrations inspected | VERIFIED — remote GitHub reads; local clone blocked by unavailable DNS/network |
+| MP.2 | Implementation issue created before tracker/code changes | VERIFIED — [issue #187](https://github.com/NetHub-Ltd/NetPay/issues/187) |
+| MP.3 | Current official Daraja API inventory documented with capability/prerequisite classification | IN PROGRESS |
+| MP.4 | Credential encryption and resolution; OAuth lifecycle/cache | OPEN |
+| MP.5 | Shared typed HTTP transport, safe errors, timeouts, correlation | OPEN |
+| MP.6 | Durable provider-operation audit and redacted structured logging | OPEN |
+| MP.7 | STK/C2B callbacks normalized, correlated, deduplicated, safe under reordering | OPEN |
+| MP.8 | Other relevant API adapters have typed contracts and capability gates | OPEN |
+| MP.9 | Unit, contract, integration, concurrency and security regression tests | OPEN |
+| MP.10 | CI/migrations/container/frontend checks re-run on final branch tip | OPEN |
+
+Gate: do not mark any item VERIFIED without a concrete test, source, or workflow result. Daraja APIs requiring initiator/security credentials or product permissions must be disabled unless those requirements are configured.
