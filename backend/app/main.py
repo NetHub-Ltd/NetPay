@@ -13,6 +13,7 @@ from app.core.config import Settings, get_settings
 from app.core.database import check_database, create_database_engine, create_session_factory
 from app import models  # noqa: F401 - register SQLModel metadata
 from app.api.oauth import router as oauth_router
+from app.api.provisioning import router as provisioning_router
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -47,6 +48,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="NetPay API", version="0.2.0", description="NetPay payment gateway API.", docs_url="/docs", redoc_url=None, lifespan=lifespan)
 app.include_router(oauth_router)
+app.include_router(provisioning_router)
 
 @app.get("/health/live", tags=["health"], summary="Liveness probe")
 async def liveness() -> dict[str, str]:
