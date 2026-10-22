@@ -37,6 +37,8 @@ class DarajaIntegration(BaseMixin, table=True):
     consumer_key_ciphertext: bytes | None = Field(default=None, sa_column=Column(LargeBinary, nullable=True))
     consumer_secret_ciphertext: bytes | None = Field(default=None, sa_column=Column(LargeBinary, nullable=True))
     passkey_ciphertext: bytes | None = Field(default=None, sa_column=Column(LargeBinary, nullable=True))
+    provider_access_token_ciphertext: bytes | None = Field(default=None, sa_column=Column(LargeBinary, nullable=True))
+    provider_token_expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     credential_status: str = Field(default="pending", max_length=24, index=True)
     credentials_validated_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     credential_version: int = Field(default=1, ge=1)
