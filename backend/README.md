@@ -44,3 +44,13 @@ PostgreSQL is required at startup. Redis is auxiliary: an unavailable Redis inst
 ```bash
 pytest -q smoke_tests
 ```
+
+
+## Provider credential encryption and machine authentication
+
+- Set `CREDENTIAL_ENCRYPTION_KEY` to a Fernet key generated with the command in `.env.example`. Keep it in the deployment secret store, separate from PostgreSQL, and preserve it across releases. The application does not generate a fallback key. Missing or invalid configuration fails closed when credential encryption is requested.
+- Set a unique random `SECRET_KEY` of at least 32 bytes in production. The checked-in value is only for local development and is rejected for production token signing.
+- `MACHINE_TOKEN_TTL_MINUTES` defaults to 60 and is bounded to 1–1440 minutes. `MACHINE_TOKEN_AUDIENCE` defaults to `netpay`.
+- Provider credentials must be encrypted before assigning ciphertext columns. Decrypt only at the provider-call boundary; never log plaintext or return it in API responses.
+- M2M client secrets are generated and hashed before persistence. The `/v1/oauth/token` endpoint exchanges a stored client ID/secret for a short-lived bearer token. The `/v1/oauth/me` endpoint demonstrates the authenticated principal and returns no secrets. Client provisioning must remain an authenticated operator workflow; there is no anonymous client-creation endpoint.
+- Each authenticated M2M request re-checks the persisted client and merchant status, expiry, revocation, and granted scopes so disabling a client takes effect immediately. Derive tenant IDs from the verified principal rather than request-body merchant IDs.
