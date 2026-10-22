@@ -48,7 +48,7 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 
 ## Implementation rollback/evidence update — 2026-10-22
 
-- Implemented changes are on `work/minimal-netpay-rebuild`, latest observed tip `90951334628987c10cb77fb6f06f80bdedf9fe1f`; `dev` and `main` were rechecked and unchanged.
+- Implemented changes are on `work/minimal-netpay-rebuild`, application-code commit `90951334628987c10cb77fb6f06f80bdedf9fe1f`; tracker-only commits have since advanced the branch. `dev` and `main` were rechecked and unchanged.
 - CI #615 passed (15 passed, 1 warning), including Alembic migration and container smoke; backend readiness #169 and frontend lint/build #61 passed.
 - Revert the settings/pool/Docker/test/workflow changes via reviewed commits if needed. Revert the Alembic directory/config/image-copy changes together so migrations remain discoverable as one unit.
 - The compatibility bridge is temporary; removing it requires coordinated updates to external Render variables and deployment-owned secrets/manifests. Do not edit those manifests here.
