@@ -115,3 +115,12 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - GitGuardian passed on latest observed code head; CI jobs were queued. Only prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` has recorded backend test success (24 passed, 1 warning).
 - Revert through a reviewed revert commit; do not rewrite history. Keep `SECRET_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, and `M2M_PROVISIONING_KEY` in the deployment secret store. Do not configure or change them without authorization.
 - Never enable a provider integration unless its encryption key is configured. Never mark callback-reported success as paid without provider verification. Current callback handler deliberately leaves matched non-terminal payments unknown until verification/reconciliation.
+
+
+## Latest rollback boundaries — 2026-10-23
+
+- PR #184 remains a draft on the single working branch; latest code head before tracker-only refresh: `dd170c5e6e9c58027ef032f7221e962389348ed9`.
+- Changes include M2M auth/provisioning, encrypted Daraja onboarding and token cache, migration `0003_provider_token_cache`, idempotent STK initiation, and callback evidence storage. No deployed database or environment variables were changed.
+- GitGuardian passed on the latest observed code head; CI was queued/in progress. Only prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` has recorded backend test success (24 passed, 1 warning).
+- Revert via reviewed revert commit; do not rewrite history. Keep `SECRET_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, and `M2M_PROVISIONING_KEY` in deployment secrets. Do not configure or change them without authorization.
+- Callback evidence is untrusted. No callback alone marks a payment successful; matched callbacks remain unknown pending provider verification. Do not merge/enable final settlement until STK Query verification and transactional outbox handling are complete.

@@ -208,3 +208,13 @@ These are historical reports, not fresh verification performed during tracker cr
 - Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` backend tests passed (24 passed, 1 warning); no current claim for tests added afterward.
 - No Alembic migrations, production database, Render variables, Flux resources, deployment manifests, `main`, or `dev` were changed. Local clone failed due DNS resolution; local tests were not run.
 - Provider behavior is grounded in Safaricom's official [Authorization API](https://developer.safaricom.co.ke/apis/Authorization) and [M-Pesa Express documentation](https://developer.safaricom.co.ke/apis/MpesaExpressSimulate). STK Query verification/outbox remains unimplemented.
+
+
+## Latest live state — 2026-10-23
+
+- User-confirmed: PR #181 merged; Render deployment works; GitGuardian test-credential findings are not a blocker. Preserve history.
+- Issues #183, #185, #186 cover M2M security, Daraja integration onboarding, and STK/callback lifecycle. PR #184 remains the single draft PR targeting `dev`.
+- Latest code head before tracker-only refresh: `dd170c5e6e9c58027ef032f7221e962389348ed9`. GitGuardian completed successfully; backend/lint/build/start-health checks were queued or in progress.
+- Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` passed 24 backend tests with 1 warning. Current added tests are not yet verified.
+- New migration `0003_provider_token_cache` adds encrypted token and expiry fields; prior Alembic revision IDs/content were not changed. No production database, Render variables, Flux resources, deployment manifests, `main`, or `dev` were changed.
+- Local clone failed due DNS resolution; local pytest/lint were not run. Next work: provider-authoritative STK Query, callback reconciliation, and verified outbox events.

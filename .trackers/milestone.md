@@ -174,3 +174,19 @@ PR [#184](https://github.com/NetHub-Ltd/NetPay/pull/184) is a draft against `dev
 | C2B URL registration | OPEN and opt-in; not implemented in this slice |
 
 Current code head before tracker-only refresh: `eb3f2d1d6245a1d4193a138dbd85a30cbe09bc7e`. GitGuardian passed; backend/lint/build/start-health CI runs were queued at last read. Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` passed 24 tests with 1 warning; it predates integration/payment/callback tests.
+
+
+## Latest implementation status — 2026-10-23
+
+| Slice | Status |
+|---|---|
+| Credential encryption and M2M auth/provisioning | IMPLEMENTED; newest tests pending CI |
+| Merchant-scoped Daraja integration onboarding | IMPLEMENTED; encrypted credentials, OAuth validation, safe responses, callback URL generation |
+| Shared encrypted token cache | IMPLEMENTED per integration; Alembic revision `0003_provider_token_cache`; newest tests pending CI |
+| Idempotent STK initiation | IMPLEMENTED; payment/attempt/provider-request/idempotency committed before provider I/O |
+| Public callback intake | IMPLEMENTED; deduplicated, minimized evidence; callback cannot finalize money movement |
+| STK Query verification and reconciliation | OPEN — required before marking success/failure based on callbacks |
+| Transactional outbox events for verified transitions | OPEN — emit deterministically and exactly once |
+| C2B registration | OPEN and opt-in |
+
+Latest code head before tracker-only refresh: `dd170c5e6e9c58027ef032f7221e962389348ed9`. GitGuardian passed; backend/lint/build/start-health checks were queued or in progress. Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` passed 24 tests with 1 warning, before the new integration/payment/callback tests.
