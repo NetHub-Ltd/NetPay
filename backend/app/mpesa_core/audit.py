@@ -1,4 +1,6 @@
 """Durable provider-operation audit with strict metadata redaction."""
+import hashlib
+import json
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import Enum
