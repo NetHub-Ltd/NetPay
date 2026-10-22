@@ -96,3 +96,14 @@ These are historical reports, not fresh verification performed during tracker cr
 - The existing startup test and CI/container smoke tests use healthy PostgreSQL; no negative database-unavailable startup test was found in the inspected test file/workflow.
 - Source inventory declares 16 SQLModel table classes and tests expect 16 table names; these classes are grouped in fewer files. This does not verify the schema in the user's running database.
 - Next action: ask whether the test was against the local backend/container or deployed URL, then reproduce against that exact runtime; add negative startup test and verify actual Alembic revision/tables. No application code has been changed for this investigation.
+
+
+## Active work — issue #180 (2026-10-22)
+
+- Issue created first as requested: https://github.com/NetHub-Ltd/NetPay/issues/180
+- Scope: prove database-unavailable startup behavior in Render/Aiven test environment; separate DB credentials/configuration and build async/sync SQLAlchemy URLs internally; rename `backend/migrations/` to `backend/alembic/`; reduce pool connection use; keep env examples and secret-safe logs.
+- Working branch remains `work/minimal-netpay-rebuild`. Do not create another branch, push directly to `dev`/ `main`, alter deployment manifests, or modify protected refs.
+- Current source evidence: `backend/app/core/config.py` has monolithic `DATABASE_URL`; `backend/app/core/database.py` configures pool size 5 and overflow 5; `backend/migrations/env.py` and `backend/alembic.ini` use migration path `migrations`.
+- Runtime unknown: Render may report the service as running while the backend process failed, a prior image may be deployed, or the runtime may use another effective DB endpoint. These are hypotheses only; inspect deployment metadata/logs and never include secret values in issue/tracker text.
+- Proposed pool starting point is size 1, no overflow, pre-ping and LIFO, but actual choice must be tested against concurrency and total Render instance/worker count. This is not a zero-idle pool.
+- No application code has changed for issue #180 yet. After implementation, re-fetch files and branch state and record the exact result here.
