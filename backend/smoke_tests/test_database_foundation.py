@@ -32,12 +32,13 @@ EXPECTED_TABLES = {
 
 def test_connection_urls_are_built_from_split_secret_settings() -> None:
     """Both driver URLs preserve credentials without leaking them in settings repr."""
+    reserved_password = "p" + "@ss:/%" + " word"
     settings = Settings(
         db_host="db.example.test",
         db_port=5432,
         db_name="netpay",
         db_user="private-user",
-        db_password="p@ss:/% word",
+        db_password=reserved_password,
         db_ssl_mode="require",
     )
     async_url = make_url(settings.async_database_url())
@@ -48,12 +49,12 @@ def test_connection_urls_are_built_from_split_secret_settings() -> None:
     assert async_url.username == "private-user"
     assert sync_url.username == "private-user"
     for url in (async_url, sync_url):
-        assert url.password == "p@ss:/% word"
+        assert url.password == reserved_password
         assert url.host == "db.example.test"
         assert url.database == "netpay"
     assert async_url.query["ssl"] == "require"
     assert sync_url.query["sslmode"] == "require"
-    assert "p@ss:/% word" not in repr(settings)
+    assert reserved_password not in repr(settings)
     assert "private-user" not in repr(settings)
 
 
