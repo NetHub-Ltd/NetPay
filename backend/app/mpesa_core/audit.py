@@ -1,5 +1,5 @@
 """Durable provider-operation audit with strict metadata redaction."""
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Mapping

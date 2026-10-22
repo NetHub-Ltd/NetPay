@@ -169,6 +169,9 @@ async def record_callback(
         integration = integration_result.first()
         if integration is None:
             raise UnknownIntegration("callback integration was not found")
+        integration_db_id = integration.id
+        integration_merchant_id = integration.merchant_id
+        integration_public_id = integration.integration_id
 
         safe_payload = dict(normalized["safe_payload"])
         processing_status = "received"
@@ -177,7 +180,7 @@ async def record_callback(
             checkout_id = str(normalized.get("checkout_request_id", ""))
             payment_result = await session.exec(
                 select(Payment).where(
-                    Payment.integration_id == integration.id,
+                    Payment.integration_id == integration_db_id,
                     Payment.provider_checkout_request_id == checkout_id,
                 )
             )
@@ -222,9 +225,9 @@ async def record_callback(
 
         event_id = str(normalized.get("provider_event_id") or f"{callback_type}:{fingerprint}")[:120]
         row = ProviderCallback(
-            integration_id=integration.id,
+            integration_id=integration_db_id,
             provider_event_id=event_id,
-            merchant_id=integration.merchant_id,
+            merchant_id=integration_merchant_id,
             payment_id=payment_id,
             callback_type=callback_type,
             dedupe_fingerprint=fingerprint,
@@ -236,7 +239,7 @@ async def record_callback(
             await session.commit()
             logger.info(
                 "mpesa_callback_recorded callback_type={} integration_id={} status={}",
-                callback_type, integration.integration_id, processing_status,
+                callback_type, integration_public_id, processing_status,
             )
             return CallbackReceipt(
                 status="recorded",
@@ -248,7 +251,7 @@ async def record_callback(
             await session.rollback()
             existing_fingerprint = await session.exec(
                 select(ProviderCallback).where(
-                    ProviderCallback.integration_id == integration.id,
+                    ProviderCallback.integration_id == integration_db_id,
                     ProviderCallback.dedupe_fingerprint == fingerprint,
                 )
             )
@@ -261,7 +264,7 @@ async def record_callback(
                 )
             existing_event = await session.exec(
                 select(ProviderCallback).where(
-                    ProviderCallback.integration_id == integration.id,
+                    ProviderCallback.integration_id == integration_db_id,
                     ProviderCallback.provider_event_id == event_id,
                 )
             )
@@ -270,7 +273,7 @@ async def record_callback(
                 raise
             session.add(
                 AuditLog(
-                    merchant_id=integration.merchant_id,
+                    merchant_id=integration_merchant_id,
                     actor_type="provider",
                     actor_id=None,
                     action="mpesa.callback.duplicate_conflict",
@@ -286,7 +289,7 @@ async def record_callback(
             await session.commit()
             logger.warning(
                 "mpesa_callback_conflict callback_type={} integration_id={}",
-                callback_type, integration.integration_id,
+                callback_type, integration_public_id,
             )
             return CallbackReceipt(
                 status="conflict",
