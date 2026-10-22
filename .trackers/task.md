@@ -209,3 +209,39 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 - **UNKNOWN:** GitGuardian's current required-check conclusion was not surfaced by the workflow-run query or combined status endpoint (the latter returned no status entries). Do not infer the security gate passed.
 - **UNKNOWN:** Render/Aiven DB-off behavior, deployed SHA/logs/effective non-secret DB host, and Aiven migration/schema remain unverified.
 - **Next safe action:** obtain authoritative current branch head and PR check details, reconcile GitGuardian's exact incident count/status, then continue the broader rebuild acceptance review. Do not alter application code, DB, deployment manifests, or history as part of this status refresh.
+
+
+## User direction and next implementation phase — 2026-10-23
+
+**Superseding user decisions**
+- User confirms PR #181 was merged and the Render deployment is working.
+- User reviewed the GitGuardian findings and considers the flagged values test credentials, not a blocker. Preserve Git history; do not reopen the prior gate absent new evidence.
+- The earlier sections above that say PR #181 remains open/unmerged and GitGuardian blocks merging are historical and superseded by this decision and the live PR record.
+
+**Current phase**
+- Tracking issue: [#183](https://github.com/NetHub-Ltd/NetPay/issues/183) — credential encryption and merchant-scoped M2M auth.
+- Working branch name was recreated from current `dev` because GitHub deleted the old branch after PR #181 merged. The one-branch / one-PR workflow continues.
+- Draft PR: [#184](https://github.com/NetHub-Ltd/NetPay/pull/184), target `dev`.
+- Current implementation head at last read: `14134f360865c9d360e702abaa4306400cecaf25`.
+
+**Implemented in PR #184**
+- Authenticated Fernet encryption helpers with no default/ephemeral encryption key.
+- Deployment settings for `CREDENTIAL_ENCRYPTION_KEY`, `SECRET_KEY`, M2M token TTL and audience.
+- PBKDF2-HMAC client-secret hashing, one-time client-credential generation helper, bounded declared scopes, HS256 tokens and typed merchant principal.
+- `POST /v1/oauth/token` validates persisted client/merchant state and client secret; `GET /v1/oauth/me` reports safe identity context.
+- Authenticated requests re-check persisted client and merchant status, revocation, expiry and granted scopes.
+- Tests for encryption round-trip/wrong key/tampering/missing key, secret hashing, token expiry/audience/tampering, scope allow-list and production default-key rejection.
+- Backend README and `.env.example` updated. No migrations or deployment manifests changed.
+
+**Verification evidence**
+- **VERIFIED:** backend CI on prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` ran `pytest -q smoke_tests`: **24 passed, 1 warning**.
+- **OBSERVED:** latest head `14134f360865c9d360e702abaa4306400cecaf25` includes additional scope-hardening and tests; its CI runs were queued at last check. Do not report those newest tests as passed until the run is refreshed.
+- **UNKNOWN / not run locally:** local pytest/lint. A local clone attempt failed because the environment could not resolve github.com; code was changed through GitHub's repository API.
+- **VERIFIED:** GitGuardian check on PR #184 reported success. This is separate from application behavior tests.
+
+**Next safe actions**
+1. Refresh CI for the latest PR head and inspect any real test/build failures without allowing non-blocking checks to stall unrelated work.
+2. Review the M2M endpoint and tests, especially route-level database behavior and error paths.
+3. Add an authenticated operator provisioning path before exposing client creation; do not add anonymous client provisioning.
+4. Wire credential encryption into integration create/update and provider-call paths, then implement Daraja credential validation/onboarding and STK Push/callbacks as the next vertical slice.
+5. Configure the new signing/encryption secrets in the relevant deployment environment before enabling the corresponding features; do not modify Flux manifests.
