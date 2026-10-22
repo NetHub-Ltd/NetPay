@@ -72,3 +72,19 @@ Do not call the rebuild complete or merge it until:
 | R2.9 | Tested database has Alembic head `0002_full_domain_schema` and all 16 expected domain tables | OPEN — source test defines the expected schema; the user's running database has not been inspected |
 
 Model source inventory: 16 SQLModel table classes are declared/exported across grouped modules; file count is not model count. Runtime schema remains separately unverified.
+
+
+## Issue #180 — database reliability and connection management (2026-10-22)
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| DB.1 | GitHub issue created before tracker and application changes | VERIFIED — [#180](https://github.com/NetHub-Ltd/NetPay/issues/180) |
+| DB.2 | Reproduce/investigate Render startup when Aiven is unavailable | OPEN — exact deployment commit/logs/effective host not yet established |
+| DB.3 | Negative regression test proves required PostgreSQL failure blocks completed backend startup | OPEN |
+| DB.4 | Separate validated DB connection fields construct async and sync URLs safely | OPEN |
+| DB.5 | Rename migration directory to `backend/alembic/` and update all references without changing revisions | OPEN |
+| DB.6 | Reduce idle/peak connections and account for worker/instance multiplication | OPEN |
+| DB.7 | Run tests, migration checks, reference audit, and relevant CI/build checks | OPEN — no new tests run yet |
+| DB.8 | Update/re-fetch trackers and issue with exact outcomes | OPEN |
+
+**Pool decision pending verification:** proposed initial `pool_size=1`, `max_overflow=0`, `pool_pre_ping=True`, `pool_use_lifo=True`, configurable timeout/recycle. This retains one idle connection per active engine after first use; `NullPool` would be required if the goal is to retain no idle connections, at the cost of connection setup per checkout.
