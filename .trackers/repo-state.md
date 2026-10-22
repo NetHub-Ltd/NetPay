@@ -6,11 +6,11 @@
 
 | Branch | Commit | Meaning |
 |---|---|---|
-| `work/minimal-netpay-rebuild` | `8884094d8bff9dff74e7f7dd3ebeb64c613cdd65` | Working branch; tracker baseline committed |
+| `work/minimal-netpay-rebuild` | See live branch ref | Working branch; tracker-only commits are on this branch |
 | `dev` | `5bcbf865837cedc258e6a11d483b12a28f7f2ccc` | Integration branch; unchanged by tracker creation |
 | `main` | `a55500c2838b8ad1cc637a121f2b30f7f88132d0` | Older code; untouched by this task |
 
-At the start of tracker creation, `work/minimal-netpay-rebuild` and `dev` both pointed to `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`. Four tracker-only commits advanced the working branch to `8884094d8bff9dff74e7f7dd3ebeb64c613cdd65`. The branches now differ by those tracker commits; no application code was changed by this task.
+At the start of tracker creation, `work/minimal-netpay-rebuild` and `dev` both pointed to `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`. Tracker-only commits advanced the working branch beyond the application baseline. The branch page/API is the authoritative source for the live tip because each tracker correction itself advances the tip. The branches now differ by tracker commits; no application code was changed by this task.
 
 ## Pull request and issue
 
