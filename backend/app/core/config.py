@@ -30,21 +30,6 @@ class Settings(BaseSettings):
     port: int = 8000
     log_level: str = "INFO"
 
-    # Keep signing and at-rest encryption keys separate. The development signing
-    # key is rejected by the token service in production; credential encryption
-    # has no default and fails closed when first used without a configured key.
-    secret_key: SecretStr = Field(
-        default=SecretStr("local-dev-secret-key-change-this-32chars"),
-        repr=False,
-        exclude=True,
-    )
-    credential_encryption_key: SecretStr | None = Field(default=None, repr=False, exclude=True)
-    m2m_provisioning_key: SecretStr | None = Field(default=None, repr=False, exclude=True)
-    machine_token_ttl_minutes: int = 60
-    machine_token_audience: str = "netpay"
-    public_api_base_url: str = "https://pay.nethub.co.ke"
-    daraja_timeout_seconds: float = 10.0
-
     # Temporary bridge for existing deployment secrets/manifests. New environments
     # should provide DB_* fields; explicit non-local DB_HOST takes precedence.
     database_url: SecretStr | None = Field(default=None, repr=False, exclude=True)
@@ -98,22 +83,6 @@ class Settings(BaseSettings):
         if "sslmode" in parsed.query:
             values["db_ssl_mode"] = parsed.query["sslmode"]
         return values
-
-    @field_validator("machine_token_ttl_minutes")
-    @classmethod
-    def validate_machine_token_ttl(cls, value: int) -> int:
-        """Keep machine access tokens short-lived and bounded."""
-        if not 1 <= value <= 1440:
-            raise ValueError("MACHINE_TOKEN_TTL_MINUTES must be between 1 and 1440")
-        return value
-
-    @field_validator("daraja_timeout_seconds")
-    @classmethod
-    def validate_daraja_timeout(cls, value: float) -> float:
-        """Require a bounded positive timeout for external Daraja requests."""
-        if not 1 <= value <= 60:
-            raise ValueError("DARAJA_TIMEOUT_SECONDS must be between 1 and 60")
-        return value
 
     @field_validator("db_port")
     @classmethod
