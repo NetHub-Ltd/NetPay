@@ -7,6 +7,7 @@ import pytest
 
 from app.core.config import Settings
 from app.api.oauth import TokenRequest, create_access_token
+from app.api.provisioning import M2MClientCreateRequest, provision_m2m_client
 from app.core.machine_auth import (
     decode_machine_access_token,
     create_m2m_client,
@@ -206,3 +207,76 @@ async def test_token_endpoint_rejects_invalid_client_secret(monkeypatch: pytest.
         )
     assert error.value.status_code == 401
     session.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_operator_provisioning_returns_secret_once_and_persists_hash(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only a valid operator key can create a client; response contains secret once."""
+    from pydantic import SecretStr
+
+    settings = _settings()
+    settings.m2m_provisioning_key = SecretStr("operator-provisioning-key-that-is-long-enough")
+    monkeypatch.setattr("app.api.provisioning.get_settings", lambda: settings)
+    merchant = Merchant(name="Provisioned Merchant", slug="provisioned-merchant", status="active")
+    session = MagicMock()
+    session.exec = AsyncMock(return_value=_scalar_result(merchant))
+    session.add = MagicMock()
+    session.flush = AsyncMock()
+    session.commit = AsyncMock()
+
+    response = await provision_m2m_client(
+        M2MClientCreateRequest(merchant_id=merchant.id, scopes=["payments:read"]),
+        provisioning_key="operator-provisioning-key-that-is-long-enough",
+        session=session,
+    )
+    stored_client = session.add.call_args.args[0]
+    assert response.client_id == stored_client.client_id
+    assert response.client_secret.startswith("nms_")
+    assert response.merchant_id == merchant.id
+    assert response.scopes == ["payments:read"]
+    assert response.client_secret != stored_client.secret_hash
+    assert verify_client_secret(response.client_secret, stored_client.secret_hash)
+    session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_operator_provisioning_rejects_wrong_key_before_database_access(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Invalid operator keys cannot inspect merchants or create credentials."""
+    from fastapi import HTTPException
+    from pydantic import SecretStr
+
+    settings = _settings()
+    settings.m2m_provisioning_key = SecretStr("operator-provisioning-key-that-is-long-enough")
+    monkeypatch.setattr("app.api.provisioning.get_settings", lambda: settings)
+    session = MagicMock()
+    session.exec = AsyncMock()
+
+    with pytest.raises(HTTPException) as error:
+        await provision_m2m_client(
+            M2MClientCreateRequest(merchant_id=uuid4(), scopes=["payments:read"]),
+            provisioning_key="incorrect-operator-key",
+            session=session,
+        )
+    assert error.value.status_code == 401
+    session.exec.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_operator_provisioning_is_disabled_without_configured_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The operator route is hidden when no sufficiently long key is configured."""
+    from fastapi import HTTPException
+
+    settings = _settings()
+    settings.m2m_provisioning_key = None
+    monkeypatch.setattr("app.api.provisioning.get_settings", lambda: settings)
+    session = MagicMock()
+    session.exec = AsyncMock()
+
+    with pytest.raises(HTTPException) as error:
+        await provision_m2m_client(
+            M2MClientCreateRequest(merchant_id=uuid4(), scopes=["payments:read"]),
+            provisioning_key=None,
+            session=session,
+        )
+    assert error.value.status_code == 404
+    session.exec.assert_not_awaited()
