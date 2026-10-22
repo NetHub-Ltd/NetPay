@@ -69,3 +69,13 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - User explicitly chose to preserve Git history for PR #181. Do not rewrite commits, rebase, squash, force-push, or reset the branch to remove scanner findings.
 - Keep PR #181 open/unmerged until the findings are reviewed and the required security check passes. Any real credential exposure should be handled through the appropriate secret rotation/remediation process without rewriting history.
 - No production database, deployment manifest, `dev`, or `main` changes are authorized by this decision.
+
+
+## New-chat handoff / rollback boundaries — 2026-10-22 21:05 UTC
+
+- User explicitly decided to **preserve Git history** for PR #181. Do not rewrite history, rebase, squash, force-push, reset, or use those actions to clear GitGuardian detections.
+- PR #181 remains open/unmerged against `dev`. Review the exact GitGuardian findings and resolve via the existing security process. If an actual credential exposure is confirmed, rotate/revoke it as appropriate; current context does not establish that any production credential was exposed.
+- No rollback or change to `dev`, `main`, Flux/deployment manifests, deployed resources, or production DB is authorized by this decision.
+- Last known green runs on prior tip `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`: CI #643, readiness #197, frontend lint #90, frontend build #89. Subsequent queued runs at commit `d2d9eb371f4f6f9d8928fdf0dc22c8d814f169f2`: CI #651, readiness #205, frontend lint #98, frontend build #97; verify before relying on them.
+- Render/Aiven DB-off behavior remains unverified. Do not use a database reset, destructive migration, or deployment-manifest change for diagnosis.
+- If application changes need reverting, use reviewed revert commits; keep Alembic path/config/image-copy changes together. Preserve branch history.
