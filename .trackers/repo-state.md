@@ -86,3 +86,13 @@ These are historical reports, not fresh verification performed during tracker cr
 2. Record the resulting working-branch commit and PR/issue state.
 3. Report changed, verified, not verified, risks, rollback, and follow-ups.
 4. Never claim a remote write succeeded until the tool response and follow-up read confirm it.
+
+
+## Database-off startup report and model inventory (2026-10-22)
+
+- User reports that NetPay appeared to start after they turned off the database. This is a user observation, not yet reproduced by the assistant; exact runtime, image/commit, database endpoint, and logs are unknown.
+- Source at the working branch has a FastAPI lifespan startup check (`app/main.py` -> `check_database` -> `SELECT 1`). With the same configured PostgreSQL endpoint truly unreachable and normal lifespan enabled, startup should not complete. Do not claim a root cause until the user's test context is established.
+- The Dockerfile healthcheck uses `/health/live`, not `/health/ready`; this checks process liveness rather than DB readiness.
+- The existing startup test and CI/container smoke tests use healthy PostgreSQL; no negative database-unavailable startup test was found in the inspected test file/workflow.
+- Source inventory declares 16 SQLModel table classes and tests expect 16 table names; these classes are grouped in fewer files. This does not verify the schema in the user's running database.
+- Next action: ask whether the test was against the local backend/container or deployed URL, then reproduce against that exact runtime; add negative startup test and verify actual Alembic revision/tables. No application code has been changed for this investigation.
