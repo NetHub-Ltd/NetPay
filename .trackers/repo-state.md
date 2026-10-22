@@ -130,3 +130,12 @@ These are historical reports, not fresh verification performed during tracker cr
 - CI #634 and PR CI #635 succeeded; backend tests 15 passed, 1 warning, no skipped migration-schema test. Backend readiness #188 and frontend lint/build #81 succeeded.
 - GitGuardian Security Checks fails with six detections from earlier commits in the PR (sample/local CI/container/test values). Current tree was cleaned, but the scanner still scans prior commits. No history rewrite or dismissal was performed. Resolve with approved action before merge; do not imply actual production credentials were exposed without evidence.
 - Render/Aiven DB-off observation remains unresolved; the exact Render deployment SHA/logs/effective endpoint are still unknown.
+
+
+## User decision — preserve history / latest checks (2026-10-22)
+
+- **VERIFIED (user decision):** Preserve Git history. Do not rebase, squash, force-push, rewrite commits, or dismiss GitGuardian findings to make PR #181 pass.
+- PR #181 remains open and unmerged against `dev` until GitGuardian is reviewed through the existing security process and required checks pass.
+- **Fresh workflow evidence for branch commit `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`:** CI #643, backend readiness #197, frontend lint #90, and frontend build #89 all completed with success. The workflow-run API response does not include GitGuardian; its current check status is therefore **UNKNOWN** from this query and must be checked separately.
+- **UNKNOWN:** Render deployment SHA/logs/effective DB endpoint and actual Aiven schema remain uninspected; no root cause claimed.
+- Next safe action: inspect the exact six GitGuardian findings and determine whether any actual credential was exposed; preserve history and follow the repository's existing review/rotation process if warranted. Do not merge until the required security gate is resolved.
