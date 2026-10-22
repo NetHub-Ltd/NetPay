@@ -1,6 +1,6 @@
 """Unit tests for machine secret hashing and signed access tokens."""
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -99,7 +99,8 @@ def test_machine_token_rejects_tampering() -> None:
 @pytest.mark.asyncio
 async def test_client_creation_returns_secret_once_and_stores_only_hash() -> None:
     """Provisioning helper persists only a hash and returns the plaintext separately."""
-    session = AsyncMock()
+    session = MagicMock()
+    session.flush = AsyncMock()
     result = await create_m2m_client(
         session,
         merchant_id=uuid4(),
@@ -116,7 +117,8 @@ async def test_client_creation_returns_secret_once_and_stores_only_hash() -> Non
 @pytest.mark.asyncio
 async def test_client_creation_rejects_unsupported_scopes_before_persistence() -> None:
     """Client provisioning cannot grant undeclared administrative scopes."""
-    session = AsyncMock()
+    session = MagicMock()
+    session.flush = AsyncMock()
     with pytest.raises(ValueError):
         await create_m2m_client(session, merchant_id=uuid4(), scopes=["admin:*"])
     session.add.assert_not_called()
