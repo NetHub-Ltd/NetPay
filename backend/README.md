@@ -61,3 +61,11 @@ pytest -q smoke_tests
 - An operator may create a client for an already-existing active merchant with `POST /v1/internal/m2m-clients` and the `X-NetPay-Provisioning-Key` header. Configure `M2M_PROVISIONING_KEY` as a random secret of at least 32 bytes; the endpoint returns 404 when it is not configured or is too short.
 - The request accepts only the declared integration/payment/event scopes and an optional timezone-aware expiry. The generated client secret is returned once; only its PBKDF2 hash is persisted. There is no client-list or secret-read endpoint.
 - Keep this key in the deployment secret store and do not put it in a browser, source control, query string, or logs. This bootstrap route is an operator-only bridge until a fully authenticated operator workflow is implemented.
+
+
+## Daraja integration onboarding
+
+- A merchant M2M client with `integrations:write` can create an integration through `POST /v1/integrations`; the merchant ID is derived from the verified bearer token, not accepted from the request body. `integrations:read` clients can list or inspect only their own integrations.
+- The create request validates the consumer key/secret against the official Daraja Authorization API for the selected environment, then stores the consumer key, consumer secret, and passkey as authenticated ciphertext. OAuth validation proves the app credentials can obtain a token; it does not prove every shortcode/product permission or passkey is valid.
+- Set `PUBLIC_API_BASE_URL` to the public NetPay origin used for callback generation. Production integrations require HTTPS. STK and C2B callback URLs are generated and persisted automatically; this phase does not register C2B URLs or implement callback processing.
+- The integration response intentionally excludes credential plaintext and ciphertext. Invalid credentials are not saved as active integrations. Provider calls use `DARAJA_TIMEOUT_SECONDS` and return sanitized errors.
