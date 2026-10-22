@@ -138,3 +138,19 @@ Model source inventory: 16 SQLModel table classes are declared/exported across g
 | R1.1–R1.6, R2.1, R2.5, R3.x | Broader rebuild acceptance | **OPEN** — current successful workflow results do not close the full diff, delivery, payment-security, browser UX, metadata, and release/rollback review |
 
 Evidence refresh date: 2026-10-23. Runs above are associated with recorded commit `5efc356fc4a217f78a5d7851e53ed9f52f93869a`; branch head SHA was not exposed by branch search and must be re-queried.
+
+
+## Security foundation — issue #183 (2026-10-23)
+
+| Criterion | Status |
+|---|---|
+| Authenticated provider credential encryption primitive | IMPLEMENTED; unit tests added; latest head results pending |
+| No default/ephemeral encryption key | IMPLEMENTED; missing/invalid key fails closed on use |
+| M2M client-secret hashing and one-time generation helper | IMPLEMENTED; unit tests added; latest head results pending |
+| Signed, short-lived token claims with audience/type/expiry/client/merchant/scopes | IMPLEMENTED; unit tests added; latest head results pending |
+| Persisted client/merchant status and revocation rechecked on protected requests | IMPLEMENTED in dependency; route-level database integration tests still needed |
+| OAuth token endpoint and safe identity endpoint | IMPLEMENTED; endpoint tests and full provisioning workflow remain open |
+| Render environment secrets configured for new features | UNKNOWN — not changed or independently inspected |
+| Current latest CI on head `14134f360865c9d360e702abaa4306400cecaf25` | QUEUED at last read; refresh before marking verified |
+
+PR [#184](https://github.com/NetHub-Ltd/NetPay/pull/184) is a draft against `dev`. This phase is a foundation only; merchant onboarding, Daraja OAuth validation, STK Push, callback processing, reconciliation and event delivery remain later milestones.
