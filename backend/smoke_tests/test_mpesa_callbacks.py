@@ -76,6 +76,19 @@ async def test_callbacks_are_durable_idempotent_and_conflicts_are_audited():
             },
         )
         assert accepted.validation_accepted is True
+        confirmation = await record_callback(
+            factory,
+            integration.integration_id,
+            "c2b_confirmation",
+            {
+                "TransID": "TX-C2B-1",
+                "TransAmount": "10.00",
+                "BusinessShortCode": "174379",
+                "BillRefNumber": "INV-1",
+                "MSISDN": "254712345678",
+            },
+        )
+        assert confirmation.status == "recorded"
         rejected = await record_callback(
             factory,
             integration.integration_id,

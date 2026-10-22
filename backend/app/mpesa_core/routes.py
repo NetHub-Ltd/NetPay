@@ -42,6 +42,12 @@ async def _record(request: Request, integration_id: str, callback_type: str, pay
     except UnknownIntegration as exc:
         logger.warning("mpesa_callback_unknown_integration callback_type={}", callback_type)
         raise HTTPException(status_code=404, detail="unknown_integration") from exc
+    except ValueError as exc:
+        logger.warning(
+            "mpesa_callback_invalid_payload callback_type={} error_type={}",
+            callback_type, type(exc).__name__,
+        )
+        raise HTTPException(status_code=400, detail="invalid_callback_payload") from exc
 
 
 @router.post("/stk/{integration_id}", include_in_schema=False)

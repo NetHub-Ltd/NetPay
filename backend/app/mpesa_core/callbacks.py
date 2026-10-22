@@ -154,12 +154,13 @@ async def record_callback(
         "account_balance", "reversal", "b2c", "b2b", "pull_transactions",
     }:
         raise ValueError("unsupported callback type")
-    fingerprint = callback_fingerprint(payload)
+    fingerprint = callback_fingerprint({"callback_type": callback_type, "payload": payload})
     normalized = (
         normalize_stk_callback(payload)
         if callback_type == "stk"
         else _normalize_other_callback(callback_type, payload)
     )
+    normalized["fingerprint"] = fingerprint
     validation_accepted: bool | None = None
 
     async with session_factory() as session:
@@ -252,6 +253,7 @@ async def record_callback(
             existing_fingerprint = await session.exec(
                 select(ProviderCallback).where(
                     ProviderCallback.integration_id == integration_db_id,
+                    ProviderCallback.callback_type == callback_type,
                     ProviderCallback.dedupe_fingerprint == fingerprint,
                 )
             )
