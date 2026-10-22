@@ -199,6 +199,11 @@ async def test_ambiguous_stk_timeout_is_unknown_and_not_retried(monkeypatch: pyt
     """A network-ambiguous provider result stays unknown for reconciliation."""
     key = Fernet.generate_key().decode("ascii")
     monkeypatch.setattr("app.api.payments.get_settings", lambda: _settings(key))
+
+    async def cached_token(*args: object, **kwargs: object) -> str:
+        return "cached-provider-token"
+
+    monkeypatch.setattr("app.api.payments.get_or_refresh_access_token", cached_token)
     monkeypatch.setattr(
         "app.api.payments.decrypt_credential",
         lambda ciphertext, key: "decrypted-secret",
