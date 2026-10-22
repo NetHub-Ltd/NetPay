@@ -1,11 +1,18 @@
 """Daraja provider adapter tests for OAuth and STK payload construction."""
 import base64
 import re
+from datetime import UTC, datetime, timedelta
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import httpx
 import pytest
+from cryptography.fernet import Fernet
+from pydantic import SecretStr
 
+from app.core.credentials import decrypt_credential, encrypt_credential
+from app.models.integrations import DarajaIntegration
 from app.providers import daraja
 
 
@@ -151,3 +158,73 @@ async def test_invalid_provider_response_is_rejected_without_raw_body(monkeypatc
             timeout_seconds=4,
         )
     assert "private details" not in str(error.value)
+
+
+def _result(value: object) -> MagicMock:
+    result = MagicMock()
+    result.first.return_value = value
+    return result
+
+
+@pytest.mark.asyncio
+async def test_access_token_cache_reuses_encrypted_unexpired_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A valid cached token is decrypted and reused without requesting a new token."""
+    key = Fernet.generate_key().decode("ascii")
+    integration = DarajaIntegration(
+        merchant_id=uuid4(),
+        integration_id="int_cached",
+        environment="sandbox",
+        provider_access_token_ciphertext=encrypt_credential("cached-token", key=key),
+        provider_token_expires_at=datetime.now(UTC) + timedelta(minutes=10),
+    )
+    session = MagicMock()
+    session.exec = AsyncMock(return_value=_result(integration))
+    session.commit = AsyncMock()
+    refresh = AsyncMock()
+    monkeypatch.setattr(daraja, "_request_access_token", refresh)
+
+    token = await daraja.get_or_refresh_access_token(
+        session,
+        integration_id=integration.id,
+        environment="sandbox",
+        consumer_key="consumer-key",
+        consumer_secret="consumer-secret",
+        encryption_key=SecretStr(key),
+        timeout_seconds=3,
+    )
+    assert token == "cached-token"
+    refresh.assert_not_awaited()
+    session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_access_token_cache_encrypts_new_token_and_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A refreshed provider token is encrypted and expires before provider expiry."""
+    key = Fernet.generate_key().decode("ascii")
+    integration = DarajaIntegration(
+        merchant_id=uuid4(),
+        integration_id="int_refresh",
+        environment="sandbox",
+    )
+    session = MagicMock()
+    session.exec = AsyncMock(return_value=_result(integration))
+    session.commit = AsyncMock()
+
+    async def refresh(**kwargs: object) -> tuple[str, int]:
+        return "new-provider-token", 3600
+
+    monkeypatch.setattr(daraja, "_request_access_token", refresh)
+    token = await daraja.get_or_refresh_access_token(
+        session,
+        integration_id=integration.id,
+        environment="sandbox",
+        consumer_key="consumer-key",
+        consumer_secret="consumer-secret",
+        encryption_key=SecretStr(key),
+        timeout_seconds=3,
+    )
+    assert token == "new-provider-token"
+    assert decrypt_credential(integration.provider_access_token_ciphertext, key=key) == "new-provider-token"
+    assert integration.provider_token_expires_at is not None
+    assert integration.provider_token_expires_at > datetime.now(UTC) + timedelta(minutes=58)
+    session.commit.assert_awaited_once()
