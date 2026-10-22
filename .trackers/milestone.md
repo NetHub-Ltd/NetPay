@@ -102,3 +102,9 @@ Model source inventory: 16 SQLModel table classes are declared/exported across g
 - CI #634/#635, backend readiness #188, frontend lint/build #81 pass on tree commit `4f0123e9ed1f4d8d2e6d67a9cb86462c261a2e75`.
 - GitGuardian security check **FAILS** because it scans six placeholder/test credential occurrences in earlier commits of this PR. Current tree occurrences were removed, but history has not been rewritten. This is a merge blocker until explicitly resolved; preserve history and do not dismiss/rewrite without approval.
 - Render/Aiven database-off behavior remains unverified.
+
+
+### User decision — preserve Git history (2026-10-22)
+- **VERIFIED:** User explicitly chose to preserve Git history. No history rewrite, force-push, or squash/rebase is authorized for resolving the PR #181 GitGuardian finding.
+- PR #181 remains open/unmerged until the existing GitGuardian finding is reviewed and the required security gate is green.
+- Fresh branch-associated workflow runs at `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`: CI #643, readiness #197, frontend lint #90, frontend build #89 all completed successfully. GitGuardian's current result still needs separate verification; do not infer it from these workflow runs.
