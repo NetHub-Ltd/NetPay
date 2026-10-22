@@ -24,7 +24,14 @@ from app.models.integrations import DarajaIntegration
 from app.models.merchants import M2MClient
 from app.models.operations import ProviderRequest
 from app.models.payments import IdempotencyRecord, Payment
-from app.providers.daraja import DarajaStkRejected, DarajaStkUncertain, initiate_stk_push
+from app.providers.daraja import (
+    DarajaCredentialsRejected,
+    DarajaStkRejected,
+    DarajaStkUncertain,
+    DarajaUnavailable,
+    get_or_refresh_access_token,
+    initiate_stk_push,
+)
 
 router = APIRouter(prefix="/v1/payments", tags=["payments"])
 
@@ -257,6 +264,15 @@ async def create_payment(
         raise HTTPException(status_code=409, detail="payment_request_conflict") from None
 
     try:
+        access_token = await get_or_refresh_access_token(
+            session,
+            integration_id=integration.id,
+            environment=integration.environment,
+            consumer_key=consumer_key,
+            consumer_secret=consumer_secret,
+            encryption_key=settings.credential_encryption_key,
+            timeout_seconds=settings.daraja_timeout_seconds,
+        )
         provider_result = await initiate_stk_push(
             environment=integration.environment,
             consumer_key=consumer_key,
@@ -271,6 +287,7 @@ async def create_payment(
             account_reference="NP" + payment.id.hex[:10],
             transaction_description=body.description,
             timeout_seconds=settings.daraja_timeout_seconds,
+            access_token=access_token,
         )
     except DarajaStkRejected as exc:
         now = datetime.now(UTC)
@@ -284,6 +301,20 @@ async def create_payment(
         attempt.safe_error_message = "Daraja rejected the STK request"
         provider_request.outcome = "rejected"
         provider_request.response_metadata = {"outcome": "rejected", "code": exc.safe_code}
+        provider_request.completed_at = now
+    except (DarajaCredentialsRejected, DarajaUnavailable, CredentialEncryptionError):
+        # OAuth/cache failure occurs before the STK request is submitted, so no
+        # customer prompt could have been created by this request.
+        now = datetime.now(UTC)
+        payment.status = "failed"
+        payment.provider_result_description = "Provider authorization failed before STK submission"
+        payment.failed_at = now
+        payment.completed_at = now
+        attempt.status = "failed"
+        attempt.safe_error_code = "provider_authorization_failed"
+        attempt.safe_error_message = "Provider authorization failed before STK submission"
+        provider_request.outcome = "not_submitted"
+        provider_request.response_metadata = {"outcome": "not_submitted"}
         provider_request.completed_at = now
     except DarajaStkUncertain:
         now = datetime.now(UTC)
