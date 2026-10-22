@@ -130,7 +130,7 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 
 ## Implementation and CI outcome — 2026-10-22
 
-**Latest verified working branch commit:** `90951334628987c10cb77fb6f06f80bdedf9fe1f`. The branch API was re-fetched after the changes; `dev` remains at `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`, and `main` remains at `a55500c2838b8ad1cc637a121f2b30f7f88132d0`.
+**Latest verified application-code commit:** `90951334628987c10cb77fb6f06f80bdedf9fe1f`. Subsequent commits update trackers only. The branch API was re-fetched after the changes; `dev` remains at `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`, and `main` remains at `a55500c2838b8ad1cc637a121f2b30f7f88132d0`.
 
 ### Implemented
 - Separate DB settings and SQLAlchemy URL construction for asyncpg and psycopg, including driver-specific TLS parameters and secret-wrapped username/password.
