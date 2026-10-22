@@ -113,15 +113,23 @@ async def receive_stk_callback(
         return CallbackAck()
 
     payment_conditions = []
-    if checkout_id:
+    if checkout_id and merchant_request_id:
+        # When both provider IDs are present they must identify the same payment.
+        payment_conditions.extend(
+            [
+                Payment.provider_checkout_request_id == checkout_id,
+                Payment.provider_merchant_request_id == merchant_request_id,
+            ]
+        )
+    elif checkout_id:
         payment_conditions.append(Payment.provider_checkout_request_id == checkout_id)
-    if merchant_request_id:
+    elif merchant_request_id:
         payment_conditions.append(Payment.provider_merchant_request_id == merchant_request_id)
     payment_result = await session.exec(
         select(Payment).where(
             Payment.integration_id == integration.id,
             Payment.deleted_at.is_(None),
-            or_(*payment_conditions),
+            *payment_conditions,
         )
     )
     payment = payment_result.first()
