@@ -4,7 +4,7 @@
 
 ## Current change
 
-This task adds tracking documentation only under `.trackers/` on `work/minimal-netpay-rebuild`. It does not intentionally change application code, database schema, runtime configuration, workflows, or deployment manifests.
+This task updates handoff/process documentation only under `.trackers/` on `work/minimal-netpay-rebuild` and adds a dated continuity note to issue #179. It does not intentionally change application code, database schema, runtime configuration, workflows, or deployment manifests.
 
 ## Recovery approach
 
@@ -18,6 +18,12 @@ This task adds tracking documentation only under `.trackers/` on `work/minimal-n
 - Previous working baseline before tracker creation: `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`.
 - `dev` was observed at the same SHA as the working branch at the last branch inspection.
 - `main` was observed at `a55500c2838b8ad1cc637a121f2b30f7f88132d0` and must remain untouched by this task.
+
+## Handoff continuity
+
+- The tracker handoff protocol is now documented in `.trackers/task.md` and `.trackers/repo-state.md`; milestone R0.5 records that documentation as verified.
+- Independent resumability remains open under milestone R0.6. Do not treat the existence of instructions as proof that a fresh agent can resume correctly.
+- Issue #179 contains a dated handoff note and canonical tracker links. Live branch refs remain authoritative over older branch-tip statements.
 
 ## Data and migrations
 
