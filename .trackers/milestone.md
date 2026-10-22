@@ -120,3 +120,21 @@ Model source inventory: 16 SQLModel table classes are declared/exported across g
 - GitGuardian: prior evidence reports six findings from earlier PR commits; current check status was not returned by workflow-run API. Review exact findings and preserve history. Do not merge until the required security gate passes.
 - Render/Aiven database-off behavior and actual deployed schema remain **UNKNOWN**.
 - Next milestone action: refresh live refs/checks, inspect GitGuardian finding context, and record verified outcomes before any merge/release decision.
+
+
+## Live verification refresh — 2026-10-23
+
+| ID | Acceptance criterion | Updated status |
+|---|---|---|
+| DB.3 | Negative startup regression | **VERIFIED IN CI** — CI #656 succeeded on recorded commit `5efc356fc4a217f78a5d7851e53ed9f52f93869a`; this remains a mocked failure-path test, not proof from Render |
+| DB.4 | Separate DB fields and safe URL construction | **VERIFIED IN CI** — CI #656 succeeded; reserved-character test value is among active GitGuardian detections and still requires security review |
+| DB.5 | Alembic directory and migration checks | **VERIFIED IN CI** — CI #656 succeeded; real Aiven schema remains unknown |
+| DB.6 | Conservative pool | **IMPLEMENTED + CI GREEN** — runtime multi-worker/instance connection budget not measured |
+| R2.2 | Backend tests/readiness | **VERIFIED** — CI #656 and readiness #210 succeeded |
+| R2.3 | Frontend lint/build | **VERIFIED** — lint #103 and build #102 succeeded |
+| R2.4 | Container smoke | **VERIFIED VIA CI #656** — smoke step outcome included in CI run success; deployment runtime is separate |
+| SEC.1 | GitGuardian required security gate | **BLOCKED/UNKNOWN CURRENT CHECK** — live PR bot comment lists three detections (two PostgreSQL Credentials in a test URL value, one Generic Password in smoke-test env); prior tracker said six. Reconcile dashboard/check status; do not merge |
+| DB.2 / R2.6 / R2.9 | Render DB-off behavior and actual Aiven schema | **UNKNOWN** — no deployment logs/metadata or schema query |
+| R1.1–R1.6, R2.1, R2.5, R3.x | Broader rebuild acceptance | **OPEN** — current successful workflow results do not close the full diff, delivery, payment-security, browser UX, metadata, and release/rollback review |
+
+Evidence refresh date: 2026-10-23. Runs above are associated with recorded commit `5efc356fc4a217f78a5d7851e53ed9f52f93869a`; branch head SHA was not exposed by branch search and must be re-queried.
