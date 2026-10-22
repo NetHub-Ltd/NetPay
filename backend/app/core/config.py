@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     m2m_provisioning_key: SecretStr | None = Field(default=None, repr=False, exclude=True)
     machine_token_ttl_minutes: int = 60
     machine_token_audience: str = "netpay"
+    public_api_base_url: str = "https://pay.nethub.co.ke"
+    daraja_timeout_seconds: float = 10.0
 
     # Temporary bridge for existing deployment secrets/manifests. New environments
     # should provide DB_* fields; explicit non-local DB_HOST takes precedence.
@@ -103,6 +105,14 @@ class Settings(BaseSettings):
         """Keep machine access tokens short-lived and bounded."""
         if not 1 <= value <= 1440:
             raise ValueError("MACHINE_TOKEN_TTL_MINUTES must be between 1 and 1440")
+        return value
+
+    @field_validator("daraja_timeout_seconds")
+    @classmethod
+    def validate_daraja_timeout(cls, value: float) -> float:
+        """Require a bounded positive timeout for external Daraja requests."""
+        if not 1 <= value <= 60:
+            raise ValueError("DARAJA_TIMEOUT_SECONDS must be between 1 and 60")
         return value
 
     @field_validator("db_port")
