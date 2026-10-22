@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     db_host: str = "localhost"
     db_port: int = 5432
     db_name: str = "netpay"
-    db_user: str = "netpay"
+    db_user: SecretStr = SecretStr("netpay")
     db_password: SecretStr = SecretStr("netpay")
     db_ssl_mode: SSLMode = "prefer"
 
@@ -99,7 +99,7 @@ class Settings(BaseSettings):
         """Build a driver-specific URL without manual credential escaping."""
         url = URL.create(
             drivername=drivername,
-            username=self.db_user,
+            username=self.db_user.get_secret_value(),
             password=self.db_password.get_secret_value(),
             host=self.db_host,
             port=self.db_port,
