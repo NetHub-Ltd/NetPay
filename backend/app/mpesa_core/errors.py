@@ -35,3 +35,7 @@ class ProviderProtocolError(MpesaCoreError):
 
 class UnknownIntegration(MpesaCoreError):
     """A callback references an unknown integration."""
+
+
+class IdempotencyConflictError(MpesaCoreError):
+    """A reused provider-operation key carries a different request fingerprint."""

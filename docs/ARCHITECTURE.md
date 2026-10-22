@@ -138,3 +138,8 @@ Status: approved design; implementation tracked by https://github.com/NetHub-Ltd
 ### Verification requirements
 
 Tests cover operation contracts and safe failure behavior, not only successful mocks: missing/invalid credentials, token cache expiry and concurrency, provider 4xx/5xx, malformed JSON, transport errors before send, timeouts after possible send, audit persistence failure, callback replay/order/mismatch, duplicate initiation races, merchant/integration isolation, and redaction. CI must also validate Alembic upgrade from the existing head, schema/model parity, existing backend tests, frontend checks, and container startup.
+
+
+### Provider-operation idempotency
+
+The payment domain generates a stable idempotency key for each logical payment action. For mutating Daraja operations, Core persists that key with a fingerprint of the stable request fields under a unique integration/operation/key constraint. Replays do not send a second provider request; an in-flight or ambiguous prior operation is returned as unknown for reconciliation. Reusing a key with changed business fields raises a conflict. This is provider-call deduplication, not a replacement for payment-domain idempotency or ledger invariants.

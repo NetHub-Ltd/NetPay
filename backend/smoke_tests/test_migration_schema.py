@@ -44,6 +44,10 @@ async def test_alembic_head_contains_all_sixteen_domain_tables() -> None:
                 lambda sync: {column["name"] for column in inspect(sync).get_columns("providerintegration")}
             )
             assert {"initiator_name", "initiator_password_ciphertext", "enabled_capabilities"}.issubset(integration_columns)
+            provider_request_columns = await connection.run_sync(
+                lambda sync: {column["name"] for column in inspect(sync).get_columns("providerrequest")}
+            )
+            assert {"idempotency_key", "request_hash"}.issubset(provider_request_columns)
 
             for table_name in EXPECTED_TABLES:
                 columns = await connection.run_sync(

@@ -17,6 +17,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add optional API-user credential material and a safe capability allowlist."""
+    op.add_column("providerrequest", sa.Column("idempotency_key", sa.String(length=160), nullable=True))
+    op.add_column("providerrequest", sa.Column("request_hash", sa.String(length=64), nullable=True))
+    op.create_unique_constraint(
+        "uq_providerrequest_operation_idempotency",
+        "providerrequest",
+        ["integration_id", "operation", "idempotency_key"],
+    )
     op.add_column("providerintegration", sa.Column("initiator_name", sa.String(length=80), nullable=True))
     op.add_column(
         "providerintegration",
@@ -38,3 +45,6 @@ def downgrade() -> None:
     op.drop_column("providerintegration", "enabled_capabilities")
     op.drop_column("providerintegration", "initiator_password_ciphertext")
     op.drop_column("providerintegration", "initiator_name")
+    op.drop_constraint("uq_providerrequest_operation_idempotency", "providerrequest", type_="unique")
+    op.drop_column("providerrequest", "request_hash")
+    op.drop_column("providerrequest", "idempotency_key")

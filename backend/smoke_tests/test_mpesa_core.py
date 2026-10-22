@@ -246,6 +246,7 @@ async def test_stk_push_builds_typed_payload_and_only_reports_provider_acceptanc
             account_reference="INV123",
             description="NetPay sale",
         ),
+        idempotency_key="stk-success-test",
     )
     try:
         assert result.outcome is OperationOutcome.ACCEPTED
@@ -282,6 +283,7 @@ async def test_timeout_after_send_is_unknown_and_never_retried():
         result = await core.stk_push(
             integration,
             STKPushRequest(phone_number="254712345678", amount_minor=100, account_reference="INV", description="Sale"),
+            idempotency_key="stk-timeout-test",
         )
         assert result.outcome is OperationOutcome.UNKNOWN
         assert stk_calls == 1
@@ -308,12 +310,14 @@ async def test_connect_error_is_not_sent_but_server_error_is_unknown():
         result = await core.stk_push(
             integration,
             STKPushRequest(phone_number="254712345678", amount_minor=100, account_reference="INV", description="Sale"),
+            idempotency_key="stk-connect-test",
         )
         assert result.outcome is OperationOutcome.NOT_SENT
         mode["value"] = "server"
         result = await core.stk_push(
             integration,
             STKPushRequest(phone_number="254712345678", amount_minor=100, account_reference="INV", description="Sale"),
+            idempotency_key="stk-server-error-test",
         )
         assert result.outcome is OperationOutcome.UNKNOWN
     finally:
@@ -336,9 +340,9 @@ async def test_http_rejection_and_malformed_json_are_not_marked_paid():
     core = client_for(settings, integration, handler)
     try:
         request = STKPushRequest(phone_number="254712345678", amount_minor=100, account_reference="INV", description="Sale")
-        assert (await core.stk_push(integration, request)).outcome is OperationOutcome.REJECTED
+        assert (await core.stk_push(integration, request, idempotency_key="stk-rejected-test")).outcome is OperationOutcome.REJECTED
         mode["value"] = "malformed"
-        assert (await core.stk_push(integration, request)).outcome is OperationOutcome.UNKNOWN
+        assert (await core.stk_push(integration, request, idempotency_key="stk-malformed-test")).outcome is OperationOutcome.UNKNOWN
     finally:
         await core.aclose()
 
@@ -362,6 +366,7 @@ async def test_audit_start_failure_prevents_stk_request_from_being_sent():
             await core.stk_push(
                 integration,
                 STKPushRequest(phone_number="254712345678", amount_minor=100, account_reference="INV", description="Sale"),
+                idempotency_key="stk-audit-failure-test",
             )
         assert stk_calls == 0
     finally:
@@ -386,7 +391,7 @@ async def test_concurrent_stk_requests_share_one_oauth_exchange():
     core = client_for(settings, integration, handler)
     request = STKPushRequest(phone_number="254712345678", amount_minor=100, account_reference="INV", description="Sale")
     try:
-        results = await asyncio.gather(*(core.stk_push(integration, request) for _ in range(8)))
+        results = await asyncio.gather(*(core.stk_push(integration, request, idempotency_key=f"concurrent-{index}") for index in range(8)))
         assert token_calls == 1
         assert stk_calls == 8
         assert all(result.outcome is OperationOutcome.ACCEPTED for result in results)
@@ -422,7 +427,7 @@ async def test_c2b_registration_is_opt_in():
     try:
         from app.mpesa_core.schemas import C2BRegistrationRequest
         with pytest.raises(CapabilityDisabled):
-            await core.register_c2b_urls(integration, C2BRegistrationRequest())
+            await core.register_c2b_urls(integration, C2BRegistrationRequest(), idempotency_key="c2b-disabled-test")
     finally:
         await core.aclose()
 
@@ -443,8 +448,8 @@ async def test_all_gated_operation_adapters_use_typed_payloads_and_expected_path
         .issuer_name(issuer)
         .public_key(private_key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(now - timedelta(days=1))
-        .not_valid_after(now + timedelta(days=30))
+        .not_valid_before((now - timedelta(days=1)).replace(tzinfo=None))
+        .not_valid_after((now + timedelta(days=30)).replace(tzinfo=None))
         .sign(private_key, hashes.SHA256())
     )
     settings = make_settings(
@@ -482,7 +487,7 @@ async def test_all_gated_operation_adapters_use_typed_payloads_and_expected_path
     now = datetime.now(UTC)
     calls = [
         core.stk_query(integration, STKQueryRequest(checkout_request_id="checkout-123")),
-        core.register_c2b_urls(integration, C2BRegistrationRequest()),
+        core.register_c2b_urls(integration, C2BRegistrationRequest(), idempotency_key="c2b-enabled-test"),
         core.dynamic_qr(integration, DynamicQRRequest(
             merchant_name="Test merchant", reference="INV-1", amount_minor=100,
             transaction_code="PB", credit_party_identifier="174379",
@@ -491,13 +496,13 @@ async def test_all_gated_operation_adapters_use_typed_payloads_and_expected_path
         core.account_balance(integration, AccountBalanceRequest()),
         core.reverse_transaction(integration, ReversalRequest(
             transaction_id="QAB123XYZ", amount_minor=100, receiver_party="174379", remarks="approved test",
-        )),
+        ), idempotency_key="reversal-test"),
         core.b2c_payment(integration, B2CPaymentRequest(
             phone_number="0712345678", amount_minor=100, remarks="approved test",
-        )),
+        ), idempotency_key="b2c-test"),
         core.b2b_payment(integration, B2BPaymentRequest(
             party_b="600000", amount_minor=100, command_id="BusinessPayBill", remarks="approved test",
-        )),
+        ), idempotency_key="b2b-test"),
         core.pull_transactions(integration, PullTransactionsRequest(
             start_date=now - timedelta(days=1), end_date=now, account_number="test-account",
         )),

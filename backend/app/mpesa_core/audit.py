@@ -7,12 +7,14 @@ from uuid import UUID
 
 from loguru import logger
 from pydantic import SecretStr
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.integrations import DarajaIntegration
 from app.models.operations import ProviderRequest
-from app.mpesa_core.errors import AuditPersistenceError
+from app.mpesa_core.errors import AuditPersistenceError, IdempotencyConflictError
 
 
 _SECRET_PARTS = (
@@ -73,8 +75,19 @@ class ProviderOperationAuditor:
         *,
         payment_id: UUID | None = None,
         payment_attempt_id: UUID | None = None,
+        idempotency_key: str | None = None,
     ) -> ProviderRequest:
         """Commit an audit record before a provider request can be sent."""
+        canonical = {
+            str(key): value
+            for key, value in request_metadata.items()
+            if str(key).lower().replace("_", "") not in {"password", "timestamp", "securitycredential"}
+        }
+        request_hash = (
+            hashlib.sha256(json.dumps(canonical, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+            if idempotency_key
+            else None
+        )
         try:
             async with self._session_factory() as session:
                 row = ProviderRequest(
@@ -83,14 +96,43 @@ class ProviderOperationAuditor:
                     payment_id=payment_id,
                     payment_attempt_id=payment_attempt_id,
                     operation=operation,
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
                     outcome="started",
                     request_metadata=redact_metadata(request_metadata),
                     response_metadata={},
                 )
                 session.add(row)
-                await session.commit()
+                try:
+                    await session.commit()
+                except IntegrityError:
+                    await session.rollback()
+                    if not idempotency_key:
+                        raise
+                    existing_result = await session.exec(
+                        select(ProviderRequest).where(
+                            ProviderRequest.integration_id == integration.id,
+                            ProviderRequest.operation == operation,
+                            ProviderRequest.idempotency_key == idempotency_key,
+                        )
+                    )
+                    existing = existing_result.first()
+                    if existing is None:
+                        raise
+                    if existing.request_hash != request_hash:
+                        logger.warning(
+                            "mpesa_idempotency_conflict operation={} integration_id={}",
+                            operation, integration.integration_id,
+                        )
+                        raise IdempotencyConflictError(
+                            "idempotency key was already used for a different provider request"
+                        )
+                    setattr(existing, "_idempotency_reused", True)
+                    return existing
                 await session.refresh(row)
                 return row
+        except IdempotencyConflictError:
+            raise
         except Exception as exc:
             logger.error(
                 "mpesa_audit_start_failed operation={} integration_id={} error_type={}",

@@ -24,6 +24,7 @@ from app.mpesa_core.credentials import (
 from app.mpesa_core.errors import (
     CapabilityDisabled,
     ConfigurationError,
+    IdempotencyConflictError,
     IntegrationNotReady,
 )
 from app.mpesa_core.oauth import OAuthTokenProvider
@@ -201,10 +202,15 @@ class MpesaCore:
         operation: str,
         path: str,
         payload: dict[str, object],
+        idempotency_key: str | None = None,
         payment_id: UUID | None = None,
         payment_attempt_id: UUID | None = None,
         qr_response: bool = False,
     ) -> OperationResult:
+        if idempotency_key is not None and (
+            not idempotency_key.strip() or len(idempotency_key) > 160
+        ):
+            raise ValueError("idempotency_key must contain 1 to 160 non-whitespace characters")
         credentials = self._ready(integration, capability)
         token = await self._oauth.get_token(integration, credentials)
         audit = await self._auditor.start(
@@ -213,7 +219,35 @@ class MpesaCore:
             payload,
             payment_id=payment_id,
             payment_attempt_id=payment_attempt_id,
+            idempotency_key=idempotency_key,
         )
+        if getattr(audit, "_idempotency_reused", False):
+            try:
+                prior_outcome = OperationOutcome(audit.outcome)
+            except ValueError:
+                prior_outcome = OperationOutcome.UNKNOWN
+            if prior_outcome is OperationOutcome.ACCEPTED and operation == "stk_push":
+                if not audit.provider_request_id:
+                    prior_outcome = OperationOutcome.UNKNOWN
+            prior_metadata = audit.response_metadata or {}
+            logger.bind(
+                operation=operation,
+                correlation_id=str(audit.correlation_id),
+                integration_id=integration.integration_id,
+                outcome=prior_outcome.value,
+            ).info("mpesa_idempotent_replay")
+            prior_code = prior_metadata.get("ResponseCode", prior_metadata.get("ResultCode"))
+            prior_description = prior_metadata.get("ResponseDescription", prior_metadata.get("ResultDesc"))
+            return OperationResult(
+                operation=operation,
+                outcome=prior_outcome,
+                correlation_id=audit.correlation_id,
+                http_status=audit.http_status,
+                provider_request_id=audit.provider_request_id,
+                provider_code=str(prior_code) if prior_code is not None else None,
+                provider_description=str(prior_description) if prior_description is not None else None,
+                data=redact_metadata(prior_metadata),
+            )
         try:
             response = await self._http.post(
                 self._base_url(integration) + path,
@@ -320,8 +354,9 @@ class MpesaCore:
         *,
         payment_id: UUID | None = None,
         payment_attempt_id: UUID | None = None,
+        idempotency_key: str,
     ) -> OperationResult:
-        """Initiate STK Push; ACCEPTED means accepted for processing, not paid."""
+        """Initiate STK Push once per caller-supplied key; acceptance is not payment."""
         credentials = self._ready(integration, "stk_push")
         if not credentials.passkey:
             raise ConfigurationError("STK passkey is not configured")
@@ -348,6 +383,7 @@ class MpesaCore:
         return await self._execute(
             integration, capability="stk_push", operation="stk_push",
             path="/mpesa/stkpush/v1/processrequest", payload=payload,
+            idempotency_key=idempotency_key,
             payment_id=payment_id, payment_attempt_id=payment_attempt_id,
         )
 
@@ -372,7 +408,7 @@ class MpesaCore:
         )
 
     async def register_c2b_urls(
-        self, integration: DarajaIntegration, request: C2BRegistrationRequest
+        self, integration: DarajaIntegration, request: C2BRegistrationRequest, *, idempotency_key: str
     ) -> OperationResult:
         """Register URLs only after the merchant explicitly enables C2B."""
         if not integration.c2b_enabled:
@@ -383,6 +419,7 @@ class MpesaCore:
         result = await self._execute(
             integration, capability="c2b_registration", operation="c2b_register_url",
             path="/mpesa/c2b/v1/registerurl",
+            idempotency_key=idempotency_key,
             payload={
                 "ShortCode": integration.shortcode,
                 "ResponseType": request.response_type,
@@ -496,7 +533,9 @@ class MpesaCore:
             },
         )
 
-    async def reverse_transaction(self, integration: DarajaIntegration, request: ReversalRequest) -> OperationResult:
+    async def reverse_transaction(
+        self, integration: DarajaIntegration, request: ReversalRequest, *, idempotency_key: str
+    ) -> OperationResult:
         """Request a reversal; caller must enforce separate authorization and policy."""
         credentials = self._ready(integration, "reversal")
         if not credentials.initiator_name:
@@ -505,6 +544,7 @@ class MpesaCore:
         return await self._execute(
             integration, capability="reversal", operation="reversal",
             path="/mpesa/reversal/v1/request",
+            idempotency_key=idempotency_key,
             payload={
                 "Initiator": credentials.initiator_name,
                 "SecurityCredential": self._security_credential(integration, credentials, self._settings),
@@ -520,7 +560,9 @@ class MpesaCore:
             },
         )
 
-    async def b2c_payment(self, integration: DarajaIntegration, request: B2CPaymentRequest) -> OperationResult:
+    async def b2c_payment(
+        self, integration: DarajaIntegration, request: B2CPaymentRequest, *, idempotency_key: str
+    ) -> OperationResult:
         """Submit a gated B2C disbursement; accepted is not proof of delivery."""
         credentials = self._ready(integration, "b2c")
         if not credentials.initiator_name:
@@ -529,6 +571,7 @@ class MpesaCore:
         return await self._execute(
             integration, capability="b2c", operation="b2c_payment",
             path="/mpesa/b2c/v3/paymentrequest",
+            idempotency_key=idempotency_key,
             payload={
                 "InitiatorName": credentials.initiator_name,
                 "SecurityCredential": self._security_credential(integration, credentials, self._settings),
@@ -543,7 +586,9 @@ class MpesaCore:
             },
         )
 
-    async def b2b_payment(self, integration: DarajaIntegration, request: B2BPaymentRequest) -> OperationResult:
+    async def b2b_payment(
+        self, integration: DarajaIntegration, request: B2BPaymentRequest, *, idempotency_key: str
+    ) -> OperationResult:
         """Submit a gated B2B business paybill/buy-goods operation."""
         credentials = self._ready(integration, "b2b")
         if not credentials.initiator_name:
@@ -567,7 +612,7 @@ class MpesaCore:
             payload["AccountReference"] = request.account_reference
         return await self._execute(
             integration, capability="b2b", operation="b2b_payment",
-            path="/mpesa/b2b/v1/paymentrequest", payload=payload,
+            path="/mpesa/b2b/v1/paymentrequest", payload=payload, idempotency_key=idempotency_key,
         )
 
     async def pull_transactions(

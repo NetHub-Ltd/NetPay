@@ -69,3 +69,6 @@ Callback routes:
 Callbacks are untrusted evidence, are stored with minimized payloads and deduplicated, and do not directly mutate canonical payment state. The payment domain remains responsible for guarded state transitions and financial effects.
 
 Core tests live in smoke_tests/test_mpesa_core.py. Run with the existing PostgreSQL/Redis-backed CI workflow after applying alembic upgrade head.
+
+
+Mutation operations (STK Push, C2B URL registration, reversal, B2C and B2B) require a caller-supplied idempotency key. The Core persists a request fingerprint and suppresses duplicate outbound calls for the same integration, operation and key; reusing a key with different request content raises an idempotency conflict. The payment domain generates the key and remains the authority for payment-level idempotency and financial state.
