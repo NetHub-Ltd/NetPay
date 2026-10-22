@@ -198,3 +198,14 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 3. Review the exact GitGuardian detections and decide the appropriate security review/remediation while preserving history. If any actual credential was exposed, follow the secret-rotation process; do not rewrite commits.
 4. Keep PR #181 open/unmerged until the security gate is resolved. Separately investigate Render/Aiven with deployment metadata/logs when available; no unsupported root-cause claim.
 5. Re-fetch tracker files and update them after meaningful evidence changes.
+
+
+## Live verification refresh — 2026-10-23
+
+- **VERIFIED:** PR #181 is open, unmerged, and targets `dev`; live PR fetch reports head branch `work/minimal-netpay-rebuild`. Keep it open/unmerged.
+- **VERIFIED:** Workflow runs associated with recorded commit `5efc356fc4a217f78a5d7851e53ed9f52f93869a`: CI #656, backend readiness #210, frontend lint #103, and frontend build #102 all completed with conclusion `success`. These are run IDs `39854485306`, `39854485643`, `39854485487`, and `39854485464` respectively.
+- **VERIFIED:** Current PR discussion contains a GitGuardian bot comment listing three detections: two PostgreSQL Credentials detections in `backend/smoke_tests/test_database_foundation.py` at commit `385799452bc790f743c081fe561b0795acd31775` (test-only URL-reserved-character value `p@ss:/% word`), and one Generic Password detection in `backend/scripts/container_startup_smoke.sh` at commit `869ad9a1e47ea2cd6af9e45d2b97db99146e5994` (`DB_PASSWORD=netpay` in the container smoke-test invocation). These contexts appear test-only from inspected source, but scanner incidents remain active and must be handled via the approved security workflow; do not dismiss them or state that production credentials were exposed. Earlier tracker wording says six detections, which conflicts with the currently visible bot comment listing three; reconcile the count against the GitGuardian dashboard/check run.
+- **UNKNOWN:** The live branch head SHA was not returned by the branch search result, so `5efc356...` is the latest recorded tracker commit, not independently proven to be current head. Re-query the branch commit SHA using a GitHub ref/commit endpoint before any write or merge decision.
+- **UNKNOWN:** GitGuardian's current required-check conclusion was not surfaced by the workflow-run query or combined status endpoint (the latter returned no status entries). Do not infer the security gate passed.
+- **UNKNOWN:** Render/Aiven DB-off behavior, deployed SHA/logs/effective non-secret DB host, and Aiven migration/schema remain unverified.
+- **Next safe action:** obtain authoritative current branch head and PR check details, reconcile GitGuardian's exact incident count/status, then continue the broader rebuild acceptance review. Do not alter application code, DB, deployment manifests, or history as part of this status refresh.
