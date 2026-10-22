@@ -5,11 +5,11 @@ inside this module so driver-specific URLs stay consistent and passwords with
 reserved URL characters are encoded safely.
 """
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy.engine import URL
+from sqlalchemy.engine import URL, make_url
 
 SSLMode = Literal["disable", "allow", "prefer", "require", "verify-ca", "verify-full"]
 
@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     port: int = 8000
     log_level: str = "INFO"
 
+    # Temporary bridge for existing deployment secrets/manifests. New environments
+    # should provide DB_* fields; explicit non-local DB_HOST takes precedence.
+    database_url: SecretStr | None = Field(default=None, repr=False, exclude=True)
+
     db_host: str = "localhost"
     db_port: int = 5432
     db_name: str = "netpay"
@@ -46,6 +50,39 @@ class Settings(BaseSettings):
 
     redis_url: SecretStr = SecretStr("redis://localhost:6379/0")
     redis_enabled: bool = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def bridge_legacy_database_url(cls, values: Any) -> Any:
+        """Read an existing DATABASE_URL only when split settings are not specific.
+
+        This keeps current deployment secrets working during the environment
+        variable migration. A configured non-local DB_HOST always wins.
+        """
+        if not isinstance(values, dict):
+            return values
+        legacy_value = values.get("database_url")
+        if legacy_value is None:
+            return values
+        raw_url = legacy_value.get_secret_value() if isinstance(legacy_value, SecretStr) else str(legacy_value)
+        parsed = make_url(raw_url)
+        if parsed.drivername not in {"postgresql+asyncpg", "postgresql+psycopg", "postgresql"}:
+            raise ValueError("DATABASE_URL must use PostgreSQL")
+        configured_host = values.get("db_host")
+        # A localhost default from a copied .env.example must not mask a URL
+        # injected by existing Compose/cluster deployment configuration.
+        if configured_host not in (None, "", "localhost") and configured_host != parsed.host:
+            return values
+        values["db_host"] = parsed.host or "localhost"
+        values["db_port"] = parsed.port or 5432
+        values["db_name"] = parsed.database or "netpay"
+        if parsed.username is not None:
+            values["db_user"] = parsed.username
+        if parsed.password is not None:
+            values["db_password"] = parsed.password
+        if "sslmode" in parsed.query:
+            values["db_ssl_mode"] = parsed.query["sslmode"]
+        return values
 
     @field_validator("db_port")
     @classmethod
