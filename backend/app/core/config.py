@@ -134,6 +134,8 @@ class Settings(BaseSettings):
 
     def _database_url(self, drivername: str) -> str:
         """Build a driver-specific URL without manual credential escaping."""
+        # asyncpg expects the `ssl` keyword; psycopg uses `sslmode`.
+        ssl_parameter = "ssl" if drivername.endswith("+asyncpg") else "sslmode"
         url = URL.create(
             drivername=drivername,
             username=self.db_user.get_secret_value(),
@@ -141,7 +143,7 @@ class Settings(BaseSettings):
             host=self.db_host,
             port=self.db_port,
             database=self.db_name,
-            query={"sslmode": self.db_ssl_mode},
+            query={ssl_parameter: self.db_ssl_mode},
         )
         return url.render_as_string(hide_password=False)
 
