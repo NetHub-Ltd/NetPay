@@ -102,3 +102,27 @@ Do not mark a checkbox complete based only on intended implementation or a claim
 6. Update this tracker and issue #179 with exact evidence before implementing a fix.
 
 No application code has been changed as part of this investigation yet.
+
+
+## Issue #180 — database configuration, startup failure path, Alembic layout, and pool sizing (2026-10-22)
+
+**Issue:** https://github.com/NetHub-Ltd/NetPay/issues/180  
+**User-approved scope:** proceed with issue first, then trackers, then implementation. Issue #180 was created before these tracker updates.
+
+### Requested outcomes
+- Investigate Render test deployment behavior when the Aiven PostgreSQL database is switched off; do not infer a root cause without deployment/log evidence.
+- Supply DB host, port, database, username, password, and TLS mode as separate settings; construct async and sync SQLAlchemy URLs internally and safely.
+- Use an explicitly named `backend/alembic/` migration directory and update every reference without changing revision identities/history.
+- Keep idle/peak PostgreSQL connections low and account for multiple workers/instances.
+- Preserve both frontend and backend `.env.example`; never log credentials or full connection URLs.
+
+### Implementation status
+- **VERIFIED:** Issue #180 created at https://github.com/NetHub-Ltd/NetPay/issues/180 before implementation.
+- **OBSERVED:** current `Settings` uses one `DATABASE_URL`, transforms its scheme for Alembic, and async engine currently allows pool size 5 plus overflow 5.
+- **OBSERVED:** `backend/alembic.ini` currently points to `migrations`; source migration environment is `backend/migrations/env.py`.
+- **UNKNOWN:** why the Render service appeared to start while Aiven was off; deployment commit, logs, effective DB host and whether this was backend startup versus platform health remain to be verified.
+- **PROPOSED:** small configurable pool, initially size 1 / overflow 0, pending tests and connection-budget review. A pool still retains an idle connection once opened; zero-idle behavior is a distinct trade-off.
+- No implementation changes have been made as of this tracker entry.
+
+### Next safe action
+Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the negative startup regression test first, then settings/URL tests, migration-directory move and reference audit, and pool tests. Update this record with exact commands/results and re-fetch remote files after changes.
