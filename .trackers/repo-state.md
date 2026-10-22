@@ -167,3 +167,14 @@ These are historical reports, not fresh verification performed during tracker cr
 3. Review GitGuardian findings with the history-preservation constraint. Do not claim findings are false positives without evidence.
 4. Investigate Render only with deployment/log/config evidence; do not alter deployment manifests or DB.
 5. Sync/re-fetch all trackers and issue/PR after new evidence.
+
+
+## Live verification refresh — 2026-10-23
+
+- PR #181 fetched live: state `open`, `merged=false`, base `dev`, head branch `work/minimal-netpay-rebuild`. Keep open and unmerged.
+- Workflow runs associated with recorded commit `5efc356fc4a217f78a5d7851e53ed9f52f93869a`: CI #656 (success), backend readiness #210 (success), frontend lint #103 (success), frontend build #102 (success). Run IDs: `39854485306`, `39854485643`, `39854485487`, `39854485464`.
+- PR discussion's currently visible GitGuardian bot comment lists three detections: two PostgreSQL Credentials detections on commit `385799452bc790f743c081fe561b0795acd31775`, file `backend/smoke_tests/test_database_foundation.py`, involving a reserved-character test password; and one Generic Password detection on commit `869ad9a1e47ea2cd6af9e45d2b97db99146e5994`, file `backend/scripts/container_startup_smoke.sh`, involving `DB_PASSWORD=netpay` in a test container invocation. These appear test-context values from the inspected lines, but incidents remain active; confirm full findings and current required-check status through GitGuardian. Prior tracker records say six detections, conflicting with this visible three-row comment.
+- The combined commit-status endpoint returned no status entries; this is not proof that required checks passed. GitGuardian is not included in the Actions workflow-run list.
+- Branch search confirmed `work/minimal-netpay-rebuild` exists but did not expose its SHA. `5efc356...` remains the latest recorded tracker commit, not a freshly confirmed branch head.
+- CORE engineering skill refreshed from `NetHub-Ltd/skills-` current README and `CORE-AI-Product-Engineering-Skill-v1.0.0.md`; apply evidence-first verification, smallest reversible changes, security review, and Changed/Verified/Not verified/Risks/Rollback/Follow-ups reporting.
+- Render/Aiven behavior remains unknown; no runtime metadata/logs/schema were inspected. No application or deployment changes made in this verification pass.
