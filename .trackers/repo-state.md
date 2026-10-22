@@ -198,3 +198,13 @@ These are historical reports, not fresh verification performed during tracker cr
 - Latest code/test commit before this tracker-only commit: `9f444ab85f9d82ab8512ccada783839ed717bf11`.
 - Check runs on that head were queued at last read; the prior code head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` had a successful backend run (24 passed, 1 warning). Refresh checks against the latest PR head after this tracker update.
 - Scope allow-list now constrains both client creation and token issuance/decoding. New tests cover client-secret one-time return, unsupported scope rejection, and production rejection of the default signing key.
+
+
+## Live state — 2026-10-23
+
+- User-confirmed decisions remain: PR #181 merged; Render deployment works; GitGuardian test-credential findings are not a blocker. Preserve Git history.
+- Issues #183, #185, #186 track the security foundation, integration onboarding, and STK/callback lifecycle respectively. PR #184 is the single draft PR targeting `dev`.
+- Latest code head before tracker-only refresh: `eb3f2d1d6245a1d4193a138dbd85a30cbe09bc7e`. GitGuardian completed successfully. Backend/lint/build/start-health runs were queued when queried.
+- Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` backend tests passed (24 passed, 1 warning); no current claim for tests added afterward.
+- No Alembic migrations, production database, Render variables, Flux resources, deployment manifests, `main`, or `dev` were changed. Local clone failed due DNS resolution; local tests were not run.
+- Provider behavior is grounded in Safaricom's official [Authorization API](https://developer.safaricom.co.ke/apis/Authorization) and [M-Pesa Express documentation](https://developer.safaricom.co.ke/apis/MpesaExpressSimulate). STK Query verification/outbox remains unimplemented.

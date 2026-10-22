@@ -251,3 +251,14 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 - Security implementation received a follow-up hardening commit `7e019ab9f173a0cd04c7396145550ad65d9c8303`: only explicitly declared scopes can be provisioned, signed, or accepted in tokens; malformed JSON claim structures are rejected.
 - Added tests for one-time client-secret provisioning, unsupported-scope rejection, and production rejection of the development signing key. The AsyncSession mock now matches the actual sync `add` / async `flush` API.
 - These latest tests are **not yet verified**: latest code commit before tracker refresh is `9f444ab85f9d82ab8512ccada783839ed717bf11`; its CI runs were queued when checked. Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` had 24 passed, 1 warning.
+
+
+## Implementation continuation — 2026-10-23
+
+- Issues: [#183 security/M2M foundation](https://github.com/NetHub-Ltd/NetPay/issues/183), [#185 Daraja integration onboarding](https://github.com/NetHub-Ltd/NetPay/issues/185), and [#186 idempotent STK/callback intake](https://github.com/NetHub-Ltd/NetPay/issues/186).
+- PR [#184](https://github.com/NetHub-Ltd/NetPay/pull/184) remains the single draft PR to `dev`, on the reused `work/minimal-netpay-rebuild` branch. User confirmed PR #181 was merged, Render works, and test-credential GitGuardian findings are not a blocker.
+- Implemented: authenticated credential encryption; M2M client secret hashing/provisioning/token issuance; strict scope allow-list; merchant-scoped Daraja integration create/list/detail; official OAuth credential validation; idempotent STK initiation; durable payment/attempt/provider-request/idempotency records before provider I/O; public callback intake with deduplication and minimized evidence.
+- Safety behavior: STK acceptance stays pending; ambiguous provider results become unknown and are not automatically retried. Callback payloads are untrusted and cannot mark payments succeeded; matched callbacks require provider-authoritative verification. That verification/reconciliation/outbox transition remains open.
+- Latest code commit before tracker-only refresh: `eb3f2d1d6245a1d4193a138dbd85a30cbe09bc7e`. GitGuardian check completed successfully; CI backend/lint/build/start-health runs were queued at last check. Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` passed 24 tests with 1 warning; do not apply that result to newer code.
+- Local pytest/lint were not run because github.com DNS resolution failed during local clone. Do not claim latest code is verified until CI results are refreshed. Continue implementation without waiting on non-blocking check delays.
+- Next: STK Query/provider-authoritative verification, handling callbacks that arrive before request IDs are committed, verified state transitions and transactional outbox events. C2B registration remains opt-in.

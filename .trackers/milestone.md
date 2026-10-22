@@ -159,3 +159,18 @@ PR [#184](https://github.com/NetHub-Ltd/NetPay/pull/184) is a draft against `dev
 ### Follow-up verification note — 2026-10-23
 - Added a strict allow-list for M2M scopes and tests for one-time client secret generation, unsupported scopes, and production signing-key guard.
 - Latest code commit before tracker refresh: `9f444ab85f9d82ab8512ccada783839ed717bf11`; CI queued at last check. Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` passed 24 tests with 1 warning.
+
+
+## Current implementation status — 2026-10-23
+
+| Slice | Status |
+|---|---|
+| Credential encryption and M2M auth | IMPLEMENTED; latest tests pending CI |
+| Merchant-scoped Daraja integration onboarding | IMPLEMENTED; OAuth validation, ciphertext-only storage, safe responses, callback URL generation; latest tests pending CI |
+| Idempotent STK initiation | IMPLEMENTED; durable intent/attempt/provider-request/idempotency before provider I/O; accepted remains pending, ambiguous becomes unknown |
+| Public callback intake | IMPLEMENTED; deduplicated minimized evidence; callback alone cannot finalize money movement |
+| Provider-authoritative STK query verification and reconciliation | OPEN — next slice; required before marking payment succeeded |
+| Transactional outbox events for verified payment transitions | OPEN — must be emitted exactly once after verified transition |
+| C2B URL registration | OPEN and opt-in; not implemented in this slice |
+
+Current code head before tracker-only refresh: `eb3f2d1d6245a1d4193a138dbd85a30cbe09bc7e`. GitGuardian passed; backend/lint/build/start-health CI runs were queued at last read. Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` passed 24 tests with 1 warning; it predates integration/payment/callback tests.

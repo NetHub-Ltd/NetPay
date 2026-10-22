@@ -106,3 +106,12 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 ### Follow-up rollback note — 2026-10-23
 - Latest code/test commit before tracker refresh: `9f444ab85f9d82ab8512ccada783839ed717bf11`. New scope restrictions and three tests were added; CI for this head was queued at last observation.
 - Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` backend tests passed (24 passed, 1 warning). Do not treat that as verification of the newer tests.
+
+
+## Current rollback boundaries — 2026-10-23
+
+- PR #184 remains a draft on the single working branch; latest code head before tracker-only refresh is `eb3f2d1d6245a1d4193a138dbd85a30cbe09bc7e`.
+- Code now includes M2M auth/provisioning, encrypted Daraja onboarding, idempotent STK initiation and callback evidence storage. No schema migrations or deployed environment changes were made.
+- GitGuardian passed on latest observed code head; CI jobs were queued. Only prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` has recorded backend test success (24 passed, 1 warning).
+- Revert through a reviewed revert commit; do not rewrite history. Keep `SECRET_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, and `M2M_PROVISIONING_KEY` in the deployment secret store. Do not configure or change them without authorization.
+- Never enable a provider integration unless its encryption key is configured. Never mark callback-reported success as paid without provider verification. Current callback handler deliberately leaves matched non-terminal payments unknown until verification/reconciliation.
