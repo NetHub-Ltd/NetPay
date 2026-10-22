@@ -61,3 +61,14 @@ Do not call the rebuild complete or merge it until:
 
 - 2026-10-22: Established a new rebuild-specific milestone map. No implementation verification is inferred from tracker creation.
 - 2026-10-22: Added explicit handoff criteria. Documentation of the protocol is verified; successful independent resumption remains open until checked.
+
+## Added regression checks — database unavailable (2026-10-22)
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| R2.6 | With the configured PostgreSQL endpoint unavailable, the exact deployed/local API runtime must not report successful startup if DB connectivity is a startup requirement | OPEN — user observed apparent startup; exact runtime and logs not yet captured |
+| R2.7 | CI has a negative regression test proving startup fails when PostgreSQL cannot answer `SELECT 1` | OPEN — existing startup test covers only the healthy-database path |
+| R2.8 | Container/deployment health semantics distinguish process liveness from dependency readiness | OPEN — Dockerfile healthcheck currently uses `/health/live` |
+| R2.9 | Tested database has Alembic head `0002_full_domain_schema` and all 16 expected domain tables | OPEN — source test defines the expected schema; the user's running database has not been inspected |
+
+Model source inventory: 16 SQLModel table classes are declared/exported across grouped modules; file count is not model count. Runtime schema remains separately unverified.
