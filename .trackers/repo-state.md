@@ -1,20 +1,55 @@
-# NetPay repository state
+# NetPay repository state and agent handoff
 
 **Last updated:** 2026-10-22
 
+## Start here — mandatory handoff procedure
+
+This file is the quick orientation page. A new agent must read the four rebuild trackers in this order:
+
+1. `.trackers/task.md` — goal, scope, constraints, current checklist, evidence rules.
+2. `.trackers/repo-state.md` — this file: live branches, PR/issue state, handoff protocol.
+3. `.trackers/milestone.md` — acceptance criteria and milestone progress.
+4. `.trackers/rollback.md` — safe recovery boundaries and known rollback gaps.
+
+Then read `AGENTS.md`, `docs/REBUILD_SPEC.md`, and refresh the relevant skills from [NetHub skills](https://github.com/NetHub-Ltd/skills-.git). Check live GitHub branch refs, latest relevant workflow runs, issue #179, and PR #178 before relying on recorded state.
+
+### Handoff contract
+
+The repository and linked GitHub records—not an old chat transcript—must explain:
+- **Goal and scope:** what NetPay is being rebuilt to do and what is explicitly excluded.
+- **Current state:** working branch, integration branch, application baseline, latest tracker commit, current milestone, and last verified result.
+- **Decisions and authority:** approved constraints, user decisions, what requires explicit user approval, and what an agent must not change.
+- **Evidence:** exact workflow/run IDs, commands, test results, source links, timestamps, and evidence category.
+- **Open work:** blockers, unknowns, failed/skipped/not-run checks, next safe action, and acceptance criteria.
+- **Recovery:** rollback options, irreversible boundaries, and deployment ownership.
+- **History:** meaningful decisions and state changes recorded in trackers/issues/PRs rather than chat alone.
+
+### Rules that prevent handoff drift
+
+1. Before implementation, confirm the tracker baseline and write down the intended scope/next step when it is not already clear.
+2. During work, update statuses as evidence changes; preserve prior decisions and record why status changed.
+3. After work, synchronize trackers and relevant issue/PR records, record the resulting commit/branch state, and re-fetch the changed records to verify they persisted.
+4. Keep `OBSERVED`, `VERIFIED`, `INFERRED`, `PROPOSED`, and `UNKNOWN` distinct. A written implementation claim is not proof that behavior works.
+5. If records conflict, stop and reconcile the conflict; do not choose the most convenient version or silently overwrite user-approved decisions.
+6. Do not infer a branch tip from this document; query live refs because tracker commits change the tip.
+7. Never close/reopen issues or PRs, alter protected refs, deploy, or make destructive/scope-expanding changes without explicit user approval.
+8. Keep one working branch and one PR to `dev` for this task; do not push directly to `dev` or `main`.
+9. Do not modify deployment manifests; Flux owns deployment reconciliation.
+10. No handoff is complete if the next safe action is unclear.
+
 ## Branches
 
-| Branch | Commit | Meaning |
+| Branch | Last recorded commit | Meaning |
 |---|---|---|
-| `work/minimal-netpay-rebuild` | See live branch ref | Working branch; tracker-only commits are on this branch |
-| `dev` | `5bcbf865837cedc258e6a11d483b12a28f7f2ccc` | Integration branch; unchanged by tracker creation |
-| `main` | `a55500c2838b8ad1cc637a121f2b30f7f88132d0` | Older code; untouched by this task |
+| `work/minimal-netpay-rebuild` | See live branch ref | Working branch; tracker-only commits have advanced it beyond the application baseline |
+| `dev` | `5bcbf865837cedc258e6a11d483b12a28f7f2ccc` (last recorded) | Integration branch; unchanged by tracker creation as last observed |
+| `main` | `a55500c2838b8ad1cc637a121f2b30f7f88132d0` (last recorded) | Older code; untouched by this task as last observed |
 
-At the start of tracker creation, `work/minimal-netpay-rebuild` and `dev` both pointed to `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`. Tracker-only commits advanced the working branch beyond the application baseline. The branch page/API is the authoritative source for the live tip because each tracker correction itself advances the tip. The branches now differ by tracker commits; no application code was changed by this task.
+At the start of tracker creation, `work/minimal-netpay-rebuild` and `dev` both pointed to `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`. Tracker-only commits advanced the working branch beyond the application baseline. Recheck live refs before any operation; the branch page/API is authoritative. The branches differed by tracker commits after that work; no application code was changed by tracker creation.
 
 ## Pull request and issue
 
-- PR #178: closed, unmerged. A retarget to `dev` was rejected because head and base had no differing commits at the time. The PR was closed without explicit user approval; this was a process error and no merge occurred.
+- PR #178: closed, unmerged. A retarget to `dev` was rejected because head and base had no differing commits at the time. The PR was closed without explicit user approval; this was a process error and no merge occurred. Do not reopen or otherwise alter it without approval.
 - Issue #179: rebuild delivery/verification tracking issue — https://github.com/NetHub-Ltd/NetPay/issues/179
 
 ## Workflow evidence carried forward
@@ -30,7 +65,7 @@ These are historical reports, not fresh verification performed during tracker cr
 
 - `.trackers/` existed on `main` with older STK/C2B and release-workflow records.
 - `.trackers/` was absent from `work/minimal-netpay-rebuild` at the start of this task.
-- Four rebuild-specific trackers now exist on the working branch: `task.md`, `milestone.md`, `repo-state.md`, and `rollback.md`.
+- Four rebuild-specific trackers exist on the working branch: `task.md`, `milestone.md`, `repo-state.md`, and `rollback.md`.
 - The old tracker contents are not authoritative for the clean rebuild and were not copied as the new baseline.
 - Deployment manifests are out of scope; Flux owns deployment reconciliation.
 
