@@ -89,3 +89,15 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - GitGuardian bot comment currently lists three detections in prior commits: two test URL credential-pattern detections and one smoke-test password literal. Inspect full incidents and verify current check conclusion before choosing a resolution. Do not dismiss findings, rewrite history, or assert production credential exposure without evidence. Earlier tracker wording says six detections; reconcile count.
 - Render/Aiven startup and actual schema remain unverified. Do not change DB settings in deployment or touch manifests without authorization.
 - Next safe action is evidence gathering only: confirm live branch head SHA, fetch PR required checks / GitGuardian check result and full incident context, then update issue and trackers. If a real credential is established, follow approved rotation/revocation procedures while preserving Git history.
+
+
+## Security foundation rollback/evidence — 2026-10-23
+
+- Issue #183: https://github.com/NetHub-Ltd/NetPay/issues/183
+- PR #184: https://github.com/NetHub-Ltd/NetPay/pull/184 (draft, target `dev`).
+- Changes are confined to backend configuration/security/API code, tests, environment example and backend documentation. No database schema, data, deployment manifest, Flux resource or deployed environment was changed.
+- If rollback is required, use a reviewed revert commit; preserve all Git history. Keep auth configuration and routes consistent when reverting.
+- New features depend on deployment-provided `SECRET_KEY` and `CREDENTIAL_ENCRYPTION_KEY`. Do not enable credential storage/provider onboarding until the encryption key is configured and preserved securely. Do not change Render variables or Flux manifests without explicit authorization.
+- Client provisioning is intentionally not exposed anonymously. A future provisioning endpoint must be operator-authorized and return the generated secret once only.
+- Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` passed backend smoke tests (24 passed, 1 warning); latest head `14134f360865c9d360e702abaa4306400cecaf25` has queued workflow runs at last observation. Refresh checks before marking the latest tests verified.
+- A local clone could not be created because github.com DNS resolution failed in the execution environment. No local test/lint command was run.
