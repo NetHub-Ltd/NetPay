@@ -143,3 +143,8 @@ Tests cover operation contracts and safe failure behavior, not only successful m
 ### Provider-operation idempotency
 
 The payment domain generates a stable idempotency key for each logical payment action. For mutating Daraja operations, Core persists that key with a fingerprint of the stable request fields under a unique integration/operation/key constraint. Replays do not send a second provider request; an in-flight or ambiguous prior operation is returned as unknown for reconciliation. Reusing a key with changed business fields raises a conflict. This is provider-call deduplication, not a replacement for payment-domain idempotency or ledger invariants.
+
+
+### Verified API scope and explicit gaps
+
+The broad Core adapter set is mock-tested, but mocked contract tests do not prove live Daraja compatibility. Pull Transactions remains disabled until its exact request fields and endpoint are verified against the merchant-accessible official documentation/sandbox. B2B Express Checkout remains an explicit API-contract gap because the accessible public catalogue page does not expose a request schema or endpoint. Neither should be described as production-verified.

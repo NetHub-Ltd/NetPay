@@ -156,3 +156,12 @@ Evidence refresh date: 2026-10-23. Runs above are associated with recorded commi
 | MP.10 | CI/migrations/container/frontend checks re-run on final branch tip | OPEN |
 
 Gate: do not mark any item VERIFIED without a concrete test, source, or workflow result. Daraja APIs requiring initiator/security credentials or product permissions must be disabled unless those requirements are configured.
+
+
+## Implementation verification update — 2026-10-23
+
+- Core implementation is on the existing work branch and draft PR #188.
+- CI at code commit 8c0f0b66b7e41ebc9808571c7c357c604aafb69b passed: backend tests (37 passed), backend readiness, frontend lint/build, and container startup smoke.
+- This follow-up commit masks PartyA/PartyB identifiers in audit metadata and explicitly classifies API-contract gaps; CI for this follow-up is pending.
+- Live Daraja sandbox tests have not been performed. Pull Transactions remains provisional/disabled until its exact contract is verified. B2B Express Checkout is not implemented because the accessible official portal listing does not expose the request schema/endpoint.
+- No public payment-initiation API, separate service, deployment manifest, Flux resource, production database, or main-branch change is included.

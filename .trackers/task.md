@@ -221,3 +221,25 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 - **Observed baseline:** backend has the 16-table SQLModel/Alembic foundation, but `backend/app/main.py` currently registers health routes and static frontend only; there is no M-Pesa Core implementation module in the inspected tree.
 - **Safety:** preserve history; work only on existing `work/minimal-netpay-rebuild`; one PR to `dev`; no changes to `dev`, `main`, Flux/deployment manifests, production DB, or secrets.
 - **Testing requirement:** add unit, provider-contract, database/migration, concurrency, callback replay/order, credential/redaction, timeout/unknown-outcome, audit failure, and existing regression tests. Report exact CI run IDs/results; no claim of local test execution because the runtime cannot clone the repo.
+
+
+## Implementation status — 2026-10-23
+
+Implemented on the existing work branch for draft PR #188:
+- Internal typed M-Pesa Core and shared Daraja OAuth/HTTP handling.
+- Encrypted integration credentials, key IDs/rotation, initiator security credentials, explicit capability allowlist.
+- STK Push/query, C2B URL registration and callback routes, Dynamic QR, transaction status, account balance, reversal, B2C/B2B, and a provisional Pull Transactions adapter.
+- Durable provider-operation audit, redacted structured logs, normalized unknown/not-sent outcomes, callback evidence persistence/deduplication/conflict audit, and caller-keyed idempotency for mutating provider operations.
+- Alembic revision 0003, backend environment example, module documentation, and provider/callback/idempotency/migration tests.
+
+Verification:
+- Commit 8c0f0b66b7e41ebc9808571c7c357c604aafb69b passed CI: backend tests (37 passed), backend readiness, frontend lint/build, and container startup smoke.
+- Follow-up masking of PartyA/PartyB audit values and API-coverage caveat documentation is included in this commit; CI is pending.
+- No live Daraja sandbox run has been performed; mock contract tests are not proof of live provider compatibility.
+
+Known gaps:
+- Pull Transactions remains disabled until its exact endpoint/request/callback contract is verified against merchant-accessible official docs/sandbox.
+- B2B Express Checkout is not implemented because the accessible public portal listing does not expose its request schema/endpoint.
+- The Core does not create a public payment API or mutate canonical payment/ledger state. The payment domain must own authorization, limits, canonical state, and financial effects.
+
+Do not merge or deploy without explicit approval.

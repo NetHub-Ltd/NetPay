@@ -163,11 +163,13 @@ def test_audit_redaction_masks_credentials_and_phone_numbers():
         "ConsumerSecret": "not-for-logs",
         "SecurityCredential": "private",
         "PhoneNumber": "254712345678",
+        "PartyA": "254712345678",
         "Amount": 1500,
     })
     assert redacted["ConsumerSecret"] == "[REDACTED]"
     assert redacted["SecurityCredential"] == "[REDACTED]"
     assert redacted["PhoneNumber"] == "***5678"
+    assert redacted["PartyA"] == "***5678"
     assert redacted["Amount"] == 1500
 
 

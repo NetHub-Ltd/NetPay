@@ -60,9 +60,10 @@ The portal currently lists the following API families relevant to a payment gate
 | Account Balance | Gated | Requires appropriate organization API user and balance-query role; callback-based asynchronous result. Sensitive financial data. |
 | Reversals | Gated, high-risk | Requires reversal initiator/security credential and permissions; require explicit authorized caller, original transaction correlation, idempotency and audit. Never auto-reverse from a callback/error. |
 | Dynamic QR | Conditional | Requires product/shortcode permission and supported merchant use case; typed response and expiry handling. |
-| Pull Transactions | Conditional | Requires relevant account/API permission and bounded time-window handling; protect returned transaction/PII data. |
+| Pull Transactions | Provisional adapter, disabled by default until contract verification | Requires relevant account/API permission and bounded time-window handling; verify exact field names, endpoint version and callback semantics in the merchant-accessible official docs/sandbox before enabling. |
 | B2C | Gated, high-risk | Requires B2C/bulk-disbursement capability, API initiator, security credential and callback handling. No public app endpoint should expose it without separate authorization/limits. |
-| Business Pay Bill / Business Buy Goods / B2B Express Checkout | Gated, high-risk | Requires product-specific shortcode and initiator permissions; explicitly authorize destination, amount, operation and idempotency. |
+| Business Pay Bill / Business Buy Goods | Gated, high-risk; adapter implemented | Requires product-specific shortcode and initiator permissions; explicitly authorize destination, amount, operation and idempotency. |
+| B2B Express Checkout | Follow-up, not implemented | The public [Daraja portal page](https://developer.safaricom.co.ke/apis/B2BExpressCheckout) lists the API but does not expose its request schema or endpoint in accessible documentation; verify the exact contract with Safaricom before implementation or enablement. |
 | Tax Remittance, Bill Manager and other product-specific APIs | Document disposition; implement only if relevant to the approved NetPay use cases | Require product and business prerequisites. Do not expose unsupported or unauthorized capabilities. |
 
 ### Cross-operation contract requirements

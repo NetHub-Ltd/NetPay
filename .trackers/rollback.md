@@ -98,3 +98,13 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - No production credentials, production transactions, database writes, deployment manifests, Flux resources, `dev`, or `main` changes are authorized by this implementation task.
 - Revert Core application files, configuration, tests, documentation and the corresponding migration together if rollback is required. Do not remove schema objects with live data without a separately reviewed migration.
 - A passing GitHub CI run validates the tested commit in CI, not Render/Aiven production behavior. Local tests cannot be run from this environment unless repository access/network becomes available.
+
+
+## Rollback and recovery notes — M-Pesa Core
+
+- Current implementation is isolated to PR #188 on work/minimal-netpay-rebuild; it has not been merged or deployed.
+- Revision 0003 is additive. Downgrade to 0002_full_domain_schema removes the M-Pesa credential/capability columns and provider-operation idempotency columns/constraint. Do not downgrade a database containing live M-Pesa operation history without first preserving the affected audit records.
+- Code rollback should use a reviewed revert of the PR/commit; do not reset or rewrite branch history.
+- No Flux manifests, deployment resources, production database, production credentials, or main branch were changed.
+- CI at code commit 8c0f0b66b7e41ebc9808571c7c357c604aafb69b passed. The audit-redaction/docs follow-up is included in the current commit and pending CI.
+- Live Daraja sandbox verification and production rollout remain explicitly out of scope until separately approved.

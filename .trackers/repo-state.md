@@ -190,3 +190,11 @@ These are historical reports, not fresh verification performed during tracker cr
 - **Baseline observation:** `backend/app/main.py` has health endpoints and optional static export serving; existing models include `ProviderRequest`, `ProviderCallback`, `AuditLog`, `DarajaIntegration`, `Payment`, `PaymentAttempt`, `PaymentVerification`, and transactional outbox records. No `mpesa_core` package was present in the inspected tree.
 - **API evidence:** official Safaricom portal lists Authorization, M-Pesa Express, C2B, B2C, Transaction Status, Account Balance, Reversals, Dynamic QR, Business Pay Bill/Buy Goods, B2B Express Checkout and Pull Transactions. Each capability's product/initiator/permission prerequisites must be represented; this inventory does not imply every merchant is entitled to every operation.
 - **Next action:** update the spec/capability matrix and trackers, then implement on the existing branch; run CI and verify all outcomes before opening one PR to `dev`.
+
+
+## Implementation verification update — 2026-10-23
+
+- Target: NetPay PR #188, base dev, head work/minimal-netpay-rebuild.
+- Last fully green code commit: 8c0f0b66b7e41ebc9808571c7c357c604aafb69b. CI/backend readiness/frontend lint/frontend build/container startup smoke passed; backend suite reported 37 passed.
+- Audit-redaction and API-coverage documentation changes are included in this follow-up commit and pending verification.
+- No deployment configuration or public payment endpoint was added. dev/main have not been modified by this work.

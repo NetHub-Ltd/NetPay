@@ -23,7 +23,7 @@ _SECRET_PARTS = (
     "secret", "password", "passkey", "securitycredential", "accesstoken",
     "authorization", "bearer", "privatekey", "consumerkey", "consumersecret",
 )
-_PHONE_PARTS = ("phonenumber", "phone_number", "msisdn")
+_PHONE_PARTS = ("phonenumber", "phone_number", "msisdn", "partya", "partyb", "receiverparty")
 
 
 def _json_safe(value: object) -> object:
