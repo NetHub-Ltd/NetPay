@@ -1,8 +1,9 @@
 """Regression tests for configuration and the complete SQLModel schema."""
-
 from datetime import UTC
+
 import pytest
 from sqlalchemy import DateTime
+from sqlalchemy.engine import make_url
 from sqlmodel import SQLModel
 
 from app.core.config import Settings
@@ -29,21 +30,46 @@ EXPECTED_TABLES = {
 }
 
 
-def test_connection_strings_are_secret_wrapped() -> None:
-    """Settings repr must not reveal database or Redis credentials."""
+def test_connection_urls_are_built_from_split_secret_settings() -> None:
+    """Both driver URLs preserve credentials without leaking them in settings repr."""
     settings = Settings(
-        database_url="postgresql+asyncpg://private:secret@localhost/netpay",
-        redis_url="redis://private:secret@localhost/0",
+        db_host="db.example.test",
+        db_port=5432,
+        db_name="netpay",
+        db_user="private-user",
+        db_password="p@ss:/% word",
+        db_ssl_mode="require",
     )
-    assert "secret" not in repr(settings)
-    assert "private" not in repr(settings)
-    assert settings.alembic_database_url().startswith("postgresql+psycopg://")
+    async_url = make_url(settings.async_database_url())
+    sync_url = make_url(settings.alembic_database_url())
+
+    assert async_url.drivername == "postgresql+asyncpg"
+    assert sync_url.drivername == "postgresql+psycopg"
+    for url in (async_url, sync_url):
+        assert url.username == "private-user"
+        assert url.password == "p@ss:/% word"
+        assert url.host == "db.example.test"
+        assert url.database == "netpay"
+        assert url.query["sslmode"] == "require"
+    assert "p@ss:/% word" not in repr(settings)
+    assert "private-user" not in repr(settings)
 
 
-def test_database_url_requires_async_postgresql() -> None:
-    """Unsupported database connection schemes fail validation."""
+def test_database_configuration_validates_pool_and_port() -> None:
+    """Invalid database port or pool values fail validation."""
     with pytest.raises(ValueError):
-        Settings(database_url="sqlite:///./test.db")
+        Settings(db_port=70000)
+    with pytest.raises(ValueError):
+        Settings(db_pool_size=0)
+    with pytest.raises(ValueError):
+        Settings(db_max_overflow=-1)
+
+
+def test_conservative_pool_defaults() -> None:
+    """Default pool keeps only one persistent connection and no overflow."""
+    settings = Settings()
+    assert settings.db_pool_size == 1
+    assert settings.db_max_overflow == 0
 
 
 def test_all_sixteen_domain_tables_are_registered() -> None:
@@ -57,12 +83,8 @@ def test_lifecycle_columns_are_timezone_aware() -> None:
     for table in SQLModel.metadata.tables.values():
         for name in ("created_at", "updated_at", "deleted_at"):
             assert name in table.c, f"{table.name}.{name} missing"
-            if name != "deleted_at":
-                assert isinstance(table.c[name].type, DateTime)
-                assert table.c[name].type.timezone is True
-            else:
-                assert isinstance(table.c[name].type, DateTime)
-                assert table.c[name].type.timezone is True
+            assert isinstance(table.c[name].type, DateTime)
+            assert table.c[name].type.timezone is True
 
 
 def test_money_and_integrity_invariants_are_database_enforced() -> None:
