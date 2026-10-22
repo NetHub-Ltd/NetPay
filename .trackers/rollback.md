@@ -79,3 +79,13 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - Last known green runs on prior tip `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`: CI #643, readiness #197, frontend lint #90, frontend build #89. Subsequent queued runs at commit `d2d9eb371f4f6f9d8928fdf0dc22c8d814f169f2`: CI #651, readiness #205, frontend lint #98, frontend build #97; verify before relying on them.
 - Render/Aiven DB-off behavior remains unverified. Do not use a database reset, destructive migration, or deployment-manifest change for diagnosis.
 - If application changes need reverting, use reviewed revert commits; keep Alembic path/config/image-copy changes together. Preserve branch history.
+
+
+## Live verification refresh — 2026-10-23
+
+- No application, database, deployment manifest, Flux resource, `dev`, or `main` changes were made in this verification pass.
+- PR #181 remains open and unmerged. Preserve history; no reset, rebase, squash, force-push, or commit rewriting.
+- CI #656, readiness #210, frontend lint #103, and frontend build #102 passed for recorded commit `5efc356fc4a217f78a5d7851e53ed9f52f93869a`.
+- GitGuardian bot comment currently lists three detections in prior commits: two test URL credential-pattern detections and one smoke-test password literal. Inspect full incidents and verify current check conclusion before choosing a resolution. Do not dismiss findings, rewrite history, or assert production credential exposure without evidence. Earlier tracker wording says six detections; reconcile count.
+- Render/Aiven startup and actual schema remain unverified. Do not change DB settings in deployment or touch manifests without authorization.
+- Next safe action is evidence gathering only: confirm live branch head SHA, fetch PR required checks / GitGuardian check result and full incident context, then update issue and trackers. If a real credential is established, follow approved rotation/revocation procedures while preserving Git history.
