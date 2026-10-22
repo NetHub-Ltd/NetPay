@@ -33,3 +33,14 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 
 - This file is not a substitute for validating runtime rollback behavior of the rebuilt application.
 - Exact rollback procedures for application images and release tags remain to be verified against the current release workflow and Flux configuration. Flux manifests are deliberately out of scope.
+
+
+## Issue #180 rollback boundaries (2026-10-22)
+
+- Issue: https://github.com/NetHub-Ltd/NetPay/issues/180
+- Before implementation, record the current working branch tip and verify `dev` and `main` are unchanged.
+- Settings and pool changes should be reverted through reviewed commits; do not reset or rewrite branch history.
+- Moving `backend/migrations/` to `backend/alembic/` must preserve each migration file's contents and revision IDs. If Alembic cannot locate revisions after the move, revert the path/config reference changes together.
+- No database reset, table drop, destructive migration, secret exposure, deployment manifest edit, or production database action is authorized.
+- Render/Aiven runtime verification may require user-visible deployment logs/metadata. Do not change the database or claim the startup bug fixed solely from source inspection.
+- If separate connection fields replace `DATABASE_URL`, document the required Render environment-variable update; do not silently assume Render has those variables configured. Keep the env example and code changes consistent.
