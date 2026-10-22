@@ -54,3 +54,10 @@ pytest -q smoke_tests
 - Provider credentials must be encrypted before assigning ciphertext columns. Decrypt only at the provider-call boundary; never log plaintext or return it in API responses.
 - M2M client secrets are generated and hashed before persistence. The `/v1/oauth/token` endpoint exchanges a stored client ID/secret for a short-lived bearer token. The `/v1/oauth/me` endpoint demonstrates the authenticated principal and returns no secrets. Client provisioning must remain an authenticated operator workflow; there is no anonymous client-creation endpoint.
 - Each authenticated M2M request re-checks the persisted client and merchant status, expiry, revocation, and granted scopes so disabling a client takes effect immediately. Derive tenant IDs from the verified principal rather than request-body merchant IDs.
+
+
+### Initial M2M client provisioning
+
+- An operator may create a client for an already-existing active merchant with `POST /v1/internal/m2m-clients` and the `X-NetPay-Provisioning-Key` header. Configure `M2M_PROVISIONING_KEY` as a random secret of at least 32 bytes; the endpoint returns 404 when it is not configured or is too short.
+- The request accepts only the declared integration/payment/event scopes and an optional timezone-aware expiry. The generated client secret is returned once; only its PBKDF2 hash is persisted. There is no client-list or secret-read endpoint.
+- Keep this key in the deployment secret store and do not put it in a browser, source control, query string, or logs. This bootstrap route is an operator-only bridge until a fully authenticated operator workflow is implemented.
