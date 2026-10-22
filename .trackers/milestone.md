@@ -10,9 +10,11 @@
 | ID | Acceptance criterion | Status |
 |---|---|---|
 | R0.1 | Rebuild-specific trackers exist on the working branch | VERIFIED — created 2026-10-22 |
-| R0.2 | Working/integration branch relationship is recorded | VERIFIED — branch API showed `dev` and working branch at the same known SHA |
+| R0.2 | Working/integration branch relationship is recorded | VERIFIED — branch API showed `dev` and working branch at the same known SHA before tracker-only commits |
 | R0.3 | Legacy `main` trackers are not copied blindly into the rebuild | VERIFIED — old tracker contents describe the prior STK/C2B product state |
-| R0.4 | Future changes update trackers before and after work | OPEN — process commitment; must be followed per task |
+| R0.4 | Trackers are updated before, during, and after meaningful work | ONGOING GATE — must be followed on every task |
+| R0.5 | Handoff protocol tells a new agent what to read, how to refresh state, and how to avoid chat-only assumptions | VERIFIED — documented in `.trackers/task.md` and `.trackers/repo-state.md` |
+| R0.6 | A new agent can identify current truth, rationale, approval boundaries, blockers, and next safe action from repository records alone | OPEN — perform an explicit handoff-readiness check before calling this verified |
 
 ## Milestone R1 — Repository and delivery contract
 
@@ -31,7 +33,7 @@
 |---|---|---|
 | R2.1 | Implementation conforms to `docs/REBUILD_SPEC.md` | OPEN — full acceptance review pending |
 | R2.2 | Backend tests and readiness checks pass | UNKNOWN — inspect latest workflow/job evidence |
-| R2.3 | Frontend lint/typecheck and build pass | VERIFIED only for the reported successful frontend workflow run; rerun/currentness not yet checked |
+| R2.3 | Frontend lint/typecheck and build pass | HISTORICAL REPORT ONLY — a prior successful frontend workflow was reported; currentness not checked |
 | R2.4 | Container smoke test confirms FastAPI serves frontend and API routes correctly | UNKNOWN — inspect latest workflow/job evidence |
 | R2.5 | Payment security, idempotency, callback trust, and financial-state rules match the spec | OPEN — requires targeted code/test review |
 
@@ -52,8 +54,10 @@ Do not call the rebuild complete or merge it until:
 2. R2 behavior and required CI checks are verified.
 3. R3 user-facing and operational checks are completed or explicitly accepted as out of scope.
 4. The task, repository-state, and rollback trackers reflect the same final known state.
-5. Remaining risks and unverified items are visible in the PR/issue report.
+5. A handoff-readiness check confirms the next agent can resume from repository records without chat-only context.
+6. Remaining risks and unverified items are visible in the PR/issue report.
 
 ## Changelog
 
 - 2026-10-22: Established a new rebuild-specific milestone map. No implementation verification is inferred from tracker creation.
+- 2026-10-22: Added explicit handoff criteria. Documentation of the protocol is verified; successful independent resumption remains open until checked.
