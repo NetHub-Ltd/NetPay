@@ -139,3 +139,31 @@ These are historical reports, not fresh verification performed during tracker cr
 - **Fresh workflow evidence for branch commit `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`:** CI #643, backend readiness #197, frontend lint #90, and frontend build #89 all completed with success. The workflow-run API response does not include GitGuardian; its current check status is therefore **UNKNOWN** from this query and must be checked separately.
 - **UNKNOWN:** Render deployment SHA/logs/effective DB endpoint and actual Aiven schema remain uninspected; no root cause claimed.
 - Next safe action: inspect the exact six GitGuardian findings and determine whether any actual credential was exposed; preserve history and follow the repository's existing review/rotation process if warranted. Do not merge until the required security gate is resolved.
+
+
+## New-chat handoff snapshot — 2026-10-22 21:05 UTC
+
+### Canonical current task
+- Issue #180: https://github.com/NetHub-Ltd/NetPay/issues/180
+- PR #181: https://github.com/NetHub-Ltd/NetPay/pull/181
+- Branch: `work/minimal-netpay-rebuild`; PR target `dev`; PR is open and unmerged.
+- User's explicit decision: **preserve Git history**. No rebase/squash/force-push/reset/history rewrite; do not dismiss security findings without review.
+
+### Implementation summary
+- Split DB fields (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL_MODE`) build asyncpg and psycopg URLs via SQLAlchemy URL utilities; temporary `DATABASE_URL` bridge remains for existing external environment injection.
+- asyncpg URL uses `ssl`; psycopg URL uses `sslmode`. Pool defaults: size 1, overflow 0, timeout 10s, recycle 1800s, pre-ping and LIFO. This can still retain one idle connection per active engine/process.
+- Alembic directory is `backend/alembic/`; migration IDs/content retained. Docker healthcheck uses readiness endpoint. Startup failure regression test added. Workflow/container env and both env examples updated.
+- Deployment manifests/Flux untouched.
+
+### Latest evidence (re-check before relying)
+- CI #643, backend readiness #197, frontend lint #90, frontend build #89 passed at prior branch commit `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`.
+- Following tracker-only updates, run IDs seen queued at commit `d2d9eb371f4f6f9d8928fdf0dc22c8d814f169f2`: CI #651, readiness #205, frontend lint #98, frontend build #97. Re-query current branch tip and outcomes.
+- GitGuardian previously failed with six findings from earlier PR commits. Its current state is not established by the workflow-run query. Review exact detections; preserve history and keep PR unmerged until required security check passes.
+- Render/Aiven outage reproduction, deployed SHA/logs/effective endpoint, and actual Aiven schema: **UNKNOWN**. CI schema verification was against CI PostgreSQL; startup failure test uses a mocked exception.
+
+### New-chat next steps
+1. Read all four trackers, `AGENTS.md`, `docs/REBUILD_SPEC.md`, and refresh relevant skill from NetHub skills repo.
+2. Fetch live branch tip, PR #181 status/checks, issue #180, and workflow outcomes.
+3. Review GitGuardian findings with the history-preservation constraint. Do not claim findings are false positives without evidence.
+4. Investigate Render only with deployment/log/config evidence; do not alter deployment manifests or DB.
+5. Sync/re-fetch all trackers and issue/PR after new evidence.
