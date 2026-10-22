@@ -39,6 +39,7 @@ class Settings(BaseSettings):
         exclude=True,
     )
     credential_encryption_key: SecretStr | None = Field(default=None, repr=False, exclude=True)
+    m2m_provisioning_key: SecretStr | None = Field(default=None, repr=False, exclude=True)
     machine_token_ttl_minutes: int = 60
     machine_token_audience: str = "netpay"
 
