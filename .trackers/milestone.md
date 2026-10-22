@@ -93,4 +93,4 @@ Model source inventory: 16 SQLModel table classes are declared/exported across g
 ### Verification update — 2026-10-22
 - CI #615 passed at commit `90951334628987c10cb77fb6f06f80bdedf9fe1f`: 15 passed, 1 warning, no skipped tests; migration application, PostgreSQL/Redis checks, Docker build and container smoke passed.
 - Backend readiness #169 and frontend lint/build #61 passed on the same commit.
-- Real Render/Aiven DB-off behavior and actual Render schema remain unknown. Do not mark DB.2 or the Render portion of DB.9 verified.
+- Real Render/Aiven DB-off behavior and actual Render schema remain unknown. Do not mark DB.2 or the Render/Aiven portion of schema verification as verified.
