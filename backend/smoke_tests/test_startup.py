@@ -1,6 +1,4 @@
 """Startup smoke and failure-path tests for the NetPay API."""
-from contextlib import asynccontextmanager
-
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
