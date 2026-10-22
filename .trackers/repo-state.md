@@ -107,3 +107,17 @@ These are historical reports, not fresh verification performed during tracker cr
 - Runtime unknown: Render may report the service as running while the backend process failed, a prior image may be deployed, or the runtime may use another effective DB endpoint. These are hypotheses only; inspect deployment metadata/logs and never include secret values in issue/tracker text.
 - Proposed pool starting point is size 1, no overflow, pre-ping and LIFO, but actual choice must be tested against concurrency and total Render instance/worker count. This is not a zero-idle pool.
 - No application code has changed for issue #180 yet. After implementation, re-fetch files and branch state and record the exact result here.
+
+
+## Current verified state — issue #180 (2026-10-22)
+
+- Latest observed working branch tip: `90951334628987c10cb77fb6f06f80bdedf9fe1f`.
+- Latest CI [#615](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724936) passed: 15 backend tests passed, 1 warning, no skipped tests; migration application, PostgreSQL/Redis connectivity, container build and smoke passed.
+- Backend readiness [#169](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724918), frontend lint [#61](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724989), and frontend build [#61](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724933) passed.
+- The first CI attempt exposed a real driver mismatch: asyncpg rejects `sslmode`; fixed by emitting `ssl` in the async URL and retaining `sslmode` for psycopg. Later checks passed.
+- Migration path is now `backend/alembic/`; `backend/alembic.ini` points at it; revision IDs/content were preserved; Docker image includes migration files.
+- Database config now prefers explicit `DB_*` settings and temporarily accepts legacy `DATABASE_URL` for existing deployment env injection. Do not log generated URLs. Configure Aiven TLS explicitly.
+- Default pool size 1 / overflow 0 is conservative but still retains one idle connection per active process after use. Total capacity multiplies across workers and instances.
+- Deployment manifests remain untouched by instruction. Existing URL-based secrets remain usable via the bridge; Render can migrate to separate `DB_*` variables once configured.
+- **Still UNKNOWN:** Render startup observation when Aiven was disabled; no Render logs, deployment SHA, or actual Aiven schema query available. CI test proves the lifespan rejects a raised DB connectivity error, not the exact external Render event.
+- Issue #180 has implementation and evidence comment ID `6341640313`. PR #178 remains closed/unmerged; no PR was opened or merged during this implementation.
