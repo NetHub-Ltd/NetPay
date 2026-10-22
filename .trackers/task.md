@@ -153,3 +153,13 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 - **UNKNOWN:** actual schema revision/table inventory on the Render/Aiven database. CI confirms the 16-table migration schema against its own PostgreSQL service only.
 - Deployment manifests were intentionally not modified. The compatibility bridge prevents immediate breakage for existing `DATABASE_URL` injection; migrate Render to `DB_*` when convenient and remove the old variable after verifying the new settings. For Aiven, configure `DB_SSL_MODE=require` or the appropriate stronger TLS verification mode.
 - CI warning: Starlette warns that its TestClient/httpx integration is deprecated; not blocking this change.
+
+
+## PR and security-scan update — 2026-10-22
+
+- **PR #181:** https://github.com/NetHub-Ltd/NetPay/pull/181, open/unmerged, target `dev`.
+- Latest implementation/config/test tree commit: `4f0123e9ed1f4d8d2e6d67a9cb86462c261a2e75`. Subsequent commits to this branch may be tracker-only; use live branch API for current tip.
+- **VERIFIED:** CI run [#634](https://github.com/NetHub-Ltd/NetPay/actions/runs/39786001400) and PR CI [#635](https://github.com/NetHub-Ltd/NetPay/actions/runs/39786009483) passed on the latest tree. Backend tests: 15 passed, 1 warning; migration, connectivity and container smoke passed.
+- **VERIFIED:** backend readiness [#188](https://github.com/NetHub-Ltd/NetPay/actions/runs/39786001722), frontend lint [#81](https://github.com/NetHub-Ltd/NetPay/actions/runs/39786009723), and frontend build [#81](https://github.com/NetHub-Ltd/NetPay/actions/runs/39786009393) passed.
+- **BLOCKED:** GitGuardian check fails on six detections from earlier commits in PR #181. The current tree was cleaned (blank example password, removed workflow/container password literals, synthetic reserved-character test value assembled from fragments), but GitGuardian scans earlier commits too. The detections are the local/test placeholders introduced during this work, not verified production credentials. No history rewrite or finding dismissal was performed. Do not merge until the check is resolved through an approved path.
+- **UNKNOWN:** actual Render startup when Aiven was disabled; no Render deployment metadata/logs or Aiven schema query have been inspected.
