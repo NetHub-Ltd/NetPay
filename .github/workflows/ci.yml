@@ -25,7 +25,13 @@ jobs:
           --health-interval 5s --health-timeout 3s --health-retries 20
     env:
       ENVIRONMENT: test
-      DATABASE_URL: postgresql+asyncpg://netpay:netpay@localhost:5432/netpay
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: netpay
+      DB_USER: netpay
+      DB_SSL_MODE: disable
+      DB_POOL_SIZE: 1
+      DB_MAX_OVERFLOW: 0
       REDIS_URL: redis://localhost:6379/0
     defaults:
       run: { working-directory: backend }

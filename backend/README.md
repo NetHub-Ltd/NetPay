@@ -20,8 +20,12 @@ PostgreSQL is required at startup. Redis is auxiliary: an unavailable Redis inst
 
 ## Database contract
 
-- Runtime `DATABASE_URL` uses `postgresql+asyncpg`; Alembic derives `postgresql+psycopg` from the same validated settings.
-- Connection URLs are secret-wrapped and must never be logged.
+- Configure `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, and `DB_SSL_MODE` separately. Settings construct `postgresql+asyncpg` for runtime and `postgresql+psycopg` for Alembic with SQLAlchemy's URL builder.
+- For Aiven, set `DB_SSL_MODE=require` (or the stronger verification mode appropriate to the configured CA). Local CI explicitly disables SSL for its local PostgreSQL service.
+- Generated connection URLs contain credentials and must never be logged.
+- The migration environment lives under `alembic/`; `alembic.ini` uses `script_location = alembic`.
+- The default pool keeps at most one connection per process and permits no overflow. Pool size, overflow, timeout, and recycle are configurable via `DB_POOL_*` settings. Each worker/process and each Render instance owns its own pool, so total PostgreSQL connections equal the sum of all process pools.
+- A pool size of one still retains one idle connection after the first use. Use `NullPool` only if avoiding retained idle connections is more important than the extra connection setup cost.
 - Datetimes use timezone-aware UTC values and PostgreSQL `TIMESTAMPTZ` columns.
 - Money is stored as integer minor units plus currency code.
 - The 16-table schema covers merchants, Daraja integrations, M2M clients, payments/attempts, idempotency, provider requests/callbacks/verification, reconciliation runs/items, outbox events, webhook endpoints, deliveries/attempts, and audit events.

@@ -27,7 +27,13 @@ docker exec "$redis" redis-cli ping | grep -qx PONG
 
 docker run --detach --name "$api" --network "$network" --publish 127.0.0.1:8000:8000 \
   --env ENVIRONMENT=test \
-  --env DATABASE_URL=postgresql+asyncpg://netpay:netpay@netpay-smoke-postgres:5432/netpay \
+  --env DB_HOST=netpay-smoke-postgres \
+  --env DB_PORT=5432 \
+  --env DB_NAME=netpay \
+  --env DB_USER=netpay \
+  --env DB_SSL_MODE=disable \
+  --env DB_POOL_SIZE=1 \
+  --env DB_MAX_OVERFLOW=0 \
   --env REDIS_URL=redis://netpay-smoke-redis:6379/0 \
   ghcr.io/nethub-ltd/netpay:ci >/dev/null
 for attempt in $(seq 1 30); do
