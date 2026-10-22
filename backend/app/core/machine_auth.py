@@ -26,6 +26,16 @@ from app.models.merchants import M2MClient, Merchant
 
 _HASH_ITERATIONS = 600_000
 _TOKEN_TYPE = "machine"
+ALLOWED_MACHINE_SCOPES = frozenset(
+    {
+        "integrations:read",
+        "integrations:write",
+        "payments:read",
+        "payments:write",
+        "events:read",
+        "events:write",
+    }
+)
 _bearer = HTTPBearer(auto_error=False)
 
 
@@ -93,6 +103,8 @@ async def create_m2m_client(
     normalized_scopes = sorted(set(scopes))
     if not normalized_scopes or any(not scope or len(scope) > 80 for scope in normalized_scopes):
         raise ValueError("At least one valid scope is required")
+    if not set(normalized_scopes).issubset(ALLOWED_MACHINE_SCOPES):
+        raise ValueError("One or more machine scopes are not supported")
     if expires_at is not None and (expires_at.tzinfo is None or expires_at.utcoffset() is None):
         raise ValueError("Client expiry must be timezone-aware")
     client_id = "nmc_" + secrets.token_urlsafe(24)
@@ -138,6 +150,9 @@ def issue_machine_access_token(
     """Issue a compact HS256 bearer token for an already authenticated active client."""
     config = settings or get_settings()
     key = _signing_key(config)
+    normalized_scopes = sorted(set(scopes))
+    if not normalized_scopes or not set(normalized_scopes).issubset(ALLOWED_MACHINE_SCOPES):
+        raise ValueError("One or more machine scopes are not supported")
     issued_at = int((now or datetime.now(UTC)).timestamp())
     expires_at = issued_at + config.machine_token_ttl_minutes * 60
     header = {"alg": "HS256", "typ": "JWT"}
@@ -147,7 +162,7 @@ def issue_machine_access_token(
         "sub": client_id,
         "client_id": client_id,
         "merchant_id": str(merchant_id),
-        "scope": sorted(set(scopes)),
+        "scope": normalized_scopes,
         "iat": issued_at,
         "exp": expires_at,
         "jti": secrets.token_urlsafe(16),
@@ -193,10 +208,12 @@ def decode_machine_access_token(
             raise ValueError("Invalid token principal")
         if any(not isinstance(scope, str) for scope in scopes):
             raise ValueError("Invalid token scopes")
+        if not scopes or not set(scopes).issubset(ALLOWED_MACHINE_SCOPES):
+            raise ValueError("Unsupported token scopes")
         if payload.get("sub") != client_id or not payload.get("jti"):
             raise ValueError("Invalid token identity")
         return MachinePrincipal(client_id=client_id, merchant_id=merchant_id, scopes=frozenset(scopes))
-    except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (AttributeError, KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError("Invalid machine access token") from exc
 
 
