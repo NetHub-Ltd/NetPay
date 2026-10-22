@@ -69,3 +69,12 @@ pytest -q smoke_tests
 - The create request validates the consumer key/secret against the official Daraja Authorization API for the selected environment, then stores the consumer key, consumer secret, and passkey as authenticated ciphertext. OAuth validation proves the app credentials can obtain a token; it does not prove every shortcode/product permission or passkey is valid.
 - Set `PUBLIC_API_BASE_URL` to the public NetPay origin used for callback generation. Production integrations require HTTPS. STK and C2B callback URLs are generated and persisted automatically; this phase does not register C2B URLs or implement callback processing.
 - The integration response intentionally excludes credential plaintext and ciphertext. Invalid credentials are not saved as active integrations. Provider calls use `DARAJA_TIMEOUT_SECONDS` and return sanitized errors.
+
+
+## STK Push and callback safety
+
+- `POST /v1/payments` requires a merchant-scoped `payments:write` bearer token and an `Idempotency-Key`. It persists the payment, attempt, provider request, and idempotency record before contacting Daraja. A replay with the same key and request returns the existing payment; a changed request with the same key is rejected.
+- Amounts are accepted as whole KES and stored as integer minor units (KES × 100). Kenyan mobile numbers are normalized to the `2547...` or `2541...` form. Each STK request uses the integration's encrypted credentials, passkey, shortcode, product type and generated callback URL.
+- An STK acceptance response leaves the payment pending; it is not proof of payment. A timeout or ambiguous provider response leaves the payment `unknown` and is never retried automatically.
+- `POST /v1/callbacks/stk/{integration_id}` stores only allow-listed callback evidence and deduplicates by provider request ID/fingerprint. Callback bodies are untrusted: even a callback with result code zero cannot mark a payment successful. Matched callbacks move non-terminal payments to `unknown` pending provider-authoritative verification; mismatches and conflicts remain for reconciliation. This slice does not yet implement STK query verification or outbox event publication.
+- Daraja request format is based on the official [M-Pesa Express documentation](https://developer.safaricom.co.ke/apis/MpesaExpressSimulate). The [Authorization API](https://developer.safaricom.co.ke/apis/Authorization) issues the short-lived OAuth token used for provider requests.
