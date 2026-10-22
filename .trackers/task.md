@@ -233,8 +233,8 @@ Implemented on the existing work branch for draft PR #188:
 - Alembic revision 0003, backend environment example, module documentation, and provider/callback/idempotency/migration tests.
 
 Verification:
-- Commit 8c0f0b66b7e41ebc9808571c7c357c604aafb69b passed CI: backend tests (37 passed), backend readiness, frontend lint/build, and container startup smoke.
-- Follow-up masking of PartyA/PartyB audit values and API-coverage caveat documentation is included in this commit; CI is pending.
+- Final code commit 18e3de35185f1219014ba183879835fd3740cefb passed CI: backend tests (34 passed, one Starlette deprecation warning), backend readiness, frontend lint/build, and container startup smoke.
+- PartyA/PartyB audit values are masked, callback dedupe is type-scoped, and callback host is explicitly configured per environment; these changes passed CI.
 - No live Daraja sandbox run has been performed; mock contract tests are not proof of live provider compatibility.
 
 Known gaps:

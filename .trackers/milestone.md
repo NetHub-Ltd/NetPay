@@ -10,7 +10,7 @@
 | ID | Acceptance criterion | Status |
 |---|---|---|
 | R0.1 | Rebuild-specific trackers exist on the working branch | VERIFIED — created 2026-10-22 |
-| R0.2 | Working/integration branch relationship is recorded | VERIFIED — branch API showed `dev` and working branch at the same known SHA before tracker-only commits |
+| R0.2 | Working/integration branch relationship is recorded | VERIFIED — PR #188 targets `dev`; current working branch remains separate and no history rewrite was performed |
 | R0.3 | Legacy `main` trackers are not copied blindly into the rebuild | VERIFIED — old tracker contents describe the prior STK/C2B product state |
 | R0.4 | Trackers are updated before, during, and after meaningful work | ONGOING GATE — must be followed on every task |
 | R0.5 | Handoff protocol tells a new agent what to read, how to refresh state, and how to avoid chat-only assumptions | VERIFIED — documented in `.trackers/task.md` and `.trackers/repo-state.md` |
@@ -23,19 +23,19 @@
 | R1.1 | Review retained GitHub Actions and their trigger/path behavior | OPEN |
 | R1.2 | Verify Docker build context and runtime entrypoint | OPEN |
 | R1.3 | Verify GHCR tags, release workflow, and image publishing contract | OPEN |
-| R1.4 | Verify frontend and backend `.env.example` files | OPEN |
-| R1.5 | Verify no deployment-manifest changes were introduced | OPEN — inspect diff |
-| R1.6 | Review branch diff for unintended legacy code or unrelated changes | OPEN |
+| R1.4 | Verify frontend and backend `.env.example` files | VERIFIED — frontend example inspected; backend example includes M-Pesa settings and leaves public callback origin explicit per environment |
+| R1.5 | Verify no deployment-manifest changes were introduced | VERIFIED — branch diff contains no deployment manifests or Flux resources |
+| R1.6 | Review branch diff for unintended legacy code or unrelated changes | VERIFIED — reviewed changed-file list; changes are Core code, migration, tests, docs and trackers |
 
 ## Milestone R2 — Application behavior
 
 | ID | Acceptance criterion | Status |
 |---|---|---|
-| R2.1 | Implementation conforms to `docs/REBUILD_SPEC.md` | OPEN — full acceptance review pending |
-| R2.2 | Backend tests and readiness checks pass | UNKNOWN — inspect latest workflow/job evidence |
-| R2.3 | Frontend lint/typecheck and build pass | HISTORICAL REPORT ONLY — a prior successful frontend workflow was reported; currentness not checked |
-| R2.4 | Container smoke test confirms FastAPI serves frontend and API routes correctly | UNKNOWN — inspect latest workflow/job evidence |
-| R2.5 | Payment security, idempotency, callback trust, and financial-state rules match the spec | OPEN — requires targeted code/test review |
+| R2.1 | Implementation conforms to `docs/REBUILD_SPEC.md` | PARTIAL — Core boundary implemented; Pull Transactions remains provisional and B2B Express Checkout is an explicit gap; live sandbox verification is pending |
+| R2.2 | Backend tests and readiness checks pass | VERIFIED — final code commit 18e3de35185f1219014ba183879835fd3740cefb: 34 tests passed; readiness passed |
+| R2.3 | Frontend lint/typecheck and build pass | VERIFIED — frontend lint and build workflows passed on commit 18e3de35185f1219014ba183879835fd3740cefb |
+| R2.4 | Container smoke test confirms FastAPI serves frontend and API routes correctly | VERIFIED IN CI — container startup smoke passed on commit 18e3de35185f1219014ba183879835fd3740cefb |
+| R2.5 | Payment security, idempotency, callback trust, and financial-state rules match the spec | PARTIAL — targeted credential, audit, idempotency and callback tests pass; live provider verification and payment-domain integration remain outstanding |
 
 ## Milestone R3 — User experience and operational readiness
 
@@ -146,14 +146,14 @@ Evidence refresh date: 2026-10-23. Runs above are associated with recorded commi
 |---|---|---|
 | MP.1 | Current branch/baseline and existing models/migrations inspected | VERIFIED — remote GitHub reads; local clone blocked by unavailable DNS/network |
 | MP.2 | Implementation issue created before tracker/code changes | VERIFIED — [issue #187](https://github.com/NetHub-Ltd/NetPay/issues/187) |
-| MP.3 | Current official Daraja API inventory documented with capability/prerequisite classification | IN PROGRESS |
-| MP.4 | Credential encryption and resolution; OAuth lifecycle/cache | OPEN |
-| MP.5 | Shared typed HTTP transport, safe errors, timeouts, correlation | OPEN |
-| MP.6 | Durable provider-operation audit and redacted structured logging | OPEN |
-| MP.7 | STK/C2B callbacks normalized, correlated, deduplicated, safe under reordering | OPEN |
-| MP.8 | Other relevant API adapters have typed contracts and capability gates | OPEN |
-| MP.9 | Unit, contract, integration, concurrency and security regression tests | OPEN |
-| MP.10 | CI/migrations/container/frontend checks re-run on final branch tip | OPEN |
+| MP.3 | Current official Daraja API inventory documented with capability/prerequisite classification | PARTIAL — inventory/prerequisites documented; Pull Transactions contract remains provisional and B2B Express Checkout schema is inaccessible in the public listing |
+| MP.4 | Credential encryption and resolution; OAuth lifecycle/cache | VERIFIED IN CI — encryption/key rotation, certificate-based security credential and OAuth cache behavior tested; live OAuth not run |
+| MP.5 | Shared typed HTTP transport, safe errors, timeouts, correlation | VERIFIED IN CI — provider response, timeout, connect-error and unknown-outcome tests pass; no automatic retries for ambiguous operations |
+| MP.6 | Durable provider-operation audit and redacted structured logging | VERIFIED IN CI — durable audit persistence/redaction and structured operation logging implemented and tested |
+| MP.7 | STK/C2B callbacks normalized, correlated, deduplicated, safe under reordering | VERIFIED IN CI WITH LIMITS — callback evidence, dedupe and conflict audit tested; C2B validation is basic shortcode/amount gating, and cryptographic callback signatures are not assumed |
+| MP.8 | Other relevant API adapters have typed contracts and capability gates | PARTIAL — STK/query, C2B, Dynamic QR, status, balance, reversal, B2C/B2B implemented; Pull Transactions provisional, B2B Express Checkout not implemented |
+| MP.9 | Unit, contract, integration, concurrency and security regression tests | VERIFIED IN CI — 34 tests passed, including operation adapters, callback persistence/dedupe, credential security and concurrent idempotency |
+| MP.10 | CI/migrations/container/frontend checks re-run on final branch tip | VERIFIED — CI, readiness, frontend lint/build and container startup smoke all passed on 18e3de35185f1219014ba183879835fd3740cefb |
 
 Gate: do not mark any item VERIFIED without a concrete test, source, or workflow result. Daraja APIs requiring initiator/security credentials or product permissions must be disabled unless those requirements are configured.
 
@@ -161,7 +161,7 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 ## Implementation verification update — 2026-10-23
 
 - Core implementation is on the existing work branch and draft PR #188.
-- CI at code commit 8c0f0b66b7e41ebc9808571c7c357c604aafb69b passed: backend tests (37 passed), backend readiness, frontend lint/build, and container startup smoke.
-- This follow-up commit masks PartyA/PartyB identifiers in audit metadata and explicitly classifies API-contract gaps; CI for this follow-up is pending.
+- Final code commit 18e3de35185f1219014ba183879835fd3740cefb passed: backend tests (34 passed, 1 Starlette deprecation warning), backend readiness, frontend lint/build, and container startup smoke.
+- Audit metadata masks PartyA/PartyB identifiers; callback fingerprints are scoped by callback type; callback host is explicit per environment.
 - Live Daraja sandbox tests have not been performed. Pull Transactions remains provisional/disabled until its exact contract is verified. B2B Express Checkout is not implemented because the accessible official portal listing does not expose the request schema/endpoint.
 - No public payment-initiation API, separate service, deployment manifest, Flux resource, production database, or main-branch change is included.

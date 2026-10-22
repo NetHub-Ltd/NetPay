@@ -195,6 +195,6 @@ These are historical reports, not fresh verification performed during tracker cr
 ## Implementation verification update — 2026-10-23
 
 - Target: NetPay PR #188, base dev, head work/minimal-netpay-rebuild.
-- Last fully green code commit: 8c0f0b66b7e41ebc9808571c7c357c604aafb69b. CI/backend readiness/frontend lint/frontend build/container startup smoke passed; backend suite reported 37 passed.
-- Audit-redaction and API-coverage documentation changes are included in this follow-up commit and pending verification.
+- Final code commit: 18e3de35185f1219014ba183879835fd3740cefb. CI/backend readiness/frontend lint/frontend build/container startup smoke passed; backend suite reported 34 passed with one Starlette deprecation warning.
+- Audit redaction, callback-type-scoped dedupe, explicit per-environment callback host, and API-coverage caveats are included and verified by the final CI run.
 - No deployment configuration or public payment endpoint was added. dev/main have not been modified by this work.

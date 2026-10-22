@@ -106,5 +106,5 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - Revision 0003 is additive. Downgrade to 0002_full_domain_schema removes the M-Pesa credential/capability columns and provider-operation idempotency columns/constraint. Do not downgrade a database containing live M-Pesa operation history without first preserving the affected audit records.
 - Code rollback should use a reviewed revert of the PR/commit; do not reset or rewrite branch history.
 - No Flux manifests, deployment resources, production database, production credentials, or main branch were changed.
-- CI at code commit 8c0f0b66b7e41ebc9808571c7c357c604aafb69b passed. The audit-redaction/docs follow-up is included in the current commit and pending CI.
+- Final code commit 18e3de35185f1219014ba183879835fd3740cefb passed CI: 34 backend tests, readiness, frontend lint/build, and container startup smoke. The PR remains unmerged and undeployed.
 - Live Daraja sandbox verification and production rollout remain explicitly out of scope until separately approved.
