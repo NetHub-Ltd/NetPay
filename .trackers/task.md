@@ -245,3 +245,9 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 3. Add an authenticated operator provisioning path before exposing client creation; do not add anonymous client provisioning.
 4. Wire credential encryption into integration create/update and provider-call paths, then implement Daraja credential validation/onboarding and STK Push/callbacks as the next vertical slice.
 5. Configure the new signing/encryption secrets in the relevant deployment environment before enabling the corresponding features; do not modify Flux manifests.
+
+
+### Follow-up verification note — 2026-10-23
+- Security implementation received a follow-up hardening commit `7e019ab9f173a0cd04c7396145550ad65d9c8303`: only explicitly declared scopes can be provisioned, signed, or accepted in tokens; malformed JSON claim structures are rejected.
+- Added tests for one-time client-secret provisioning, unsupported-scope rejection, and production rejection of the development signing key. The AsyncSession mock now matches the actual sync `add` / async `flush` API.
+- These latest tests are **not yet verified**: latest code commit before tracker refresh is `9f444ab85f9d82ab8512ccada783839ed717bf11`; its CI runs were queued when checked. Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` had 24 passed, 1 warning.

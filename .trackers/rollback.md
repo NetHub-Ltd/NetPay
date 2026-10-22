@@ -101,3 +101,8 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - Client provisioning is intentionally not exposed anonymously. A future provisioning endpoint must be operator-authorized and return the generated secret once only.
 - Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` passed backend smoke tests (24 passed, 1 warning); latest head `14134f360865c9d360e702abaa4306400cecaf25` has queued workflow runs at last observation. Refresh checks before marking the latest tests verified.
 - A local clone could not be created because github.com DNS resolution failed in the execution environment. No local test/lint command was run.
+
+
+### Follow-up rollback note — 2026-10-23
+- Latest code/test commit before tracker refresh: `9f444ab85f9d82ab8512ccada783839ed717bf11`. New scope restrictions and three tests were added; CI for this head was queued at last observation.
+- Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` backend tests passed (24 passed, 1 warning). Do not treat that as verification of the newer tests.

@@ -154,3 +154,8 @@ Evidence refresh date: 2026-10-23. Runs above are associated with recorded commi
 | Current latest CI on head `14134f360865c9d360e702abaa4306400cecaf25` | QUEUED at last read; refresh before marking verified |
 
 PR [#184](https://github.com/NetHub-Ltd/NetPay/pull/184) is a draft against `dev`. This phase is a foundation only; merchant onboarding, Daraja OAuth validation, STK Push, callback processing, reconciliation and event delivery remain later milestones.
+
+
+### Follow-up verification note — 2026-10-23
+- Added a strict allow-list for M2M scopes and tests for one-time client secret generation, unsupported scopes, and production signing-key guard.
+- Latest code commit before tracker refresh: `9f444ab85f9d82ab8512ccada783839ed717bf11`; CI queued at last check. Prior head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` passed 24 tests with 1 warning.

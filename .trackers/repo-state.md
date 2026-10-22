@@ -192,3 +192,9 @@ These are historical reports, not fresh verification performed during tracker cr
 - Local clone was unavailable due to DNS resolution failure for github.com; edits were made through GitHub's file API. Local tests were not run.
 - No production database, deployment variables, deployment manifests, Flux resources, `main`, or `dev` were modified by this phase.
 - Next: refresh latest checks, then add route-level tests and authenticated operator provisioning before integrating encrypted credentials with Daraja onboarding/STK Push.
+
+
+### Follow-up live state — 2026-10-23
+- Latest code/test commit before this tracker-only commit: `9f444ab85f9d82ab8512ccada783839ed717bf11`.
+- Check runs on that head were queued at last read; the prior code head `0a0807ef42035d176b5b9b78ee2828ca6b94d76a` had a successful backend run (24 passed, 1 warning). Refresh checks against the latest PR head after this tracker update.
+- Scope allow-list now constrains both client creation and token issuance/decoding. New tests cover client-secret one-time return, unsupported scope rejection, and production rejection of the default signing key.
