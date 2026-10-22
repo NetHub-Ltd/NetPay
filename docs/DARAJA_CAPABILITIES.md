@@ -41,3 +41,43 @@ Official documentation: https://developer.safaricom.co.ke/apis/TransactionStatus
 - Validate the callback schema, integration, known request/receipt, amount and available phone/context; deduplicate and prevent terminal-state regression.
 - Safaricom's public callback examples do not document a callback signature. Do not claim signed callbacks unless a supported verification mechanism is confirmed for the merchant's product.
 - Treat malformed or mismatched callback data as a recorded discrepancy, not payment success.
+
+
+## Broader capability inventory — refreshed 2026-10-23
+
+Official catalogue: https://developer.safaricom.co.ke/apis
+
+The portal currently lists the following API families relevant to a payment gateway. This is a discovery inventory, not a claim that every API is enabled for every Daraja application or merchant shortcode.
+
+| API family | Intended NetPay disposition | Preconditions / safety gate |
+|---|---|---|
+| Authorization | Core | Consumer key/secret per environment; token is secret and short-lived. |
+| M-Pesa Express / STK Push | Core | Passkey, shortcode/product details, transaction type, callback URL; acceptance is not payment success. |
+| STK Query | Core where supported | Query by known checkout request ID; a query result must be normalized without overriding stronger terminal evidence incorrectly. |
+| C2B Register URL | Core, opt-in | Merchant explicitly enables C2B; distinguish URL registration from activation of external validation. Ambiguous registration outcome requires reconciliation before retry. |
+| C2B Validation / Confirmation | Core, callback route | Validate schema, integration/shortcode, amount and known context; deduplicate; never trust callback routing ID as authentication. |
+| Transaction Status | Gated | Requires transaction identifier or originator conversation ID plus appropriate API user/initiator, security credential, callback URLs and permissions. Asynchronous. |
+| Account Balance | Gated | Requires appropriate organization API user and balance-query role; callback-based asynchronous result. Sensitive financial data. |
+| Reversals | Gated, high-risk | Requires reversal initiator/security credential and permissions; require explicit authorized caller, original transaction correlation, idempotency and audit. Never auto-reverse from a callback/error. |
+| Dynamic QR | Conditional | Requires product/shortcode permission and supported merchant use case; typed response and expiry handling. |
+| Pull Transactions | Conditional | Requires relevant account/API permission and bounded time-window handling; protect returned transaction/PII data. |
+| B2C | Gated, high-risk | Requires B2C/bulk-disbursement capability, API initiator, security credential and callback handling. No public app endpoint should expose it without separate authorization/limits. |
+| Business Pay Bill / Business Buy Goods / B2B Express Checkout | Gated, high-risk | Requires product-specific shortcode and initiator permissions; explicitly authorize destination, amount, operation and idempotency. |
+| Tax Remittance, Bill Manager and other product-specific APIs | Document disposition; implement only if relevant to the approved NetPay use cases | Require product and business prerequisites. Do not expose unsupported or unauthorized capabilities. |
+
+### Cross-operation contract requirements
+
+- Shared transport: environment-specific base URL, bounded connect/read/write/pool timeouts, JSON validation, normalized safe error codes, correlation ID, no automatic retry for ambiguous non-idempotent requests.
+- Operation audit: record operation name, integration/merchant IDs, correlation ID, timestamps, sanitized request metadata, HTTP status, provider request identifiers, normalized outcome/error code, and safe response metadata. Never persist credentials/tokens/auth headers or full callback PII by default.
+- Callback handling: validate input shape, preserve minimal evidence, deduplicate on stable provider IDs where available plus a deterministic fingerprint, and process duplicate/out-of-order callbacks idempotently.
+- Payment state remains owned by NetPay's payment domain. Provider acceptance, callback receipt and a status-query response are evidence with different strengths; none may bypass domain state-transition rules.
+- Official docs are dynamic and product permissions vary. Re-verify endpoint versions, field constraints, prerequisites and callback semantics before production enablement.
+
+### Official sources reviewed
+
+- https://developer.safaricom.co.ke/apis
+- https://developer.safaricom.co.ke/apis/Authorization
+- https://developer.safaricom.co.ke/apis/MpesaExpressSimulate
+- https://developer.safaricom.co.ke/apis/CustomerToBusiness
+- https://developer.safaricom.co.ke/apis/TransactionStatus
+- https://developer.safaricom.co.ke/apis/BusinessToCustomer
