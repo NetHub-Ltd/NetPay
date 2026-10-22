@@ -126,3 +126,30 @@ No application code has been changed as part of this investigation yet.
 
 ### Next safe action
 Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the negative startup regression test first, then settings/URL tests, migration-directory move and reference audit, and pool tests. Update this record with exact commands/results and re-fetch remote files after changes.
+
+
+## Implementation and CI outcome — 2026-10-22
+
+**Latest verified working branch commit:** `90951334628987c10cb77fb6f06f80bdedf9fe1f`. The branch API was re-fetched after the changes; `dev` remains at `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`, and `main` remains at `a55500c2838b8ad1cc637a121f2b30f7f88132d0`.
+
+### Implemented
+- Separate DB settings and SQLAlchemy URL construction for asyncpg and psycopg, including driver-specific TLS parameters and secret-wrapped username/password.
+- Temporary `DATABASE_URL` compatibility bridge to keep existing Compose/cluster env injection working while new environments migrate to `DB_*`. When a non-local `DB_HOST` is specified, it takes precedence over the legacy URL.
+- Configurable pool with defaults `DB_POOL_SIZE=1`, `DB_MAX_OVERFLOW=0`, `pool_pre_ping=True`, LIFO reuse, 10-second checkout timeout and 1800-second recycle interval.
+- Alembic files moved to `backend/alembic/`, `script_location = alembic`, existing revision IDs/content preserved, and migrations included in the runtime image.
+- Docker healthcheck now checks `/health/ready`; both CI workflow envs and container smoke test use split DB settings.
+- New tests cover reserved characters, driver-specific SSL query parameters, legacy URL transition, pool bounds, and failure to enter FastAPI lifespan when the required database check raises.
+- The schema integration test now derives its URL from shared settings instead of skipping when only split DB settings are present.
+
+### Verified evidence
+- **VERIFIED:** CI [run #615](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724936) passed on the latest application commit. Backend test result: **15 passed, 1 warning**; no skipped migration-schema test. Alembic upgrade, connectivity checks, Docker image build, and container startup smoke passed.
+- **VERIFIED:** backend readiness [run #169](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724918) passed.
+- **VERIFIED:** frontend lint [run #61](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724989) and frontend build [run #61](https://github.com/NetHub-Ltd/NetPay/actions/runs/39784724933) passed.
+- **VERIFIED:** old path `backend/migrations/env.py` returns not found; new `backend/alembic/env.py` exists. Revision file contents/IDs were copied unchanged.
+- **VERIFIED:** branch API confirms `dev` and `main` were not changed.
+
+### Remaining unknowns / constraints
+- **UNKNOWN:** why the user's Render test deployment appeared to start with Aiven disabled; no Render deployment metadata/logs or runtime config has been inspected.
+- **UNKNOWN:** actual schema revision/table inventory on the Render/Aiven database. CI confirms the 16-table migration schema against its own PostgreSQL service only.
+- Deployment manifests were intentionally not modified. The compatibility bridge prevents immediate breakage for existing `DATABASE_URL` injection; migrate Render to `DB_*` when convenient and remove the old variable after verifying the new settings. For Aiven, configure `DB_SSL_MODE=require` or the appropriate stronger TLS verification mode.
+- CI warning: Starlette warns that its TestClient/httpx integration is deprecated; not blocking this change.
