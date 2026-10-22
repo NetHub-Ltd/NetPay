@@ -171,3 +171,30 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 - Keep PR #181 open and unmerged while the GitGuardian check is unresolved. Review the findings through the existing security workflow; do not dismiss them or claim they are harmless without reviewing the actual finding context.
 - **Fresh workflow evidence at branch commit `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`:** CI run #643, backend readiness #197, frontend lint #90, and frontend build #89 completed successfully. The GitHub Actions workflow-run query does not report GitGuardian, so its current state must be checked separately in the PR checks UI/API before declaring the security gate resolved.
 - **UNKNOWN:** Render/Aiven DB-off behavior remains unverified.
+
+
+## New-chat handoff — 2026-10-22 21:05 UTC
+
+### User decision
+- **VERIFIED:** User explicitly instructed: preserve Git history. No rebase, squash, force-push, reset, or history rewrite to resolve GitGuardian findings.
+- Keep PR #181 open and unmerged while the GitGuardian findings/security gate are unresolved.
+
+### Current work item: issue #180 / PR #181
+- Issue: https://github.com/NetHub-Ltd/NetPay/issues/180
+- PR: https://github.com/NetHub-Ltd/NetPay/pull/181 (open, target `dev`, unmerged).
+- Working branch: `work/minimal-netpay-rebuild`. Do not create another branch, push directly to `dev`/`main`, modify deployment manifests, or merge.
+- Implemented: separate DB connection settings with internally built async/sync SQLAlchemy URLs and temporary legacy `DATABASE_URL` bridge; driver-specific SSL query parameters; conservative pool size 1/overflow 0; migration directory `backend/alembic/`; readiness healthcheck; negative startup-failure regression test; CI/readiness/env examples updated. Existing migration IDs/content retained.
+- Current-tree secret cleanup removed explicit example/workflow/container password literals; earlier commit findings still appear in GitGuardian's PR scan.
+
+### Latest known verification and security state
+- At commit `b81c1ca77b8de12ebe29cae3c18f4ab9d0335a84`, CI #643, backend readiness #197, frontend lint #90, and frontend build #89 completed successfully.
+- After further tracker-only commits, workflow runs associated with commit `d2d9eb371f4f6f9d8928fdf0dc22c8d814f169f2` were queued: CI #651, backend readiness #205, frontend lint #98, frontend build #97. Re-query the live branch tip and these runs before reporting their outcome.
+- GitGuardian's current check state is **UNKNOWN** from workflow-run queries; prior PR evidence says it failed on six findings from earlier commits. Review the actual findings in GitGuardian/PR checks. Do not assume they're harmless and do not merge while required security check fails.
+- **UNKNOWN:** Render/Aiven DB-off startup behavior, actual Render deployment SHA/logs/effective non-secret DB host, and actual Aiven migration/schema remain unverified. CI uses CI PostgreSQL and mocked DB failure; it is not production/runtime proof.
+
+### New chat: first safe actions
+1. Re-read all four trackers, `AGENTS.md`, `docs/REBUILD_SPEC.md`, and refresh the applicable current skill(s) from https://github.com/NetHub-Ltd/skills-.git.
+2. Query the live branch head and PR #181 checks. Re-check workflow runs #651/#205/#98/#97; distinguish completed results from queued/in-progress.
+3. Review the exact GitGuardian detections and decide the appropriate security review/remediation while preserving history. If any actual credential was exposed, follow the secret-rotation process; do not rewrite commits.
+4. Keep PR #181 open/unmerged until the security gate is resolved. Separately investigate Render/Aiven with deployment metadata/logs when available; no unsupported root-cause claim.
+5. Re-fetch tracker files and update them after meaningful evidence changes.
