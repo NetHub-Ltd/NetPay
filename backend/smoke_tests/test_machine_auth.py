@@ -1,5 +1,6 @@
 """Unit tests for machine secret hashing and signed access tokens."""
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from app.core.config import Settings
 from app.core.machine_auth import (
     decode_machine_access_token,
+    create_m2m_client,
     hash_client_secret,
     issue_machine_access_token,
     verify_client_secret,
@@ -92,3 +94,41 @@ def test_machine_token_rejects_tampering() -> None:
     pieces[1] = ("A" if pieces[1][0] != "A" else "B") + pieces[1][1:]
     with pytest.raises(ValueError):
         decode_machine_access_token(".".join(pieces), settings=_settings())
+
+
+@pytest.mark.asyncio
+async def test_client_creation_returns_secret_once_and_stores_only_hash() -> None:
+    """Provisioning helper persists only a hash and returns the plaintext separately."""
+    session = AsyncMock()
+    result = await create_m2m_client(
+        session,
+        merchant_id=uuid4(),
+        scopes=["payments:read"],
+    )
+    assert result.client.client_id.startswith("nmc_")
+    assert result.client_secret.startswith("nms_")
+    assert result.client.secret_hash != result.client_secret
+    assert verify_client_secret(result.client_secret, result.client.secret_hash)
+    session.add.assert_called_once_with(result.client)
+    session.flush.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_client_creation_rejects_unsupported_scopes_before_persistence() -> None:
+    """Client provisioning cannot grant undeclared administrative scopes."""
+    session = AsyncMock()
+    with pytest.raises(ValueError):
+        await create_m2m_client(session, merchant_id=uuid4(), scopes=["admin:*"])
+    session.add.assert_not_called()
+
+
+def test_production_rejects_the_development_signing_key() -> None:
+    """The checked-in development key cannot sign production machine tokens."""
+    settings = Settings(environment="production")
+    with pytest.raises(RuntimeError):
+        issue_machine_access_token(
+            client_id="nmc_test-client",
+            merchant_id=uuid4(),
+            scopes=["payments:read"],
+            settings=settings,
+        )
