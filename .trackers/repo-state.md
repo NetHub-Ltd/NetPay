@@ -120,4 +120,13 @@ These are historical reports, not fresh verification performed during tracker cr
 - Default pool size 1 / overflow 0 is conservative but still retains one idle connection per active process after use. Total capacity multiplies across workers and instances.
 - Deployment manifests remain untouched by instruction. Existing URL-based secrets remain usable via the bridge; Render can migrate to separate `DB_*` variables once configured.
 - **Still UNKNOWN:** Render startup observation when Aiven was disabled; no Render logs, deployment SHA, or actual Aiven schema query available. CI test proves the lifespan rejects a raised DB connectivity error, not the exact external Render event.
-- Issue #180 has implementation and evidence comment ID `6341640313`. PR #178 remains closed/unmerged; no PR was opened or merged during this implementation.
+- Issue #180 has implementation and evidence comment ID `6341640313`. PR #178 remains closed/unmerged. PR #181 is now open against `dev`: https://github.com/NetHub-Ltd/NetPay/pull/181; it is not merged.
+
+
+## PR #181 status and security gate — 2026-10-22
+
+- PR #181 is open against `dev`; do not merge yet.
+- Latest implementation/config/test tree commit: `4f0123e9ed1f4d8d2e6d67a9cb86462c261a2e75`. Live branch tip has advanced with tracker-only commits; query branch API for current SHA.
+- CI #634 and PR CI #635 succeeded; backend tests 15 passed, 1 warning, no skipped migration-schema test. Backend readiness #188 and frontend lint/build #81 succeeded.
+- GitGuardian Security Checks fails with six detections from earlier commits in the PR (sample/local CI/container/test values). Current tree was cleaned, but the scanner still scans prior commits. No history rewrite or dismissal was performed. Resolve with approved action before merge; do not imply actual production credentials were exposed without evidence.
+- Render/Aiven DB-off observation remains unresolved; the exact Render deployment SHA/logs/effective endpoint are still unknown.
