@@ -14,6 +14,9 @@ class ProviderRequest(BaseMixin, table=True):
     """One outbound provider operation and its safe request/response evidence."""
 
     __tablename__ = "providerrequest"
+    __table_args__ = (
+        UniqueConstraint("integration_id", "operation", "idempotency_key", name="uq_providerrequest_operation_idempotency"),
+    )
 
     merchant_id: UUID | None = Field(default=None, foreign_key="merchant.id", index=True)
     integration_id: UUID = Field(foreign_key="providerintegration.id", index=True)
@@ -22,6 +25,8 @@ class ProviderRequest(BaseMixin, table=True):
     operation: str = Field(max_length=48, index=True)
     correlation_id: UUID = Field(default_factory=uuid4, unique=True, index=True)
     provider_request_id: str | None = Field(default=None, max_length=120, index=True)
+    idempotency_key: str | None = Field(default=None, max_length=160)
+    request_hash: str | None = Field(default=None, max_length=64)
     http_status: int | None = Field(default=None)
     outcome: str = Field(default="started", max_length=32, index=True)
     request_metadata: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))

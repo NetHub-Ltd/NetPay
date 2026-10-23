@@ -1,6 +1,6 @@
 # Task: Minimal NetPay rebuild — tracking baseline
 
-**Last updated:** 2026-10-22  
+**Last updated:** 2026-10-23  
 **Branch:** `work/minimal-netpay-rebuild`  
 **Base/integration branch:** `dev`  
 **Application baseline commit:** `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`
@@ -209,3 +209,37 @@ Implement and test this issue on `work/minimal-netpay-rebuild` only. Add the neg
 - **UNKNOWN:** GitGuardian's current required-check conclusion was not surfaced by the workflow-run query or combined status endpoint (the latter returned no status entries). Do not infer the security gate passed.
 - **UNKNOWN:** Render/Aiven DB-off behavior, deployed SHA/logs/effective non-secret DB host, and Aiven migration/schema remain unverified.
 - **Next safe action:** obtain authoritative current branch head and PR check details, reconcile GitGuardian's exact incident count/status, then continue the broader rebuild acceptance review. Do not alter application code, DB, deployment manifests, or history as part of this status refresh.
+
+
+## M-Pesa Core implementation — issue #187 (2026-10-23)
+
+- **Approval:** user approved the M-Pesa Core architecture and explicitly authorized implementation plus thorough testing on 2026-10-22 22:24:57Z.
+- **Issue:** https://github.com/NetHub-Ltd/NetPay/issues/187
+- **Approved boundary:** internal Python interface; application-owned public APIs; Core-owned credential storage/resolution; durable provider-operation audit plus structured logs; public callback routes delegate to Core parsing/normalization.
+- **Capability scope:** inventory current official Daraja APIs and classify by support/prerequisites. Cover relevant collection and operational APIs broadly, including C2B and other operations, but gate APIs that need merchant product/initiator/security-credential permissions. Cards/PayPal/Airtel Money implementations remain out of scope.
+- **Pre-change branch tip:** `8960d3c0d0911474e195f212e0bb68c6b474d860` on `work/minimal-netpay-rebuild`; its tree SHA `3e880884c27f2b5634f23666d8de7eef54c1e63f` matches the live `dev` tree SHA observed at `72a9d108dde93c208a1330a87962bd9e47f4606e`. Local `git clone/pull` was attempted but failed because this runtime cannot resolve github.com; remote GitHub reads are available.
+- **Observed baseline:** backend has the 16-table SQLModel/Alembic foundation, but `backend/app/main.py` currently registers health routes and static frontend only; there is no M-Pesa Core implementation module in the inspected tree.
+- **Safety:** preserve history; work only on existing `work/minimal-netpay-rebuild`; one PR to `dev`; no changes to `dev`, `main`, Flux/deployment manifests, production DB, or secrets.
+- **Testing requirement:** add unit, provider-contract, database/migration, concurrency, callback replay/order, credential/redaction, timeout/unknown-outcome, audit failure, and existing regression tests. Report exact CI run IDs/results; no claim of local test execution because the runtime cannot clone the repo.
+
+
+## Implementation status — 2026-10-23
+
+Implemented on the existing work branch for draft PR #188:
+- Internal typed M-Pesa Core and shared Daraja OAuth/HTTP handling.
+- Encrypted integration credentials, key IDs/rotation, initiator security credentials, explicit capability allowlist.
+- STK Push/query, C2B URL registration and callback routes, Dynamic QR, transaction status, account balance, reversal, B2C/B2B, and a provisional Pull Transactions adapter.
+- Durable provider-operation audit, redacted structured logs, normalized unknown/not-sent outcomes, callback evidence persistence/deduplication/conflict audit, and caller-keyed idempotency for mutating provider operations.
+- Alembic revision 0003, backend environment example, module documentation, and provider/callback/idempotency/migration tests.
+
+Verification:
+- Final code commit 18e3de35185f1219014ba183879835fd3740cefb passed CI: backend tests (34 passed, one Starlette deprecation warning), backend readiness, frontend lint/build, and container startup smoke.
+- PartyA/PartyB audit values are masked, callback dedupe is type-scoped, and callback host is explicitly configured per environment; these changes passed CI.
+- No live Daraja sandbox run has been performed; mock contract tests are not proof of live provider compatibility.
+
+Known gaps:
+- Pull Transactions remains disabled until its exact endpoint/request/callback contract is verified against merchant-accessible official docs/sandbox.
+- B2B Express Checkout is not implemented because the accessible public portal listing does not expose its request schema/endpoint.
+- The Core does not create a public payment API or mutate canonical payment/ledger state. The payment domain must own authorization, limits, canonical state, and financial effects.
+
+Do not merge or deploy without explicit approval.

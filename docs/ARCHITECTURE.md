@@ -113,3 +113,38 @@ Before coding the provider adapter, verify official Daraja documentation and san
 10. Run tests, lint/typecheck/build, migration checks, image build and integration tests; report exact commands/results.
 
 No merge until the acceptance criteria in `docs/REBUILD_SPEC.md` are demonstrated.
+
+## 4. Approved M-Pesa Core boundary — 2026-10-23
+
+Status: approved design; implementation tracked by https://github.com/NetHub-Ltd/NetPay/issues/187.
+
+### Ownership
+
+- **Application/API layer:** public NetPay APIs, authentication/authorization, merchant scopes, payment-domain lifecycle, idempotency policy, financial invariants and ledger/outbox effects.
+- **M-Pesa Core:** Daraja credentials and OAuth, shared provider transport, typed Daraja operations, safe provider error normalization, correlation, callback parsing/normalization, provider-operation audit and safe retry classification.
+- **Database:** PostgreSQL is authoritative for durable payment state, provider-operation audit, callback evidence and recoverable work. Redis is an auxiliary cache/coordination mechanism only.
+- **Logs:** structured operational diagnostics complement, but never replace, durable audit records.
+
+### Interface and failure semantics
+
+- Internal callers use typed Python methods and normalized results. Application modules must not build Daraja URLs/headers, manage token refresh, parse raw provider payloads, or independently decide whether to retry a provider request.
+- The Core distinguishes accepted, rejected, unknown, and completed only where the operation's semantics support each outcome. STK initiation acceptance never means customer payment success.
+- A timeout after a request might have reached Daraja is unknown; a request may only be retried automatically if the specific operation's contract makes the retry safe.
+- Audit records include operation/correlation/integration IDs, timestamps, safe request/response metadata, provider request IDs, HTTP status, normalized outcome and safe error code. Secrets, tokens, authorization headers and unnecessary PII are prohibited.
+- Callback routes are public by provider necessity but treat every payload as untrusted. Validate shape, integration, request/receipt correlation, amount and merchant context where fields permit; deduplicate and record discrepancies. Callback URL IDs are routing hints, not signatures.
+- Restricted APIs (status, balance, reversal, B2C/B2B, QR, Pull Transactions and others) are capability-gated by merchant integration settings and verified prerequisites. Implementing an adapter does not authorize its use.
+- Credential ciphertext carries a key identifier; active and retained decryption keys are supplied out of band. Rotation must not log or export plaintext and must be tested.
+
+### Verification requirements
+
+Tests cover operation contracts and safe failure behavior, not only successful mocks: missing/invalid credentials, token cache expiry and concurrency, provider 4xx/5xx, malformed JSON, transport errors before send, timeouts after possible send, audit persistence failure, callback replay/order/mismatch, duplicate initiation races, merchant/integration isolation, and redaction. CI must also validate Alembic upgrade from the existing head, schema/model parity, existing backend tests, frontend checks, and container startup.
+
+
+### Provider-operation idempotency
+
+The payment domain generates a stable idempotency key for each logical payment action. For mutating Daraja operations, Core persists that key with a fingerprint of the stable request fields under a unique integration/operation/key constraint. Replays do not send a second provider request; an in-flight or ambiguous prior operation is returned as unknown for reconciliation. Reusing a key with changed business fields raises a conflict. This is provider-call deduplication, not a replacement for payment-domain idempotency or ledger invariants.
+
+
+### Verified API scope and explicit gaps
+
+The broad Core adapter set is mock-tested, but mocked contract tests do not prove live Daraja compatibility. Pull Transactions remains disabled until its exact request fields and endpoint are verified against the merchant-accessible official documentation/sandbox. B2B Express Checkout remains an explicit API-contract gap because the accessible public catalogue page does not expose a request schema or endpoint. Neither should be described as production-verified.

@@ -44,3 +44,34 @@ PostgreSQL is required at startup. Redis is auxiliary: an unavailable Redis inst
 ```bash
 pytest -q smoke_tests
 ```
+
+## M-Pesa Core
+
+The internal app.mpesa_core package is the only supported boundary for Daraja transport, OAuth, typed provider operations, credential resolution, and provider-operation audit. Application modules should call MpesaCore; they should not build provider URLs/headers or parse raw Daraja responses. The Core does not own NetPay's canonical payment state or ledger effects.
+
+Required configuration for using the Core:
+- MPESA_CREDENTIAL_ENCRYPTION_KEYS: comma-separated key-id=Fernet-key entries supplied by secret management. Keep old key IDs present during rotation until stored credentials are re-encrypted.
+- MPESA_CREDENTIAL_ACTIVE_KEY_ID: key ID used for new ciphertext.
+- MPESA_PUBLIC_BASE_URL: public callback origin; production must be HTTPS.
+- MPESA_HTTP_TIMEOUT_SECONDS: bounded provider timeout.
+- MPESA_SANDBOX_CERTIFICATE_PEM / MPESA_PRODUCTION_CERTIFICATE_PEM: public Safaricom certificates for API-initiator operations such as B2C/B2B, status, balance and reversal.
+
+The providerintegration.enabled_capabilities allowlist defaults to stk_push. Enable additional capabilities only after confirming the merchant's product, shortcode, API user, initiator/security credential, and Daraja permissions. C2B URL registration is opt-in and requires c2b_enabled plus the c2b_registration capability. External C2B validation is separately gated by c2b_validation; the current handler does not implement merchant-specific account-reference rules.
+
+Operation results describe provider interaction, not financial settlement. accepted means the provider accepted a request for processing; unknown means the request outcome cannot safely be determined; not_sent means a connection could not be established before the request was sent. Do not automatically retry unknown STK, registration, disbursement, or reversal outcomes.
+
+Callback routes:
+- POST /callbacks/mpesa/stk/{integration_id}
+- POST /callbacks/mpesa/c2b/validation/{integration_id}
+- POST /callbacks/mpesa/c2b/confirmation/{integration_id}
+- Asynchronous result routes under /callbacks/mpesa/{operation}/{integration_id}
+
+Callbacks are untrusted evidence, are stored with minimized payloads and deduplicated, and do not directly mutate canonical payment state. The payment domain remains responsible for guarded state transitions and financial effects.
+
+Core tests live in smoke_tests/test_mpesa_core.py. Run with the existing PostgreSQL/Redis-backed CI workflow after applying alembic upgrade head.
+
+
+Mutation operations (STK Push, C2B URL registration, reversal, B2C and B2B) require a caller-supplied idempotency key. The Core persists a request fingerprint and suppresses duplicate outbound calls for the same integration, operation and key; reusing a key with different request content raises an idempotency conflict. The payment domain generates the key and remains the authority for payment-level idempotency and financial state.
+
+
+Coverage caveat: the Pull Transactions adapter is provisional and must remain disabled until its exact request contract is verified against merchant-accessible official Daraja documentation/sandbox. B2B Express Checkout is listed in the public catalogue, but its request schema and endpoint are not exposed by the accessible public page, so that separate API is not implemented yet. This is an explicit gap, not implied coverage.

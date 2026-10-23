@@ -1,6 +1,6 @@
 # NetPay rebuild rollback notes
 
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-23
 
 ## Current change
 
@@ -89,3 +89,22 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - GitGuardian bot comment currently lists three detections in prior commits: two test URL credential-pattern detections and one smoke-test password literal. Inspect full incidents and verify current check conclusion before choosing a resolution. Do not dismiss findings, rewrite history, or assert production credential exposure without evidence. Earlier tracker wording says six detections; reconcile count.
 - Render/Aiven startup and actual schema remain unverified. Do not change DB settings in deployment or touch manifests without authorization.
 - Next safe action is evidence gathering only: confirm live branch head SHA, fetch PR required checks / GitGuardian check result and full incident context, then update issue and trackers. If a real credential is established, follow approved rotation/revocation procedures while preserving Git history.
+
+
+## M-Pesa Core implementation rollback boundary — issue #187 (2026-10-23)
+
+- Pre-change working-branch tip: `8960d3c0d0911474e195f212e0bb68c6b474d860`; preserve history and use reviewed revert commits.
+- Add only new Alembic revisions; never edit applied migrations or reset/replace the database.
+- No production credentials, production transactions, database writes, deployment manifests, Flux resources, `dev`, or `main` changes are authorized by this implementation task.
+- Revert Core application files, configuration, tests, documentation and the corresponding migration together if rollback is required. Do not remove schema objects with live data without a separately reviewed migration.
+- A passing GitHub CI run validates the tested commit in CI, not Render/Aiven production behavior. Local tests cannot be run from this environment unless repository access/network becomes available.
+
+
+## Rollback and recovery notes — M-Pesa Core
+
+- Current implementation is isolated to PR #188 on work/minimal-netpay-rebuild; it has not been merged or deployed.
+- Revision 0003 is additive. Downgrade to 0002_full_domain_schema removes the M-Pesa credential/capability columns and provider-operation idempotency columns/constraint. Do not downgrade a database containing live M-Pesa operation history without first preserving the affected audit records.
+- Code rollback should use a reviewed revert of the PR/commit; do not reset or rewrite branch history.
+- No Flux manifests, deployment resources, production database, production credentials, or main branch were changed.
+- Final code commit 18e3de35185f1219014ba183879835fd3740cefb passed CI: 34 backend tests, readiness, frontend lint/build, and container startup smoke. The PR remains unmerged and undeployed.
+- Live Daraja sandbox verification and production rollout remain explicitly out of scope until separately approved.

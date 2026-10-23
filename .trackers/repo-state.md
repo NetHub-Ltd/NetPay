@@ -1,6 +1,6 @@
 # NetPay repository state and agent handoff
 
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-23
 
 ## Start here — mandatory handoff procedure
 
@@ -178,3 +178,23 @@ These are historical reports, not fresh verification performed during tracker cr
 - Branch search confirmed `work/minimal-netpay-rebuild` exists but did not expose its SHA. `5efc356...` remains the latest recorded tracker commit, not a freshly confirmed branch head.
 - CORE engineering skill refreshed from `NetHub-Ltd/skills-` current README and `CORE-AI-Product-Engineering-Skill-v1.0.0.md`; apply evidence-first verification, smallest reversible changes, security review, and Changed/Verified/Not verified/Risks/Rollback/Follow-ups reporting.
 - Render/Aiven behavior remains unknown; no runtime metadata/logs/schema were inspected. No application or deployment changes made in this verification pass.
+
+
+## Current work — M-Pesa Core issue #187 (2026-10-23)
+
+- **Issue:** https://github.com/NetHub-Ltd/NetPay/issues/187
+- **Approval:** user approved implementation and requested thorough testing of every supported use case.
+- **Working branch:** `work/minimal-netpay-rebuild`; pre-change tip `8960d3c0d0911474e195f212e0bb68c6b474d860`; current `dev` tip observed as `72a9d108dde93c208a1330a87962bd9e47f4606e`. Both trees were `3e880884c27f2b5634f23666d8de7eef54c1e63f` at inspection time.
+- **Existing PR state:** PR #181 is closed (its merge commit is present on `dev`); PR #182 is an open `dev` → `main` PR and is not part of this task. Create a new single PR from the existing working branch to `dev` after implementation.
+- **Runtime constraint:** local `git clone` failed with `Could not resolve host: github.com`. Remote GitHub reads/writes are available. Do not claim local tests ran; use repository CI as the executable test environment and inspect the resulting runs.
+- **Baseline observation:** `backend/app/main.py` has health endpoints and optional static export serving; existing models include `ProviderRequest`, `ProviderCallback`, `AuditLog`, `DarajaIntegration`, `Payment`, `PaymentAttempt`, `PaymentVerification`, and transactional outbox records. No `mpesa_core` package was present in the inspected tree.
+- **API evidence:** official Safaricom portal lists Authorization, M-Pesa Express, C2B, B2C, Transaction Status, Account Balance, Reversals, Dynamic QR, Business Pay Bill/Buy Goods, B2B Express Checkout and Pull Transactions. Each capability's product/initiator/permission prerequisites must be represented; this inventory does not imply every merchant is entitled to every operation.
+- **Next action:** update the spec/capability matrix and trackers, then implement on the existing branch; run CI and verify all outcomes before opening one PR to `dev`.
+
+
+## Implementation verification update — 2026-10-23
+
+- Target: NetPay PR #188, base dev, head work/minimal-netpay-rebuild.
+- Final code commit: 18e3de35185f1219014ba183879835fd3740cefb. CI/backend readiness/frontend lint/frontend build/container startup smoke passed; backend suite reported 34 passed with one Starlette deprecation warning.
+- Audit redaction, callback-type-scoped dedupe, explicit per-environment callback host, and API-coverage caveats are included and verified by the final CI run.
+- No deployment configuration or public payment endpoint was added. dev/main have not been modified by this work.

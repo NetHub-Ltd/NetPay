@@ -51,7 +51,7 @@ Do not claim transaction verification or reconciliation capability for a transac
 - Redis: include as auxiliary infrastructure for coordination, short-lived locks, scheduling/caching, or dispatch where it materially helps reconciliation.
 - PostgreSQL is the source of truth for payments, transitions, idempotency, reconciliation history and durable event outbox.
 - Redis loss/restart must not lose payment state or permanently lose pending reconciliation/event work; pending work must be recoverable from PostgreSQL.
-- No Cloudflare Worker, Celery, Kafka, separate external broker, microservices, PayPal/cards, B2C/B2B payouts or unrelated payment products in this first release.
+- No Cloudflare Worker, Celery, Kafka, separate external broker, or separate microservices in the first release. Cards, PayPal and Airtel Money provider implementations remain out of scope. The approved M-Pesa Core scope includes a broad Daraja capability inventory; B2C/B2B, reversals, account balance, Dynamic QR, Pull Transactions and other non-STK operations must be explicitly capability/permission gated and must never be activated merely because an adapter exists.
 - A lightweight worker may share the same codebase and image for reconciliation and event delivery.
 - Preserve the existing GHCR image/deployment path and multi-architecture image publishing.
 
@@ -141,3 +141,20 @@ Use reviewable commits on the single branch. Do not merge until acceptance crite
 - Docker image starts, migrations are documented and health checks work.
 - Tawala can initiate a payment and consume its resulting event end-to-end.
 - Public Next.js pages are indexable and private dashboard pages are not.
+
+
+## Approved M-Pesa Core extension — 2026-10-23
+
+This section records the user's approved M-Pesa Core design and supersedes any narrower Daraja operation scope above where the two conflict.
+
+- M-Pesa Core is an internal Python module, not a separate service. NetPay application modules call a typed interface; public merchant APIs remain owned by the application/payment domain.
+- Core owns secure credential encryption/storage/resolution, OAuth lifecycle, shared HTTP transport, typed Daraja operation adapters, normalized provider errors, provider-operation audit, and callback parsing/normalization.
+- Public callback routes are registered by the application and delegate to Core. An opaque integration ID is routing metadata only, not callback authentication.
+- Durable provider-operation audit records and structured operational logs are both required. Provider evidence is not the financial ledger or canonical payment state.
+- PostgreSQL is the durable source of truth. Redis may assist token caching/coordination, but loss of Redis must not lose payment, callback, audit, reconciliation, or outbox evidence.
+- Unknown outcomes must remain unknown when a request may have reached Daraja but the response was not observed. Do not automatically retry non-idempotent initiation, C2B registration, reversal or disbursement operations after ambiguous timeouts.
+- Credential encryption keys are supplied through environment/secret management, never stored beside ciphertext or committed. Support key identifiers so key rotation can re-encrypt stored credentials without plaintext export.
+- Every API in the capability inventory must be classified as core, gated, or excluded; document endpoint, prerequisites, request/response contracts, callbacks, retry semantics, data sensitivity, and tests. No adapter may imply that a merchant's Daraja product or shortcode is authorized.
+- Broad coverage means typed, tested adapters for relevant Daraja capabilities; operations requiring initiator/security credentials, shortcode/product permission or separate commercial enablement remain disabled until those prerequisites are configured and validated.
+- The public Safaricom portal currently lists Authorization, M-Pesa Express, C2B, B2C, Transaction Status, Account Balance, Reversals, Dynamic QR, Business Pay Bill, Business Buy Goods, B2B Express CheckOut and Pull Transactions among its APIs. Product-specific and less relevant services must be documented with their disposition rather than silently assumed available.
+- Implementation and verification are tracked in https://github.com/NetHub-Ltd/NetPay/issues/187. No production credential use, live financial operation, production database action, deployment-manifest change, or merge to main is part of this work.
