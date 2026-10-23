@@ -1,114 +1,91 @@
-"""NetHub Payment Gateway v1.1 — FastAPI entrypoint."""
-from __future__ import annotations
+"""NetPay API and database/cache lifecycle."""
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from typing import AsyncIterator
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from app.api.routes import auth, events, health, integrations, internal, oauth_clients, oauth_token, payments, readiness, reconciliation, system, tenants, webhooks, ws
-from app.core.config import settings
-from app.core.db import engine
-from app.core.logging import logger, setup_logging
-from app.services.bootstrap import startup_sequence
-from app.services.live_bus import start_live_subscriber, stop_live_subscriber
-
-def _resolve_static_dir() -> Path:
-    """SPA build output. Prefer STATIC_DIR env, else backend/static next to app/."""
-    import os
-    override = os.environ.get("STATIC_DIR")
-    if override:
-        return Path(override)
-    return Path(__file__).resolve().parents[1] / "static"
-
-STATIC_DIR = _resolve_static_dir()
+from loguru import logger
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncEngine
+from app.core.cache import check_redis, create_redis_client
+from app.core.config import Settings, get_settings
+from app.core.database import check_database, create_database_engine, create_session_factory
+from app import models  # noqa: F401 - register SQLModel metadata
+from app.mpesa_core.routes import router as mpesa_callback_router
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    setup_logging()
-    logger.info("Starting {} v{}", settings.app_name, settings.app_version)
-    boot = await startup_sequence()
-    await start_live_subscriber()
-    logger.info("Startup complete: {}", boot)
-    yield
-    await stop_live_subscriber()
-    await engine.dispose()
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    """Initialize required PostgreSQL and optional Redis; dispose clients on shutdown."""
+    settings: Settings = get_settings()
+    engine: AsyncEngine = create_database_engine(settings)
+    redis_client: Redis | None = None
+    application.state.engine = engine
+    application.state.session_factory = create_session_factory(engine)
+    application.state.redis = None
+    try:
+        await check_database(engine)
+        logger.info("database_connectivity=ok")
+        if settings.redis_enabled:
+            candidate = create_redis_client(settings)
+            try:
+                await check_redis(candidate)
+                redis_client = candidate
+                application.state.redis = candidate
+                logger.info("redis_connectivity=ok")
+            except Exception as exc:
+                logger.warning("redis_connectivity=unavailable error_type={}", type(exc).__name__)
+                await candidate.aclose()
+        yield
+    finally:
+        if redis_client is not None:
+            await redis_client.aclose()
+        await engine.dispose()
+        application.state.engine = None
+        application.state.session_factory = None
+        application.state.redis = None
 
-# Production secret guard (fail closed)
-try:
-    settings.assert_production_secrets()
-except RuntimeError as exc:
-    from app.core.logging import logger
-    logger.error("Refusing to start: {}", exc)
-    raise
+app = FastAPI(title="NetPay API", version="0.2.0", description="NetPay payment gateway API.", docs_url="/docs", redoc_url=None, lifespan=lifespan)
+app.include_router(mpesa_callback_router)
 
-_openapi = settings.openapi_enabled_effective
-app = FastAPI(
-    title=settings.app_name,
-    version=settings.app_version,
-    description="Multi-tenant M-Pesa orchestration. Clients never talk to Daraja.",
-    lifespan=lifespan,
-    docs_url="/docs" if _openapi else None,
-    redoc_url="/redoc" if _openapi else None,
-    openapi_url="/openapi.json" if _openapi else None,
-)
-app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-app.include_router(health.router)
-app.include_router(readiness.router)
-app.include_router(system.router)
-app.include_router(auth.router)
-app.include_router(oauth_clients.router)
-app.include_router(oauth_token.router)
-app.include_router(tenants.router)
-app.include_router(integrations.router)
-app.include_router(webhooks.router)
-app.include_router(payments.router)
-app.include_router(reconciliation.router)
-app.include_router(events.router)
-app.include_router(internal.router)
-app.include_router(ws.router)
+@app.get("/health/live", tags=["health"], summary="Liveness probe")
+async def liveness() -> dict[str, str]:
+    """Report process liveness without external dependency calls."""
+    return {"status": "ok"}
 
-if STATIC_DIR.is_dir():
-    assets = STATIC_DIR / "assets"
-    if assets.is_dir():
-        app.mount("/assets", StaticFiles(directory=assets), name="assets")
+@app.get("/health/ready", tags=["health"], summary="Dependency readiness")
+async def readiness(request: Request) -> dict[str, str]:
+    """Require PostgreSQL and report Redis separately as an auxiliary dependency."""
+    engine: AsyncEngine | None = getattr(request.app.state, "engine", None)
+    if engine is None:
+        raise HTTPException(status_code=503, detail="database_not_initialized")
+    try:
+        await check_database(engine)
+    except Exception as exc:
+        logger.error("database_readiness=failed error_type={}", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="database_unavailable") from exc
+    redis_client: Redis | None = getattr(request.app.state, "redis", None)
+    redis_status = "disabled" if not get_settings().redis_enabled else "unavailable"
+    if redis_client is not None:
+        try:
+            await check_redis(redis_client)
+            redis_status = "ok"
+        except Exception as exc:
+            logger.warning("redis_readiness=failed error_type={}", type(exc).__name__)
+    return {"status": "ok", "database": "ok", "redis": redis_status}
 
-    @app.get("/")
-    async def spa_index():
-        index = STATIC_DIR / "index.html"
-        if index.is_file():
-            return FileResponse(index)
-        return {"message": "NetHub Payment Gateway", "docs": "/docs"}
+# Serve the prebuilt Next.js export only after API, docs, and health routes are registered.
+# In backend-only development the export may not exist; the API remains runnable.
+frontend_static_dir = Path(__file__).resolve().parent / "static"
+if frontend_static_dir.is_dir():
+    # Next.js exports this generated PNG without a file extension. Expose a stable,
+    # correctly typed URL for social crawlers that expect a conventional image path.
+    generated_og_image = frontend_static_dir / "opengraph-image"
+    if generated_og_image.is_file():
+        @app.get("/opengraph-image", include_in_schema=False)
+        async def open_graph_image() -> FileResponse:
+            return FileResponse(generated_og_image, media_type="image/png")
 
-    @app.get("/{full_path:path}")
-    async def spa_fallback(full_path: str, request: Request):
-        # OIDC browser return URL is a SPA route — must serve index.html.
-        # Backend auth API is only GET /auth/me (registered above the catch-all).
-        if full_path == "auth/callback" or full_path.startswith("auth/callback/"):
-            index = STATIC_DIR / "index.html"
-            if index.is_file():
-                return FileResponse(index)
-            return JSONResponse({"detail": "Not Found"}, status_code=404)
-
-        # Do not swallow API/docs paths — real 404 (not 200 with a JSON body)
-        blocked = (
-            "api",
-            "v1",
-            "auth",
-            "oauth",
-            "health",
-            "internal",
-            "ws",
-            "docs",
-            "redoc",
-            "openapi.json",
-            "assets",
-            "config.json",
-        )
-        first = full_path.split("/", 1)[0]
-        if first in blocked:
-            return JSONResponse({"detail": "Not Found"}, status_code=404)
-        index = STATIC_DIR / "index.html"
-        if index.is_file():
-            return FileResponse(index)
-        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    app.mount("/", StaticFiles(directory=frontend_static_dir, html=True), name="frontend")
+else:
+    logger.info("frontend_static=not_built path={}", str(frontend_static_dir))

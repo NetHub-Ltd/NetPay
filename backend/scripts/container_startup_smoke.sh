@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+network="netpay-smoke-network"
+postgres="netpay-smoke-postgres"
+redis="netpay-smoke-redis"
+api="netpay-bootstrap-smoke"
+cleanup() {
+  docker rm --force "$api" "$postgres" "$redis" >/dev/null 2>&1 || true
+  docker network rm "$network" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+docker network create "$network" >/dev/null
+docker run --detach --name "$postgres" --network "$network" \
+  --env POSTGRES_USER=netpay --env POSTGRES_PASSWORD=netpay --env POSTGRES_DB=netpay postgres:16-alpine >/dev/null
+docker run --detach --name "$redis" --network "$network" redis:7-alpine >/dev/null
+for attempt in $(seq 1 30); do
+  if docker exec "$postgres" pg_isready -U netpay -d netpay >/dev/null 2>&1 \
+    && docker exec "$redis" redis-cli ping | grep -qx PONG; then
+    break
+  fi
+  sleep 2
+done
+docker exec "$postgres" pg_isready -U netpay -d netpay >/dev/null
+docker exec "$redis" redis-cli ping | grep -qx PONG
+
+docker run --detach --name "$api" --network "$network" --publish 127.0.0.1:8000:8000 \
+  --env ENVIRONMENT=test \
+  --env DB_HOST=netpay-smoke-postgres \
+  --env DB_PORT=5432 \
+  --env DB_NAME=netpay \
+  --env DB_USER=netpay \
+  --env DB_SSL_MODE=disable \
+  --env DB_POOL_SIZE=1 \
+  --env DB_MAX_OVERFLOW=0 \
+  --env REDIS_URL=redis://netpay-smoke-redis:6379/0 \
+  ghcr.io/nethub-ltd/netpay:ci >/dev/null
+for attempt in $(seq 1 30); do
+  if docker logs "$api" 2>&1 | grep -q 'database_connectivity=ok'; then
+    if curl --fail --silent http://127.0.0.1:8000/health/live >/dev/null; then
+      curl --fail --silent http://127.0.0.1:8000/health/ready | grep -q '"database":"ok"'
+      curl --fail --silent --show-error http://127.0.0.1:8000/ -o /tmp/netpay-home.html
+      grep -q "NetPay" /tmp/netpay-home.html
+      curl --fail --silent --show-error http://127.0.0.1:8000/dashboard/ -o /tmp/netpay-dashboard.html
+      grep -q "Merchant dashboard preview" /tmp/netpay-dashboard.html
+      curl --fail --silent --show-error http://127.0.0.1:8000/robots.txt -o /tmp/netpay-robots.txt
+      grep -q "Sitemap:" /tmp/netpay-robots.txt
+      curl --fail --silent --show-error http://127.0.0.1:8000/sitemap.xml -o /tmp/netpay-sitemap.xml
+      grep -q "<urlset" /tmp/netpay-sitemap.xml
+      curl --fail --silent --show-error -D /tmp/netpay-og-headers http://127.0.0.1:8000/opengraph-image -o /tmp/netpay-og.png
+      grep -qi '^content-type: image/png' /tmp/netpay-og-headers
+      test -s /tmp/netpay-og.png
+      echo "Container startup, health endpoints, and frontend static routes passed."
+      exit 0
+    fi
+  fi
+  if ! docker inspect -f '{{.State.Running}}' "$api" 2>/dev/null | grep -qx true; then
+    docker logs "$api" || true
+    exit 1
+  fi
+  sleep 2
+done
+echo "NetPay container did not become healthy."
+docker logs "$api" || true
+exit 1

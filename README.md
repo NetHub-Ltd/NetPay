@@ -1,89 +1,53 @@
 # NetHub Payment Gateway (NetPay)
 
-Multi-tenant M-Pesa payment gateway — FastAPI backend + React dashboard.
+NetPay is being rebuilt as a minimal, multi-merchant M-Pesa Daraja gateway.
 
-## Layout
+## Start here
 
-```text
-backend/     FastAPI app, Alembic, tests, static/ (SPA build output)
-frontend/    Vite + React source
-deploy/      docker-compose, k8s
-scripts/     helper scripts (e.g. build-frontend.sh)
-```
+- Agent rules: [AGENTS.md](AGENTS.md)
+- Implementation brief: [docs/REBUILD_SPEC.md](docs/REBUILD_SPEC.md)
+- Verified Daraja capability notes: [docs/DARAJA_CAPABILITIES.md](docs/DARAJA_CAPABILITIES.md)
+- Backend setup and M2M bootstrap: [backend/README.md](backend/README.md)
+- Deployment and migration runbook: [deploy/README.md](deploy/README.md)
 
-## Backend
+## Implemented foundation
 
-```bash
-cd backend
-cp .env.example .env
-./run.sh
-# API: http://127.0.0.1:8000  docs: /docs
-```
+- OAuth client-credentials token exchange for merchant M2M clients, hashed client secrets, short-lived scoped bearer tokens, and merchant-level authorization.
+- Encrypted Daraja integration credentials and NetPay-hosted STK callback URLs.
+- STK Push initiation with KES amount validation, idempotency, explicit unknown outcomes, callback correlation, deduplication, and guarded state transitions.
+- Opt-in C2B URL registration and confirmation handling; external validation currently checks basic shape/shortcode/amount only, not merchant-specific account-reference rules.
+- PostgreSQL-backed event outbox, signed optional merchant webhook delivery, retries/dead-letter state, and worker recovery for callbacks that race ahead of STK correlation persistence.
+- Next.js App Router static public landing page and a no-index dashboard placeholder.
 
-Tests:
+## Deliberate limitations
 
-```bash
-cd backend
-pip install -e ".[dev]"
-pytest -q
-```
+- An OAuth token proves consumer key/secret authentication, not that a shortcode/passkey has all required permissions.
+- STK initiation acceptance is not proof of payment.
+- Daraja Transaction Status requires additional initiator/authorization configuration. NetPay must not claim provider verification until the relevant product and credentials are confirmed for a merchant.
+- C2B registration is optional. Do not enable production external validation when merchant-specific account validation rules are required; that policy is not implemented yet.
+- The dashboard does not yet include NetHub identity/session integration and must not expose merchant data until that is completed.
 
-## Frontend (dev)
+## Frontend and local development
+
+The production image builds the Next.js App Router frontend as a static export, then copies the exported files into the FastAPI application image. FastAPI serves the public site and dashboard preview from the same origin; API, OpenAPI, and health routes are registered before the static-file fallback. Node.js is used only during the image build, not in the runtime container.
+
+For frontend-only development:
 
 ```bash
 cd frontend
+cp .env.example .env.local
 npm ci
-npm run dev    # http://127.0.0.1:5173 (proxies API to :8000)
+npm run dev
 ```
 
-## SPA into FastAPI static
+The Next.js development server listens on port 3000. The backend API runs separately on port 8000 during development. The production container startup smoke test verifies that FastAPI serves the home page, dashboard preview, robots file, sitemap, and generated social image.
 
-```bash
-./scripts/build-frontend.sh   # lint + build → backend/static/
-# then start backend; it serves backend/static at / and /assets
-```
+The build-time `NEXT_PUBLIC_SITE_URL` value controls canonical URLs, metadata, JSON-LD, robots, and the sitemap. Set it to the public site origin when building a non-production image.
 
-Or set `STATIC_DIR` to any folder containing `index.html` + `assets/`.
+## Repository and deployment
 
-## Docker
+The frontend npm lockfile is committed and CI uses `npm ci`. A backend `uv.lock` is still outstanding; the current backend install resolves the declared version ranges, so pin and commit the Python lock before treating builds as fully reproducible.
 
-```bash
-# from repo root
-docker compose -f deploy/docker-compose.yml up --build
-```
+Git history is preserved. The rebuild is developed on `work/minimal-netpay-rebuild`, created from `main`. The existing GHCR image identity and release intent are retained and the Docker/Kubernetes/Compose files are being adapted to the new API and static frontend.
 
-Build context is the repo root (`backend/Dockerfile` copies frontend + backend).
-
-## CI
-
-- **PRs** to `main` or `dev`: backend pytest + frontend lint + build (`.github/workflows/ci.yml`).
-- **Push to `main`**: after tests, CI **auto-creates** the next patch tag (`vX.Y.Z`), builds multi-arch images, pushes to GHCR, and opens a GitHub Release with changelog notes (`.github/workflows/release.yml`).
-- No manual version tags required. Include `[skip release]` in a `main` commit message to skip tagging/release.
-- Images: `ghcr.io/nethub-ltd/netpay` (`latest`, `vX.Y.Z`, `main`, `sha-…`).
-
-Prefer merging only when checks are green.
-
-## Container (GHCR)
-
-Images: `ghcr.io/nethub-ltd/netpay`
-
-| Ref | Tags |
-|-----|------|
-| `main` branch | `main`, `sha-<short>` |
-| Tag `v1.2.3` | `1.2.3`, `1.2`, `latest` |
-
-```bash
-# from repo root — builds SPA into /app/static inside the image
-docker build -f backend/Dockerfile -t netpay:local .
-
-docker run --rm -p 8000:8000 \
-  -e DATABASE_URL=sqlite+aiosqlite:///./data/gateway.db \
-  -e REDIS_REQUIRED=false \
-  -e SECRET_KEY=dev \
-  netpay:local
-# API + dashboard: http://localhost:8000
-# Health: http://localhost:8000/health
-```
-
-CI pushes a **multi-arch** image (`linux/amd64`, `linux/arm64`) to GHCR after tests pass on `main` and on version tags (`v*`). Typical VPS = amd64; Apple Silicon / some cloud = arm64.
-
+Do not merge the rebuild into `main` until migrations, backend tests, frontend lint/typecheck/build, container build, and the acceptance criteria in the implementation brief pass.
