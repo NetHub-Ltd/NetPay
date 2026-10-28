@@ -159,7 +159,6 @@ class ReversalRequest(CoreModel):
 class B2CPaymentRequest(CoreModel):
     phone_number: str
     amount_minor: int = Field(gt=0)
-    originator_conversation_id: str = Field(min_length=1, max_length=20)
     result_url: str
     timeout_url: str
     command_id: Literal["BusinessPayment", "SalaryPayment", "PromotionPayment"] = "BusinessPayment"
