@@ -155,7 +155,7 @@ class MpesaCore:
             try:
                 body = response.json()
                 token = body["access_token"]
-                expires_in = int(body.get("expires_in", 3600))
+                expires_in = int(body["expires_in"])
                 if not isinstance(token, str) or not token or expires_in <= 0:
                     raise ValueError
             except (ValueError, TypeError, KeyError):
@@ -229,7 +229,17 @@ class MpesaCore:
         if response.status_code < 200 or response.status_code >= 300:
             code = _safe_provider_code(body.get("errorCode") or body.get("ResponseCode"))
             logger.warning("daraja_http_rejection operation={} http_status={} provider_code={}", operation, response.status_code, code)
-            raise ProviderRejected("Daraja rejected the request", provider_code=code)
+            if response.status_code == 429:
+                raise ProviderRejected(
+                    "Daraja rate-limited the request", provider_code=code,
+                    http_status=response.status_code, retry_disposition=RetryDisposition.SAFE,
+                )
+            if response.status_code == 408 or response.status_code >= 500:
+                raise AmbiguousOutcome(
+                    "Daraja returned a server error; reconcile before retrying",
+                    provider_code=code, http_status=response.status_code,
+                )
+            raise ProviderRejected("Daraja rejected the request", provider_code=code, http_status=response.status_code)
         code = _safe_provider_code(body.get("ResponseCode"))
         if code is not None and code != "0":
             logger.info("daraja_operation_rejected operation={} provider_code={}", operation, code)
