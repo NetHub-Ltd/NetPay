@@ -6,12 +6,12 @@ type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-[var(--teal)] text-[var(--navy)] hover:brightness-110 shadow-[var(--shadow-sm)]",
+    "bg-[var(--accent)] text-[var(--on-accent)] hover:bg-[var(--accent-hover)] shadow-[var(--shadow-sm)]",
   secondary:
     "border border-[var(--line)] bg-[var(--panel)] text-[var(--ink)] hover:bg-[var(--surface)]",
   ghost: "text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)]",
   onNavy:
-    "bg-[var(--teal)] text-[var(--navy)] hover:brightness-110 shadow-[var(--shadow-sm)]",
+    "bg-[var(--accent)] text-[var(--on-accent)] hover:bg-[var(--accent-hover)] shadow-[var(--shadow-sm)]",
   onNavyOutline:
     "border border-white/20 text-[var(--on-navy)] hover:border-white/50 hover:bg-white/5",
 };

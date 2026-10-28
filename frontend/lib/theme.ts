@@ -1,5 +1,5 @@
 export const THEME_STORAGE_KEY = "netpay_theme";
-export const THEMES = ["harbor", "ink", "signal"] as const;
+export const THEMES = ["harbor", "shamba", "ledger"] as const;
 export type ThemeId = (typeof THEMES)[number];
 
 export const THEME_META: Record<
@@ -8,18 +8,18 @@ export const THEME_META: Record<
 > = {
   harbor: {
     name: "Harbor",
-    tagline: "Deep navy chrome, classic teal signal",
-    swatches: ["#101b2d", "#20b89a", "#eef2f6", "#0f172a", "#f1f5f9"],
+    tagline: "Navy + teal — cool infrastructure",
+    swatches: ["#0b1220", "#0d9f86", "#eef1f6", "#0f172a", "#f1f5f9"],
   },
-  ink: {
-    name: "Ink",
-    tagline: "Ink navy + signal teal — higher contrast",
-    swatches: ["#0b1220", "#12b89a", "#eef2f6", "#0f172a", "#f1f5f9"],
+  shamba: {
+    name: "Shamba",
+    tagline: "Forest + harvest gold — grounded regional",
+    swatches: ["#0c2f24", "#c4a035", "#f3f6f2", "#14241e", "#f3faf6"],
   },
-  signal: {
-    name: "Signal",
-    tagline: "Teal-forward, softer navy — brighter energy",
-    swatches: ["#0f2a32", "#14c4a5", "#eef8f5", "#10242a", "#f0fdfa"],
+  ledger: {
+    name: "Ledger",
+    tagline: "Indigo + sky blue — modern fintech",
+    swatches: ["#1e1b4b", "#3b82f6", "#f4f2f8", "#1e1b2e", "#f5f3ff"],
   },
 };
 
@@ -32,6 +32,8 @@ export function getStoredTheme(): ThemeId {
   try {
     const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
     if (isThemeId(raw)) return raw;
+    // migrate old ids
+    if (raw === "ink" || raw === "signal") return "harbor";
   } catch {
     /* ignore */
   }

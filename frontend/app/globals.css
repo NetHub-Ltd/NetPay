@@ -1,136 +1,146 @@
 @import "tailwindcss";
 
 /*
-  NetPay theme system
-  - data-theme="harbor" | "ink" | "signal" on <html>
-  - Default: harbor (current product direction, fixed contrast)
+  NetPay theme system — three *distinct* colour combinations
+  data-theme: harbor | shamba | ledger
 */
 
 :root,
 html[data-theme="harbor"] {
   color-scheme: light;
   --theme-name: "Harbor";
-  --theme-tagline: "Deep navy chrome, classic teal signal";
-
-  --navy: #101b2d;
-  --navy-soft: #172740;
-  --navy-muted: #24344d;
-  --teal: #20b89a;
-  --teal-dark: #07836f;
-  --teal-soft: #e6f8f3;
-  --ink: #0f172a;
-  --muted: #5b6b81;
-  --on-navy: #f1f5f9;
-  --on-navy-muted: #94a3b8;
-  --bg: #eef2f6;
-  --panel: #ffffff;
-  --surface: #f5f7fa;
-  --line: #d8dee8;
-  --line-strong: #c5cedc;
-  --danger: #c4352c;
-  --danger-soft: #fceeee;
-  --warn: #b86a00;
-  --warn-soft: #fff4e5;
-  --ok: #07836f;
-  --ok-soft: #e6f8f3;
-  --focus-ring: #07836f;
-  --shadow-sm: 0 1px 2px rgba(16, 27, 45, 0.06);
-  --shadow: 0 1px 2px rgba(16, 27, 45, 0.05), 0 12px 32px rgba(16, 27, 45, 0.1);
-  --shadow-lg: 0 28px 64px -24px rgba(16, 27, 45, 0.32);
-  --radius-sm: 10px;
-  --radius: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
-  --font-sans: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: var(--font-mono-stack), ui-monospace, "SFMono-Regular", Menlo, monospace;
-  --text-body: 0.9375rem;
-  --leading-body: 1.55;
-}
-
-html[data-theme="ink"] {
-  color-scheme: light;
-  --theme-name: "Ink";
-  --theme-tagline: "Ink navy + signal teal — higher contrast infrastructure look";
+  --theme-tagline: "Navy chrome + teal signal — cool infrastructure";
 
   --navy: #0b1220;
-  --navy-soft: #121a2b;
-  --navy-muted: #1c2740;
-  --teal: #12b89a;
-  --teal-dark: #0a7a68;
-  --teal-soft: #e6faf5;
+  --navy-soft: #141c2e;
+  --navy-muted: #243049;
+  --accent: #0d9f86;
+  --accent-hover: #0a7d6a;
+  --accent-soft: #e5f7f3;
   --ink: #0f172a;
-  --muted: #5b6b81;
+  --muted: #5a6b82;
   --on-navy: #f1f5f9;
   --on-navy-muted: #94a3b8;
-  --bg: #eef2f6;
+  --on-accent: #06251f;
+  --bg: #eef1f6;
   --panel: #ffffff;
-  --surface: #f4f7fb;
-  --line: #d8dee8;
-  --line-strong: #c5cedc;
+  --surface: #f4f6fa;
+  --line: #d5dbe6;
+  --line-strong: #b8c2d1;
   --danger: #c4352c;
-  --danger-soft: #fceeee;
-  --warn: #b86a00;
-  --warn-soft: #fff4e5;
-  --ok: #0a7a68;
-  --ok-soft: #e6faf5;
-  --focus-ring: #0a7a68;
+  --danger-soft: #fdeceb;
+  --warn: #b45309;
+  --warn-soft: #fff7ed;
+  --ok: #0a7d6a;
+  --ok-soft: #e5f7f3;
+  --info: #2563eb;
+  --info-soft: #eff6ff;
+  --focus-ring: #0d9f86;
   --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.06);
-  --shadow: 0 1px 2px rgba(11, 18, 32, 0.05), 0 12px 32px rgba(11, 18, 32, 0.12);
-  --shadow-lg: 0 28px 64px -24px rgba(11, 18, 32, 0.36);
+  --shadow: 0 1px 3px rgba(11, 18, 32, 0.06), 0 12px 28px rgba(11, 18, 32, 0.1);
+  --shadow-lg: 0 28px 64px -24px rgba(11, 18, 32, 0.35);
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono-stack), ui-monospace, Menlo, monospace;
+  --text-body: 0.9375rem;
+  --leading-body: 1.55;
+  /* aliases used by existing components */
+  --teal: var(--accent);
+  --teal-dark: var(--accent-hover);
+  --teal-soft: var(--accent-soft);
 }
 
-html[data-theme="signal"] {
+/* East-African warmth: deep forest + harvest gold (M-Pesa-adjacent green, not copy) */
+html[data-theme="shamba"] {
   color-scheme: light;
-  --theme-name: "Signal";
-  --theme-tagline: "Teal-forward, softer navy — brighter product energy";
+  --theme-name: "Shamba";
+  --theme-tagline: "Forest green + harvest gold — grounded, regional";
 
-  --navy: #0f2a32;
-  --navy-soft: #16343d;
-  --navy-muted: #234852;
-  --teal: #14c4a5;
-  --teal-dark: #0b8f78;
-  --teal-soft: #e3faf5;
-  --ink: #10242a;
-  --muted: #4f6b72;
-  --on-navy: #f0fdfa;
-  --on-navy-muted: #99d5c8;
-  --bg: #eef8f5;
+  --navy: #0c2f24;
+  --navy-soft: #134035;
+  --navy-muted: #1e5648;
+  --accent: #c4a035;
+  --accent-hover: #a6862a;
+  --accent-soft: #f8f1d8;
+  --ink: #14241e;
+  --muted: #4d635a;
+  --on-navy: #f3faf6;
+  --on-navy-muted: #9bc4b4;
+  --on-accent: #2a2108;
+  --bg: #f3f6f2;
   --panel: #ffffff;
-  --surface: #f3faf8;
-  --line: #d0e6e0;
-  --line-strong: #b5d4cb;
-  --danger: #c4352c;
-  --danger-soft: #fceeee;
-  --warn: #b86a00;
-  --warn-soft: #fff4e5;
-  --ok: #0b8f78;
-  --ok-soft: #e3faf5;
-  --focus-ring: #0b8f78;
-  --shadow-sm: 0 1px 2px rgba(15, 42, 50, 0.05);
-  --shadow: 0 1px 2px rgba(15, 42, 50, 0.04), 0 12px 28px rgba(15, 42, 50, 0.09);
-  --shadow-lg: 0 24px 56px -20px rgba(15, 42, 50, 0.28);
+  --surface: #eaf0ea;
+  --line: #cfd9d3;
+  --line-strong: #aebdb5;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --warn: #b45309;
+  --warn-soft: #fff7ed;
+  --ok: #15803d;
+  --ok-soft: #ecfdf3;
+  --info: #0f766e;
+  --info-soft: #f0fdfa;
+  --focus-ring: #c4a035;
+  --shadow-sm: 0 1px 2px rgba(12, 47, 36, 0.06);
+  --shadow: 0 1px 3px rgba(12, 47, 36, 0.05), 0 12px 28px rgba(12, 47, 36, 0.1);
+  --shadow-lg: 0 28px 64px -24px rgba(12, 47, 36, 0.32);
+  --teal: var(--accent);
+  --teal-dark: var(--accent-hover);
+  --teal-soft: var(--accent-soft);
+}
+
+/* Modern API product: indigo structure + sky action */
+html[data-theme="ledger"] {
+  color-scheme: light;
+  --theme-name: "Ledger";
+  --theme-tagline: "Indigo structure + sky blue action — modern fintech";
+
+  --navy: #1e1b4b;
+  --navy-soft: #2e2a5a;
+  --navy-muted: #3f3a6d;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-soft: #eff6ff;
+  --ink: #1e1b2e;
+  --muted: #5b5675;
+  --on-navy: #f5f3ff;
+  --on-navy-muted: #c4b5fd;
+  --on-accent: #ffffff;
+  --bg: #f4f2f8;
+  --panel: #ffffff;
+  --surface: #eeecf5;
+  --line: #ddd6e8;
+  --line-strong: #c4b9d6;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --warn: #d97706;
+  --warn-soft: #fffbeb;
+  --ok: #059669;
+  --ok-soft: #ecfdf5;
+  --info: #4f46e5;
+  --info-soft: #eef2ff;
+  --focus-ring: #3b82f6;
+  --shadow-sm: 0 1px 2px rgba(30, 27, 75, 0.06);
+  --shadow: 0 1px 3px rgba(30, 27, 75, 0.05), 0 12px 28px rgba(30, 27, 75, 0.1);
+  --shadow-lg: 0 28px 64px -24px rgba(30, 27, 75, 0.32);
+  --teal: var(--accent);
+  --teal-dark: var(--accent-hover);
+  --teal-soft: var(--accent-soft);
 }
 
 @theme {
   --color-np-navy: var(--navy);
-  --color-np-navy-soft: var(--navy-soft);
-  --color-np-teal: var(--teal);
-  --color-np-teal-dark: var(--teal-dark);
-  --color-np-teal-soft: var(--teal-soft);
+  --color-np-accent: var(--accent);
   --color-np-ink: var(--ink);
   --color-np-muted: var(--muted);
-  --color-np-on-navy: var(--on-navy);
   --color-np-bg: var(--bg);
   --color-np-panel: var(--panel);
-  --color-np-surface: var(--surface);
   --color-np-line: var(--line);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --shadow-np-sm: var(--shadow-sm);
-  --shadow-np: var(--shadow);
-  --shadow-np-lg: var(--shadow-lg);
-  --radius-np: var(--radius);
-  --radius-np-lg: var(--radius-lg);
 }
 
 * {
@@ -178,7 +188,9 @@ a {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -196,7 +208,31 @@ kbd {
 
 ::selection {
   color: #fff;
-  background: var(--teal-dark);
+  background: var(--accent-hover);
+}
+
+@keyframes np-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes np-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.np-spinner {
+  animation: np-spin 0.7s linear infinite;
+}
+
+.np-pulse {
+  animation: np-pulse 1.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -204,12 +240,16 @@ kbd {
     scroll-behavior: auto;
   }
 
+  .np-spinner,
+  .np-pulse {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
 }
