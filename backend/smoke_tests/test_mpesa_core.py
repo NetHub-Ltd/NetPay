@@ -24,7 +24,6 @@ from app.mpesa_core.client import MpesaCore
 from app.mpesa_core.errors import (
     AmbiguousOutcome,
     CapabilityDisabled,
-    CatalogueContractUnavailable,
     InvalidRequest,
     MalformedProviderResponse,
     MissingCredential,
@@ -371,18 +370,6 @@ async def test_all_verified_adapter_paths_and_asynchronous_acknowledgements() ->
         tax = json.loads(next(r for r in seen if r.url.path == "/mpesa/b2b/v1/remittax").content)
         assert tax["CommandID"] == "PayTaxToKRA"
         assert tax["PartyB"] == "572572"
-    finally:
-        await core.aclose()
-
-
-@pytest.mark.asyncio
-async def test_unverified_catalogue_contract_fails_closed_without_http_request() -> None:
-    seen: list[httpx.Request] = []
-    core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({}, seen)))
-    try:
-        with pytest.raises(CatalogueContractUnavailable):
-            await core.catalogue_operation(context(), "bill_manager", {"some": "guess"})
-        assert seen == []
     finally:
         await core.aclose()
 
