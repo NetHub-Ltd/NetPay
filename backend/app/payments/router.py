@@ -239,6 +239,14 @@ async def _apply_stk_callback(
     callback_row.processing_status = "processed"
     callback_row.processing_error = None
     callback_row.processed_at = now
+    session.add(AuditLog(
+        merchant_id=payment.merchant_id,
+        actor_type="provider_callback",
+        action="payment.callback_processed",
+        resource_type="payment",
+        resource_id=payment.id,
+        metadata_json={"callback_id": str(callback_row.id), "result_code": result_code, "new_status": payment.status},
+    ))
     return True
 
 
@@ -512,7 +520,15 @@ async def initiate_stk(
         resource_id=payment.id,
         response_status=202,
     )
-    session.add_all([attempt, provider_request, idempotency])
+    session.add_all([attempt, provider_request, idempotency, AuditLog(
+        merchant_id=principal.merchant_id,
+        actor_type="m2m_client",
+        actor_id=principal.client_id,
+        action="payment.stk_initiated",
+        resource_type="payment",
+        resource_id=payment.id,
+        metadata_json={"integration_id": integration.integration_id, "amount_minor": payload.amount_minor, "correlation_id": str(provider_request.correlation_id)},
+    )])
     try:
         await session.commit()
     except IntegrityError:
@@ -744,6 +760,14 @@ async def c2b_confirmation(
         await session.flush()
         row.payment_id = payment.id
         _event(session, payment, "payment.succeeded")
+        session.add(AuditLog(
+            merchant_id=integration.merchant_id,
+            actor_type="provider_callback",
+            action="payment.c2b_confirmed",
+            resource_type="payment",
+            resource_id=payment.id,
+            metadata_json={"callback_id": str(row.id), "provider_transaction_id": callback.trans_id, "amount_minor": amount_minor},
+        ))
         await session.commit()
     except IntegrityError:
         await session.rollback()
