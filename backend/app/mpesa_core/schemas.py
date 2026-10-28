@@ -68,7 +68,7 @@ class STKPushRequest(CoreModel):
     amount_minor: int = Field(gt=0)
     account_reference: str = Field(min_length=1, max_length=12)
     description: str = Field(min_length=1, max_length=13)
-    callback_url: str | None = None
+    callback_url: str
     transaction_type: Literal["CustomerPayBillOnline", "CustomerBuyGoodsOnline"] = "CustomerPayBillOnline"
 
     @field_validator("amount_minor")
@@ -217,7 +217,6 @@ class PullTransactionsRequest(CoreModel):
 
     start_at: datetime
     end_at: datetime
-    response_url: str | None = None
 
     @model_validator(mode="after")
     def ordered_window(self) -> "PullTransactionsRequest":
