@@ -196,3 +196,20 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - **Verified by read-back:** `backend/app/main.py` no longer imports or registers the Core callback router; all 9 `backend/app/mpesa_core/` files and both Core-specific test files are listed as deletions in PR #214.
 - **Not verified:** repository-wide runtime reference audit and final CI conclusions. The GitHub code-search connector indexes the default branch rather than this topic branch, so it is not evidence of a complete topic-branch reference scan.
 - **Next safe action:** retrieve the workflow conclusions and review any failures; do not merge. Replacement-class design remains a separate post-merge discussion requiring the user's approval before code is written.
+
+
+## M-Pesa Core complete API scope — approved 2026-10-29
+
+### M0 — Contract verification and implementation (in progress)
+- [x] Product owner approved complete proposed mpesa_core API inventory and exhaustive testing.
+- [x] Refresh current CORE engineering skill and record current dev baseline.
+- [x] Update issue #187 and add docs/MPESA_CORE_SPEC.md on feat/mpesa-core-complete.
+- [ ] Verify endpoint/version, request/response fields, permissions, callback schema and retry behavior for every operation against current official docs.
+- [ ] Freeze and document capability/permission gates; sandbox-only C2B simulation; opt-in C2B registration.
+- [ ] Implement shared schemas, validation, typed errors, OAuth cache/concurrency and HTTP lifecycle.
+- [ ] Implement each documented API adapter with per-operation success/rejection/malformed/transport/ambiguous/security tests.
+- [ ] Implement callback parsers/normalizers without moving application route/state ownership into Core.
+- [ ] Run backend, migration, CI, frontend, image and container checks; record exact evidence.
+- [ ] Re-fetch and reconcile trackers/issue; open one PR targeting dev; do not merge without user approval.
+
+**Acceptance note:** all proposed API families must have an implemented and tested contract. If official documentation proves a proposed product name is retired, unavailable or not a distinct endpoint, record the evidence and implement the documented equivalent only when one exists; never invent an endpoint to satisfy a label.
