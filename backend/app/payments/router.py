@@ -686,7 +686,7 @@ async def c2b_validation(
         amount = Decimal(callback.trans_amount)
         if amount <= 0 or amount * 100 != int(amount * 100):
             raise ValueError
-        if callback.business_short_code != integration.shortcode:
+        if callback.business_short_code != integration.shortcode or not 1 <= len(callback.trans_id) <= 64:
             raise ValueError
     except (MpesaCoreError, InvalidOperation, ValueError):
         return {"ResultCode": 1, "ResultDesc": "Rejected"}
@@ -709,7 +709,12 @@ async def c2b_confirmation(
     try:
         callback = parse_c2b_callback(payload)
         amount = Decimal(callback.trans_amount)
-        if amount <= 0 or amount * 100 != int(amount * 100) or callback.business_short_code != integration.shortcode:
+        if (
+            amount <= 0
+            or amount * 100 != int(amount * 100)
+            or callback.business_short_code != integration.shortcode
+            or not 1 <= len(callback.trans_id) <= 64
+        ):
             raise ValueError
         amount_minor = int(amount * 100)
     except (MpesaCoreError, InvalidOperation, ValueError):
@@ -720,6 +725,8 @@ async def c2b_confirmation(
         Payment.provider_receipt == callback.trans_id,
     ))
     if existing is not None:
+        if existing.amount_minor != amount_minor or existing.merchant_id != integration.merchant_id:
+            return {"ResultCode": 1, "ResultDesc": "Rejected"}
         return {"ResultCode": 0, "ResultDesc": "Accepted"}
     payment = Payment(
         merchant_id=integration.merchant_id,
