@@ -9,6 +9,7 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 import httpx
 from cryptography import x509
@@ -240,6 +241,8 @@ class MpesaCore:
             "daraja_operation_complete operation={} environment={} integration={} http_status={} outcome={}",
             operation, context.environment, context.integration_id, response.status_code, outcome.value,
         )
+        safe_operations = {"stk_query", "dynamic_qr", "transaction_status", "account_balance", "pull_transactions", "lipa_na_bonga_quote"}
+        retry_disposition = RetryDisposition.SAFE if operation in safe_operations else RetryDisposition.NEVER
         return ProviderOperationResult(
             operation=operation,
             outcome=outcome,
@@ -248,13 +251,13 @@ class MpesaCore:
             conversation_id=conversation_id,
             originator_conversation_id=originator_id,
             http_status=response.status_code,
-            retry_disposition=RetryDisposition.NEVER,
+            retry_disposition=retry_disposition,
         )
 
     @staticmethod
     def _timestamp_password(context: IntegrationContext) -> tuple[str, str]:
         passkey = MpesaCore._secret(context.credentials.passkey, "passkey")
-        timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(ZoneInfo("Africa/Nairobi")).strftime("%Y%m%d%H%M%S")
         password = base64.b64encode(f"{context.shortcode}{passkey}{timestamp}".encode()).decode("ascii")
         return password, timestamp
 
