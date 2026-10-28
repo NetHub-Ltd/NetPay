@@ -90,3 +90,13 @@ class MalformedProviderResponse(MpesaCoreError):
 
     code = "malformed_provider_response"
     retry_disposition = RetryDisposition.AFTER_RECONCILIATION
+
+
+class CredentialStorageError(MpesaCoreError):
+    """Credential keyring, encryption, or decryption failure with a safe code."""
+
+    code = "credential_storage_error"
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
