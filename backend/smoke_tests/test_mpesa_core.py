@@ -345,7 +345,6 @@ async def test_all_verified_adapter_paths_and_asynchronous_acknowledgements() ->
                                                             receiver_party="174379", result_url="https://example.test/result",
                                                             timeout_url="https://example.test/timeout")),
             core.b2c_payment(ctx, B2CPaymentRequest(phone_number="0712345678", amount_minor=100,
-                                                     originator_conversation_id="netpay-test-1",
                                                      result_url="https://example.test/result",
                                                      timeout_url="https://example.test/timeout")),
             core.b2b_payment(ctx, B2BPaymentRequest(party_b="600000", amount_minor=100,
