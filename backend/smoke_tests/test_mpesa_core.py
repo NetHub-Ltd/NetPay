@@ -367,6 +367,8 @@ async def test_all_verified_adapter_paths_and_asynchronous_acknowledgements() ->
         b2c = json.loads(next(r for r in seen if r.url.path == "/mpesa/b2c/v3/paymentrequest").content)
         assert b2c["PartyB"] == "254712345678"
         assert b2c["Amount"] == 1
+        assert b2c["InitiatorName"] == "test-initiator"
+        assert "OriginatorConversationID" not in b2c
         tax = json.loads(next(r for r in seen if r.url.path == "/mpesa/b2b/v1/remittax").content)
         assert tax["CommandID"] == "PayTaxToKRA"
         assert tax["PartyB"] == "572572"
@@ -628,7 +630,7 @@ def all_operation_calls(ctx: IntegrationContext):
             transaction_id="QAB123", amount_minor=100, receiver_party="174379",
             result_url="https://example.test/result", timeout_url="https://example.test/timeout"))),
         ("b2c", lambda core: core.b2c_payment(ctx, B2CPaymentRequest(
-            phone_number="0712345678", amount_minor=100, originator_conversation_id="origin-1",
+            phone_number="0712345678", amount_minor=100,
             result_url="https://example.test/result", timeout_url="https://example.test/timeout"))),
         ("b2b", lambda core: core.b2b_payment(ctx, B2BPaymentRequest(
             party_b="600000", amount_minor=100, command_id="BusinessPayBill",
