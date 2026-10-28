@@ -38,6 +38,7 @@ from app.mpesa_core.validation import normalize_ke_phone, validate_callback_url
 from app.payments.service import PaymentApplicationService
 from app.payments.schemas import (
     IntegrationCreate,
+    IntegrationCredentialRotation,
     IntegrationView,
     PaymentView,
     STKInitiation,
@@ -82,6 +83,7 @@ def _integration_view(row: DarajaIntegration) -> IntegrationView:
         c2b_registered_at=row.c2b_registered_at,
         registration_error=row.registration_error,
         credentials_validated_at=row.credentials_validated_at,
+        credential_version=row.credential_version,
     )
 
 
@@ -256,6 +258,69 @@ async def create_integration(
         raise HTTPException(status_code=409, detail="integration_already_exists_for_environment") from None
     await session.refresh(integration)
     logger.info("mpesa_integration_created merchant_id={} integration_id={} environment={}", principal.merchant_id, integration.integration_id, integration.environment)
+    return _integration_view(integration)
+
+
+@router.put("/api/v1/integrations/{integration_id}/credentials", response_model=IntegrationView, tags=["integrations"])
+async def rotate_integration_credentials(
+    integration_id: str,
+    payload: IntegrationCredentialRotation,
+    request: Request,
+    principal: Principal = Depends(integrations_write),
+    session: AsyncSession = Depends(get_session),
+) -> IntegrationView:
+    """Validate replacement credentials before atomically replacing encrypted material."""
+    integration = await session.scalar(select(DarajaIntegration).where(
+        DarajaIntegration.integration_id == integration_id,
+        DarajaIntegration.merchant_id == principal.merchant_id,
+        DarajaIntegration.deleted_at.is_(None),
+    ))
+    if integration is None:
+        raise HTTPException(status_code=404, detail="integration_not_found")
+    next_version = integration.credential_version + 1
+    new_credentials = DarajaCredentials(
+        consumer_key=payload.consumer_key,
+        consumer_secret=payload.consumer_secret,
+        passkey=payload.passkey,
+        credential_version=next_version,
+    )
+    try:
+        ciphertext = encrypt_credentials(json.dumps({
+            "consumer_key": payload.consumer_key.get_secret_value(),
+            "consumer_secret": payload.consumer_secret.get_secret_value(),
+            "passkey": payload.passkey.get_secret_value(),
+        }, separators=(",", ":")).encode())
+    except CredentialStorageError as exc:
+        raise HTTPException(status_code=503, detail=exc.code) from None
+    context = IntegrationContext(
+        integration_id=integration.integration_id,
+        environment=integration.environment,
+        shortcode=integration.shortcode or "",
+        product_type=integration.product_type,
+        party_b_shortcode=integration.party_b_shortcode,
+        enabled_capabilities=frozenset(integration.enabled_capabilities),
+        credentials=new_credentials,
+    )
+    try:
+        await _core(request).validate_credentials(context)
+    except MpesaCoreError as exc:
+        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.safe_message}) from None
+    integration.credentials_ciphertext = ciphertext
+    integration.credential_version = next_version
+    integration.credential_status = "validated"
+    integration.credentials_validated_at = datetime.now(UTC)
+    session.add(AuditLog(
+        merchant_id=principal.merchant_id,
+        actor_type="m2m_client",
+        actor_id=principal.client_id,
+        action="integration.credentials_rotated",
+        resource_type="daraja_integration",
+        resource_id=integration.id,
+        metadata_json={"credential_version": next_version},
+    ))
+    await session.commit()
+    await session.refresh(integration)
+    logger.info("mpesa_credentials_rotated merchant_id={} integration_id={} credential_version={}", principal.merchant_id, integration.integration_id, next_version)
     return _integration_view(integration)
 
 
