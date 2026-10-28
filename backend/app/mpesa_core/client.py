@@ -28,6 +28,11 @@ from app.mpesa_core.errors import (
 )
 from app.mpesa_core.schemas import (
     AccountBalanceRequest,
+    B2BExpressCheckoutRequest,
+    BillManagerCancelInvoiceRequest,
+    BillManagerInvoiceRequest,
+    BillManagerOptInRequest,
+    BillManagerReconciliationRequest,
     B2BPaymentRequest,
     B2CPaymentRequest,
     C2BRegistrationRequest,
@@ -35,8 +40,11 @@ from app.mpesa_core.schemas import (
     DarajaCredentials,
     DynamicQRRequest,
     IntegrationContext,
+    LipaNaBongaRequest,
     ProviderOperationResult,
+    PullTransactionsRegistrationRequest,
     PullTransactionsRequest,
+    RatibaStandingOrderRequest,
     ReversalRequest,
     STKPushRequest,
     STKQueryRequest,
@@ -432,6 +440,106 @@ class MpesaCore:
         raise CatalogueContractUnavailable(
             f"Daraja contract for '{operation}' is not verified; no provider request was sent"
         )
+
+
+
+    async def register_pull_transactions(self, context: IntegrationContext, request: PullTransactionsRegistrationRequest) -> ProviderOperationResult:
+        """Register the shortcode for missed-C2B transaction recovery."""
+        self._require(context, "pull_transactions")
+        payload = {"ShortCode": context.shortcode,
+                   "NominatedNumber": normalize_ke_phone(request.nominated_phone_number),
+                   "CallBackURL": validate_callback_url(request.callback_url, production=context.environment == "production")}
+        return await self._request(context, "pull_transactions_register", "POST", "/pulltransactions/v1/register", payload, asynchronous=True)
+
+    async def pull_transactions(self, context: IntegrationContext, request: PullTransactionsRequest) -> ProviderOperationResult:
+        """Query the Pull Transactions reconciliation endpoint."""
+        self._require(context, "pull_transactions")
+        payload = {"ShortCode": context.shortcode,
+                   "StartDate": request.start_at.strftime("%Y-%m-%d %H:%M:%S"),
+                   "EndDate": request.end_at.strftime("%Y-%m-%d %H:%M:%S"),
+                   "OffSetValue": "0"}
+        return await self._request(context, "pull_transactions", "POST", "/pulltransactions/v1/query", payload)
+
+    async def b2b_express_checkout(self, context: IntegrationContext, request: B2BExpressCheckoutRequest) -> ProviderOperationResult:
+        """Trigger the B2B USSD checkout prompt for a paying merchant."""
+        self._require(context, "b2b_express_checkout")
+        payload = {"primaryShortCode": request.primary_shortcode,
+                   "receiverShortCode": request.receiver_shortcode,
+                   "amount": request.amount_minor // 100,
+                   "reference": request.reference,
+                   "partnerName": request.partner_name,
+                   "callbackUrl": validate_callback_url(request.callback_url, production=context.environment == "production"),
+                   "requestRefID": request.request_ref_id}
+        return await self._request(context, "b2b_express_checkout", "POST", "/v1/ussdpush/get-msisdn", payload, asynchronous=True)
+
+    async def create_ratiba_order(self, context: IntegrationContext, request: RatibaStandingOrderRequest) -> ProviderOperationResult:
+        """Create a customer-authorized M-Pesa Ratiba standing order."""
+        self._require(context, "ratiba")
+        payload = {"StandingOrderName": request.standing_order_name,
+                   "BusinessShortCode": context.shortcode,
+                   "TransactionType": request.transaction_type,
+                   "Amount": request.amount_minor // 100,
+                   "PartyA": normalize_ke_phone(request.phone_number),
+                   "ReceiverPartyIdentifierType": "4",
+                   "CallBackURL": validate_callback_url(request.callback_url, production=context.environment == "production"),
+                   "AccountReference": request.account_reference,
+                   "TransactionDesc": request.description,
+                   "Frequency": request.frequency,
+                   "StartDate": request.start_date,
+                   "EndDate": request.end_date}
+        return await self._request(context, "ratiba", "POST", "/standingorder/v1/createStandingOrderExternal", payload, asynchronous=True)
+
+    async def redeem_lipa_na_bonga(self, context: IntegrationContext, request: LipaNaBongaRequest) -> ProviderOperationResult:
+        """Redeem Bonga points toward a Paybill payment; settlement arrives via C2B."""
+        self._require(context, "lipa_na_bonga")
+        payload = {"BusinessShortCode": context.shortcode,
+                   "PhoneNumber": normalize_ke_phone(request.phone_number),
+                   "Amount": request.amount_minor // 100,
+                   "BongaPoints": request.bonga_points,
+                   "AccountReference": request.account_reference}
+        return await self._request(context, "lipa_na_bonga", "POST", "/v1/lipa/na/bonga/redeem-paybill", payload)
+
+    async def bill_manager_opt_in(self, context: IntegrationContext, request: BillManagerOptInRequest) -> ProviderOperationResult:
+        """Opt the integration shortcode into Bill Manager."""
+        self._require(context, "bill_manager")
+        payload: dict[str, Any] = {"ShortCode": context.shortcode,
+                                   "Email": request.email,
+                                   "OfficialContact": normalize_ke_phone(request.official_contact),
+                                   "SendReminders": "1" if request.send_reminders else "0",
+                                   "CallbackURL": validate_callback_url(request.callback_url, production=context.environment == "production")}
+        if request.logo_url:
+            payload["Logo"] = validate_callback_url(request.logo_url, production=context.environment == "production")
+        return await self._request(context, "bill_manager_opt_in", "POST", "/v1/billmanager-invoice/optin", payload)
+
+    async def bill_manager_single_invoice(self, context: IntegrationContext, request: BillManagerInvoiceRequest) -> ProviderOperationResult:
+        """Send one typed Bill Manager invoice."""
+        self._require(context, "bill_manager")
+        items = [{"ItemName": item.item_name, "Amount": item.amount_minor // 100} for item in request.invoice_items]
+        payload: dict[str, Any] = {"ExternalReference": request.external_reference,
+                                   "BilledFullName": request.billed_full_name,
+                                   "BilledPhoneNumber": normalize_ke_phone(request.billed_phone_number),
+                                   "Amount": request.amount_minor // 100,
+                                   "DueDate": request.due_date,
+                                   "AccountReference": request.account_reference,
+                                   "InvoiceName": request.invoice_name,
+                                   "InvoiceItems": items}
+        if request.billed_period:
+            payload["BilledPeriod"] = request.billed_period
+        return await self._request(context, "bill_manager_invoice", "POST", "/v1/billmanager-invoice/single-invoicing", payload)
+
+    async def bill_manager_cancel_invoice(self, context: IntegrationContext, request: BillManagerCancelInvoiceRequest) -> ProviderOperationResult:
+        """Cancel one Bill Manager invoice by its external reference."""
+        self._require(context, "bill_manager")
+        return await self._request(context, "bill_manager_cancel_invoice", "POST", "/v1/billmanager-invoice/cancel-single-invoice",
+                                   {"ExternalReference": request.external_reference})
+
+    async def bill_manager_reconcile_payment(self, context: IntegrationContext, request: BillManagerReconciliationRequest) -> ProviderOperationResult:
+        """Reconcile a provider payment against a Bill Manager invoice."""
+        self._require(context, "bill_manager")
+        payload = {"ExternalReference": request.external_reference,
+                   "TransactionID": request.transaction_id,
+                   "Amount": request.amount_minor // 100}
+        return await self._request(context, "bill_manager_reconciliation", "POST", "/v1/billmanager-invoice/reconciliation", payload)
 
 
 def _optional_str(value: object) -> str | None:
