@@ -11,6 +11,8 @@ from typing import Any
 from urllib.parse import urlencode
 
 import httpx
+from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from loguru import logger
 from pydantic import SecretStr
 
@@ -325,13 +327,32 @@ class MpesaCore:
         return await self._request(context, "dynamic_qr", "POST", "/mpesa/qrcode/v1/generate", payload)
 
     def _initiator_payload(self, context: IntegrationContext) -> dict[str, str]:
+        """Resolve the initiator and create Daraja's RSA-encrypted credential when needed."""
         initiator = context.credentials.initiator_name
-        security = context.credentials.security_credential
         if not initiator:
             raise MissingCredential("initiator name is required for this operation")
-        if security is None or not security.get_secret_value():
-            raise MissingCredential("security credential is required for this operation")
-        return {"Initiator": initiator, "SecurityCredential": security.get_secret_value()}
+        security = context.credentials.security_credential
+        if security is not None and security.get_secret_value():
+            security_value = security.get_secret_value()
+        else:
+            password = self._secret(context.credentials.initiator_password, "initiator_password")
+            setting_name = (
+                "mpesa_sandbox_certificate_pem"
+                if context.environment == "sandbox"
+                else "mpesa_production_certificate_pem"
+            )
+            certificate_secret = getattr(self._settings, setting_name, None)
+            certificate_pem = self._secret(certificate_secret, setting_name)
+            try:
+                certificate = x509.load_pem_x509_certificate(certificate_pem.encode("utf-8"))
+                public_key = certificate.public_key()
+                if not isinstance(public_key, rsa.RSAPublicKey):
+                    raise ValueError("certificate key is not RSA")
+                encrypted = public_key.encrypt(password.encode("utf-8"), padding.PKCS1v15())
+                security_value = base64.b64encode(encrypted).decode("ascii")
+            except (ValueError, TypeError):
+                raise MissingCredential("Daraja credential encryption configuration is invalid") from None
+        return {"Initiator": initiator, "SecurityCredential": security_value}
 
     async def transaction_status(self, context: IntegrationContext, request: TransactionStatusRequest) -> ProviderOperationResult:
         """Request asynchronous transaction status verification."""
