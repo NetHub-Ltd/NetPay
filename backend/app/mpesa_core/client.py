@@ -191,7 +191,7 @@ class MpesaCore:
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                 json=payload,
             )
-        except httpx.ConnectError:
+        except (httpx.ConnectError, httpx.ConnectTimeout):
             logger.warning("daraja_transport_not_sent operation={} environment={} integration={}", operation, context.environment, context.integration_id)
             raise TransportFailure("Daraja connection could not be established") from None
         except (httpx.TimeoutException, httpx.NetworkError):
