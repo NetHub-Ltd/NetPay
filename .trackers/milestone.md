@@ -253,3 +253,18 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [ ] Add actual API/service + DB integration tests and run them against PostgreSQL/Redis CI services.
 - [ ] Verify Daraja sandbox contracts with authorized credentials; do not use production credentials or real transactions.
 - [ ] Run current-branch checks and open a reviewable PR only when the selected scope is complete.
+
+## M1 — Application payment path before exhaustive verification (2026-10-29 23:10 UTC)
+
+- [x] Audited current application baseline and recorded gaps in `docs/MPESA_E2E_VERIFICATION.md`.
+- [x] Created [#217](https://github.com/NetHub-Ltd/NetPay/issues/217) with a detailed implementation contract for M2M authorization, integration onboarding/credential safety, STK initiation/status, callback state transitions, transactional outbox, and gated opt-in C2B.
+- [x] Re-scoped [#216](https://github.com/NetHub-Ltd/NetPay/issues/216) as a verification-only test-environment readiness gate dependent on #217.
+- [x] Refreshed shared skills repository and read CORE engineering skill and current NetPay `AGENTS.md`.
+- [ ] Receive explicit user approval/revisions for #217 contract.
+- [ ] Implement approved application flow on one topic branch; add/update docs and all four trackers; open PR targeting `dev`.
+- [ ] User reviews PR and explicitly approves any merge; do not merge autonomously.
+- [ ] Run #216's exhaustive PostgreSQL-backed integration/security/failure/recovery matrix only after the implementation is merged to `dev`.
+- [ ] Record final readiness outcome as Ready / Conditionally ready / Not ready with evidence; do not overstate confidence.
+
+**Gate:** #216 is not to implement missing behavior. If #217 leaves a critical gap, pause verification and open/approve a follow-up implementation issue rather than silently expanding scope.
+
