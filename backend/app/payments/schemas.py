@@ -36,10 +36,6 @@ class IntegrationCreate(APIModel):
         return value
 
 
-class IntegrationEnableC2B(APIModel):
-    enabled: bool
-
-
 class STKInitiation(APIModel):
     integration_id: str = Field(min_length=1, max_length=64)
     phone_number: str = Field(min_length=9, max_length=16)
