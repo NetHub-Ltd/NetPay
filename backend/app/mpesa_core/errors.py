@@ -90,9 +90,3 @@ class MalformedProviderResponse(MpesaCoreError):
 
     code = "malformed_provider_response"
     retry_disposition = RetryDisposition.AFTER_RECONCILIATION
-
-
-class CatalogueContractUnavailable(MpesaCoreError):
-    """No verified endpoint contract is available; no request was sent."""
-
-    code = "catalogue_contract_unavailable"
