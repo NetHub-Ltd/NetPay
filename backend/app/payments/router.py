@@ -268,9 +268,15 @@ async def token_endpoint(
     if merchant is None or merchant.status != "active" or merchant.deleted_at is not None:
         raise HTTPException(status_code=403, detail="merchant_inactive")
     client.last_used_at = now
-    token_value = issue_access_token(client, merchant)
+    granted_scopes = list(client.scopes)
+    if request_data.scope:
+        requested_scopes = set(request_data.scope.split())
+        if not requested_scopes.issubset(set(client.scopes)):
+            raise HTTPException(status_code=400, detail="invalid_scope")
+        granted_scopes = sorted(requested_scopes)
+    token_value = issue_access_token(client, merchant, scopes=granted_scopes)
     await session.commit()
-    return {"access_token": token_value, "token_type": "Bearer", "expires_in": 900, "scope": " ".join(client.scopes)}
+    return {"access_token": token_value, "token_type": "Bearer", "expires_in": 900, "scope": " ".join(granted_scopes)}
 
 
 @router.post("/api/v1/integrations", response_model=IntegrationView, status_code=201, tags=["integrations"])
