@@ -568,7 +568,7 @@ def _redact_response(value: Any, *, key: str = "") -> Any:
     if isinstance(value, list):
         return [_redact_response(item, key=key) for item in value]
     if isinstance(value, str) and _PHONE_KEY.search(key):
-        digits = re.sub(r"\\D", "", value)
+        digits = re.sub(r"\D", "", value)
         return f"***{digits[-4:]}" if len(digits) >= 4 else "[REDACTED]"
     return value
 
