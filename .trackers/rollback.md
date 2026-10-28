@@ -1,10 +1,10 @@
 # NetPay rebuild rollback notes
 
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-29
 
 ## Current change
 
-This task updates handoff/process documentation only under `.trackers/` on `work/minimal-netpay-rebuild` and adds a dated continuity note to issue #179. It does not intentionally change application code, database schema, runtime configuration, workflows, or deployment manifests.
+This task adds the `mpesa_core` package, typed schemas, adapters and tests on `feat/mpesa-core-complete`, plus the FastAPI lifespan client lifecycle. No database schema migration, deployment manifest, Flux or GHCR push workflow change was made. PR #215 targets `dev` and remains unmerged.
 
 ## Recovery approach
 
@@ -139,3 +139,22 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - **Verified by read-back:** `backend/app/main.py` no longer imports or registers the Core callback router; all 9 `backend/app/mpesa_core/` files and both Core-specific test files are listed as deletions in PR #214.
 - **Not verified:** repository-wide runtime reference audit and final CI conclusions. The GitHub code-search connector indexes the default branch rather than this topic branch, so it is not evidence of a complete topic-branch reference scan.
 - **Next safe action:** retrieve the workflow conclusions and review any failures; do not merge. Replacement-class design remains a separate post-merge discussion requiring the user's approval before code is written.
+
+
+## mpesa_core complete implementation — rollback boundary (2026-10-29)
+
+- Pre-change base: dev SHA 82bae5b7c8e1704491b0aa8eec1dfa8fa948364f. Topic branch: feat/mpesa-core-complete. Initial spec commit: 09e94644e6144ca8f2ef7e397dde77131c3ae5b4.
+- Existing Core package was removed by merged PR #214; do not cherry-pick or restore its deleted files. This is a fresh design and implementation.
+- Roll back code through a reviewed revert commit on the topic branch. Preserve Git history; never reset, rebase, squash, force-push or rewrite commits.
+- Do not modify dev/main, deployment manifests, Flux resources or GHCR build/push behavior. Do not use production credentials or initiate real financial transactions.
+- Reuse existing integration/provider-operation/verification/reconciliation models where justified. If a schema change is necessary, add a new Alembic revision; do not edit applied historical migrations. Review downgrade impact before removing any columns/tables or records.
+- Initial snapshot was documentation-only; see the implementation progress sections above for current code and test evidence.
+- Ambiguous provider outcomes must remain unresolved; rollback must not turn them into failed/succeeded payments or trigger automatic duplicate requests.
+
+
+## Implementation changes after initial specification
+
+- Added new Core package files and one test module; updated backend/app/main.py only for app-scoped client lifecycle. No DB schema or migration change was made.
+- Revert these changes through reviewed revert commits on feat/mpesa-core-complete only. Do not restore the removed pre-PR-214 Core implementation.
+- CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness and frontend lint/build also passed. The branch now contains tracker/spec-only commits after the tested code head; rerun checks on the current branch tip before review. No runtime rollback is indicated by current checks.
+- Provisional product payload contracts are not to be treated as production-ready until validated. Disable capability use rather than sending guessed/incorrect payloads if contract validation finds a mismatch.

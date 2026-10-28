@@ -1,6 +1,14 @@
 # NetPay repository state and agent handoff
 
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-29
+
+## Current active task — mpesa_core
+
+- **Branch:** `feat/mpesa-core-complete`; base `dev` at `82bae5b7c8e1704491b0aa8eec1dfa8fa948364f` when the branch was created.
+- **Issue / PR:** issue #187; draft PR #215 targets `dev`, remains unmerged.
+- **Latest verified code head:** `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`; CI run `40780804974` passed backend tests, migration, PostgreSQL/Redis, production image build without push, container startup smoke test, frontend lint/build and backend readiness.
+- **Open blocker:** verify provisional Bill Manager, Ratiba, B2B Express Checkout, Lipa na Bonga and Pull Transactions contracts with authenticated Daraja documentation/sandbox before production enablement. These capabilities are production-gated in Core.
+- **No deployment or merge:** no image was pushed; Flux/deployment manifests were not changed; PR #215 is for review only.
 
 ## Start here — mandatory handoff procedure
 
@@ -11,7 +19,7 @@ This file is the quick orientation page. A new agent must read the four rebuild 
 3. `.trackers/milestone.md` — acceptance criteria and milestone progress.
 4. `.trackers/rollback.md` — safe recovery boundaries and known rollback gaps.
 
-Then read `AGENTS.md`, `docs/REBUILD_SPEC.md`, and refresh the relevant skills from [NetHub skills](https://github.com/NetHub-Ltd/skills-.git). Check live GitHub branch refs, latest relevant workflow runs, issue #179, and PR #178 before relying on recorded state.
+Then read `AGENTS.md`, `docs/REBUILD_SPEC.md`, and refresh the relevant skills from [NetHub skills](https://github.com/NetHub-Ltd/skills-.git). Check live GitHub branch refs, latest workflow runs, issue #187 and PR #215 before relying on recorded state. Issue #179/PR #178 are historical rebuild records only.
 
 ### Handoff contract
 
@@ -229,3 +237,25 @@ These are historical reports, not fresh verification performed during tracker cr
 - **Verified by read-back:** `backend/app/main.py` no longer imports or registers the Core callback router; all 9 `backend/app/mpesa_core/` files and both Core-specific test files are listed as deletions in PR #214.
 - **Not verified:** repository-wide runtime reference audit and final CI conclusions. The GitHub code-search connector indexes the default branch rather than this topic branch, so it is not evidence of a complete topic-branch reference scan.
 - **Next safe action:** retrieve the workflow conclusions and review any failures; do not merge. Replacement-class design remains a separate post-merge discussion requiring the user's approval before code is written.
+
+
+## Approved mpesa_core implementation — live handoff (2026-10-29)
+
+- **OBSERVED:** live dev points to 82bae5b7c8e1704491b0aa8eec1dfa8fa948364f; its merge commit records PR #214 removing the rejected Core implementation.
+- **OBSERVED:** branch feat/mpesa-core-complete was created from that exact dev SHA. Specification commit: 09e94644e6144ca8f2ef7e397dde77131c3ae5b4.
+- **Issue:** #187 updated for the newly approved full-scope implementation: https://github.com/NetHub-Ltd/NetPay/issues/187.
+- **Specification:** docs/MPESA_CORE_SPEC.md on feat/mpesa-core-complete.
+- **Fresh skill:** refreshed CORE-AI-Product-Engineering-Skill-v1.0.0.md from https://github.com/NetHub-Ltd/skills-.git. Applied inspect-before-change, evidence labels, proposal/impact/test/rollback discipline, simplest-correct architecture and no unsupported implementation claims.
+- **Important instruction reconciliation:** older AGENTS.md says work only on work/minimal-netpay-rebuild and forbids new branches, but the current user-approved task and later tracker workflow explicitly require a topic branch from dev and one PR targeting dev. For this task, use feat/mpesa-core-complete only; do not touch work/minimal-netpay-rebuild, dev or main directly.
+- **Existing models observed:** DarajaIntegration stores integration metadata and encrypted credential material; ProviderRequest supports operation/correlation/idempotency and safe request/response metadata; PaymentVerification and reconciliation records exist. Inspect their current consumers before deciding whether any schema change is required. Do not duplicate these models or edit historical migration revisions.
+- **Initial status at branch creation:** docs/spec and issue/tracker coordination only; superseded by the Implementation progress snapshot below.
+- **Next action:** validate provisional Bill Manager, Ratiba, B2B Express Checkout, Lipa na Bonga and Pull Transactions contracts against authenticated Safaricom documentation or sandbox. Keep these capabilities production-gated until verified; rerun checks after the tracker/spec-only status commit.
+
+
+## Implementation progress snapshot (2026-10-29)
+
+- Added docs/MPESA_CORE_SPEC.md and backend/app/mpesa_core/{__init__.py,client.py,schemas.py,validation.py,errors.py,callbacks.py}; added backend/smoke_tests/test_mpesa_core.py.
+- Updated backend/app/main.py to create one MpesaCore per FastAPI lifespan and close it during shutdown.
+- Core uses existing httpx, Pydantic, Loguru and cryptography dependencies; no new dependency, migration, deployment manifest, Flux or GHCR workflow change.
+- API adapters are implemented for documented common Daraja APIs and the proposed product families, including Tax Remittance, Pull Transactions, B2B Express Checkout, Ratiba, Lipa na Bonga and Bill Manager operations. Unverified/ambiguous product payloads must remain flagged for sandbox validation, not advertised as production-verified.
+- CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend smoke tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness, frontend lint and frontend build passed on the same head. Tracker/spec-only commits follow the tested code head; verify current branch-tip checks before review.

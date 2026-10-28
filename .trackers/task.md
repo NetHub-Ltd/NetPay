@@ -1,9 +1,11 @@
-# Task: Minimal NetPay rebuild — tracking baseline
+# Task: NetPay rebuild — mpesa_core implementation
 
-**Last updated:** 2026-10-23  
-**Branch:** `work/minimal-netpay-rebuild`  
+**Last updated:** 2026-10-29  
+**Branch:** `feat/mpesa-core-complete`  
 **Base/integration branch:** `dev`  
-**Application baseline commit:** `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`
+
+**Current active task:** Implement the approved complete `mpesa_core` Daraja integration layer. Issue #187; draft PR #215 targets `dev`. Current code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3` passed CI run `40780804974` (backend tests, migrations, PostgreSQL/Redis, container build/startup, frontend lint/build, backend readiness). The current branch contains documentation/tracker-only commits after the tested code head; rerun current-head checks before review. No merge or deployment has occurred.
+**Application baseline commit:** `82bae5b7c8e1704491b0aa8eec1dfa8fa948364f`
 
 ## Goal
 
@@ -274,3 +276,28 @@ Do not merge or deploy without explicit approval.
 - **Verified by read-back:** `backend/app/main.py` no longer imports or registers the Core callback router; all 9 `backend/app/mpesa_core/` files and both Core-specific test files are listed as deletions in PR #214.
 - **Not verified:** repository-wide runtime reference audit and final CI conclusions. The GitHub code-search connector indexes the default branch rather than this topic branch, so it is not evidence of a complete topic-branch reference scan.
 - **Next safe action:** retrieve the workflow conclusions and review any failures; do not merge. Replacement-class design remains a separate post-merge discussion requiring the user's approval before code is written.
+ 
+
+## Approved implementation — complete mpesa_core (2026-10-29)
+
+**Status:** APPROVED; implementation may proceed on the dedicated topic branch after the API contract verification step. This is a new implementation; do not restore the deleted package from PR #214.
+
+- **Issue:** #187 — feat(mpesa): implement complete mpesa_core Daraja API layer with exhaustive tests.
+- **Branch:** feat/mpesa-core-complete, created from live dev baseline 82bae5b7c8e1704491b0aa8eec1dfa8fa948364f.
+- **Specification:** docs/MPESA_CORE_SPEC.md.
+- **Approved scope:** all 18 proposed capability groups in the spec, including OAuth, STK Push/query, C2B registration/callback parsing/simulation, Dynamic QR, Transaction Status, Pull Transactions, Account Balance, Reversal, B2C, B2B, B2B Express Checkout, Ratiba/Standing Orders, Bill Manager, Tax Remittance and Lipa na Bonga. Implement only documented current contracts; where the proposed catalogue name/path is not confirmed, verify authoritative docs and record the corrected mapping rather than inventing an endpoint.
+- **Architecture:** one application-scoped async MpesaCore instance per FastAPI process. Core owns Daraja transport/OAuth/typed provider contracts/parsing/errors/safe logs. Application owns credential persistence/decryption, merchant auth, routes, durable audit, payment state, idempotency, callback correlation/deduplication, reconciliation and outbox.
+- **Hard invariants:** provider acceptance is not payment success; callbacks are untrusted; ambiguous post-send outcomes stay unknown; no blind retries of financial mutations; no secret/token/passkey/security credential/auth header in logs; C2B registration remains opt-in; simulation is sandbox-only.
+- **Verification evidence:** live dev SHA and PR #214 merge observed through GitHub API on 2026-10-29. Official Safaricom pages reviewed for STK Push, Dynamic QR, B2C and Transaction Status; details and remaining API products are documented in docs/MPESA_CORE_SPEC.md. This is not implementation or test evidence.
+- **Initial status at approval:** docs-only; superseded by the Implementation progress update below.
+- **Next safe action:** verify every operation's official endpoint/version, payload, permissions, callback and retry semantics; update the matrix; then implement and test in bounded groups. Reuse existing models only where they fit. Preserve all historical migrations unless a justified new migration is required.
+- **Delivery:** one PR targeting dev; no direct push to dev/main, no history rewrite, no deployment-manifest/Flux changes, and no merge without explicit user approval.
+
+
+## Implementation progress update (2026-10-29)
+
+- **Implemented on topic branch:** new backend/app/mpesa_core package with typed schemas, validation, typed errors/outcome classes, async HTTP/OAuth client, STK/C2B/Dynamic QR/Transaction Status/Account Balance/Reversal/B2C/B2B/Tax Remittance/Pull Transactions/B2B Express Checkout/Ratiba/Lipa na Bonga/Bill Manager adapters, callback parsers, response redaction, RSA SecurityCredential generation from environment certificate, and FastAPI lifespan lifecycle.
+- **Tests added:** backend/smoke_tests/test_mpesa_core.py includes phone/URL/schema boundaries, token concurrency and rejection, provider rejection, malformed response, transport ambiguity, capability gating, sandbox-only C2B simulation, payload/path assertions across API families, callback parsing/fingerprints, response redaction, RSA credential encryption, and parameterized rejection/malformed/timeout cases across typed operations.
+- **Important evidence boundary:** Safaricom official pages verify STK Push, Dynamic QR, Transaction Status, B2C, Tax Remittance and the existence of Bill Manager, Ratiba and B2B Express products. Several product pages render only a generic portal shell publicly. Exact Bill Manager/Ratiba/B2B Express/Lipa na Bonga/Pull Transactions payloads are cross-checked against public SDK/catalogue references, not yet verified with authenticated Daraja docs or sandbox. Do not call them production-verified until contract tests succeed with authorized sandbox credentials.
+- **Current verification:** GitHub Actions CI run `40780329065` passed on code head `a3264063f7b3219235c4b9bc48a620bbed691730`: full backend `smoke_tests`, Alembic upgrade, PostgreSQL/Redis connectivity, production image build (no push), and container startup smoke test. Backend readiness plus frontend lint/build also passed on that head. Tracker/spec reconciliation commits after the tested code head change no runtime code; current-head checks must pass before marking the PR ready.
+- **Remaining before ready:** validate provisional product contracts against authenticated official docs/sandbox; re-read all trackers after this status update; verify checks on the new tracker/spec reconciliation head; then mark PR #215 ready for review. Do not merge without user approval.
