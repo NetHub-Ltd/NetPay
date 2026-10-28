@@ -259,3 +259,15 @@ These are historical reports, not fresh verification performed during tracker cr
 - Core uses existing httpx, Pydantic, Loguru and cryptography dependencies; no new dependency, migration, deployment manifest, Flux or GHCR workflow change.
 - API adapters are implemented for documented common Daraja APIs and the proposed product families, including Tax Remittance, Pull Transactions, B2B Express Checkout, Ratiba, Lipa na Bonga and Bill Manager operations. Unverified/ambiguous product payloads must remain flagged for sandbox validation, not advertised as production-verified.
 - CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend smoke tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness, frontend lint and frontend build passed on the same head. Tracker/spec-only commits follow the tested code head; verify current branch-tip checks before review.
+
+
+## Post-merge integration verification handoff — 2026-10-29
+
+- **Current integration baseline:** `dev` SHA `3d77327c1d00f713b7ec088492dc91dd953d139c` (observed directly from GitHub).
+- **Current task branch:** `test/mpesa-e2e-verification-216`, created from that exact SHA for issue #216. Keep changes isolated to this branch and target one PR at `dev`.
+- **Merged implementation:** PR #215 introduced `backend/app/mpesa_core/` and lifespan ownership in `backend/app/main.py`. Do not restore the deleted pre-#214 implementation.
+- **Observed application structure:** `backend/app` has `main.py`, `core`, `models`, `mpesa_core`; no application API/router/service module appeared in the inspected tree. This implies Core transport and persistence models exist, but the end-to-end application path may not yet exist; confirm through full-tree inspection before coding.
+- **Observed persistence primitives:** Payment, IdempotencyRecord, PaymentAttempt, ProviderRequest, PaymentVerification, reconciliation and EventOutbox/EventDelivery models exist. Existing test `backend/smoke_tests/test_mpesa_idempotency.py` tests DB uniqueness for provider request idempotency, not full API/payment execution. `test_startup.py` covers app startup, readiness and required-DB startup failure.
+- **Post-merge CI evidence:** CI run `40781707731` passed backend smoke tests, initial migration, PostgreSQL/Redis checks, image build (no push) and container startup smoke. Readiness `40781707758`, frontend lint `40781708005`, frontend build `40781707798` passed on the same SHA. These are verified workflow conclusions, not proof of Daraja sandbox behavior.
+- **External contract boundary:** Pull Transactions, Bill Manager, Ratiba, B2B Express Checkout and Lipa na Bonga remain provisional and production-gated pending authenticated official docs or authorized sandbox contract tests.
+- **Constraints:** no direct push to `dev`/`main`, no history rewrite, no Flux/deployment manifest changes, no GHCR build/push changes, no production credentials/real transactions, preserve historical migrations. Redis remains auxiliary unless evidence shows otherwise; PostgreSQL is required for startup.
