@@ -8,7 +8,8 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from loguru import logger
 from pydantic import SecretStr, ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
@@ -348,7 +349,6 @@ async def create_integration(
         await session.rollback()
         raise HTTPException(status_code=409, detail="integration_already_exists_for_environment") from None
     await session.refresh(integration)
-    from loguru import logger
     logger.info("mpesa_integration_created merchant_id={} integration_id={} environment={}", principal.merchant_id, integration.integration_id, integration.environment)
     return _integration_view(integration)
 
@@ -390,19 +390,20 @@ async def register_c2b(
     if "c2b_registration" not in integration.enabled_capabilities:
         integration.enabled_capabilities = list(set(integration.enabled_capabilities) | {"c2b_registration"})
     integration.c2b_enabled = True
+    context = _context(integration)
     integration.c2b_registration_status = "started"
     integration.registration_error = None
     await session.commit()
     try:
         result = await _core(request).register_c2b_urls(
-            _context(integration),
+            context,
             C2BRegistrationRequest(
                 validation_url=integration.c2b_validation_url or "",
                 confirmation_url=integration.c2b_confirmation_url or "",
                 response_type="Completed",
             ),
         )
-    except AmbiguousOutcome as exc:
+    except (AmbiguousOutcome, MalformedProviderResponse) as exc:
         integration.c2b_registration_status = "unknown"
         integration.registration_error = exc.code
         await session.commit()
@@ -445,6 +446,9 @@ async def initiate_stk(
         raise HTTPException(status_code=409, detail="integration_not_active")
     if "stk_push" not in integration.enabled_capabilities:
         raise HTTPException(status_code=403, detail="stk_push_capability_disabled")
+    # Resolve credentials before recording an operation; local keyring failures
+    # must not leave a pending payment that never reached Daraja.
+    context = _context(integration)
     canonical = {
         "integration_id": integration.integration_id,
         "phone_number": phone,
@@ -524,7 +528,7 @@ async def initiate_stk(
 
     try:
         result = await _core(request).stk_push(
-            _context(integration),
+            context,
             STKPushRequest(
                 phone_number=phone,
                 amount_minor=payload.amount_minor,
