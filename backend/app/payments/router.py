@@ -21,8 +21,7 @@ from app.models.attempts import PaymentAttempt
 from app.models.events import EventOutbox
 from app.models.integrations import DarajaIntegration
 from app.models.merchants import M2MClient, Merchant
-from app.models.operations import AuditLog
-from app.models.operations import ProviderRequest
+from app.models.operations import AuditLog, ProviderRequest
 from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
 from app.mpesa_core import DarajaCredentials, IntegrationContext
 from app.mpesa_core.credentials import decrypt_credentials, encrypt_credentials
@@ -45,7 +44,6 @@ from app.payments.schemas import (
 )
 from app.payments.security import (
     Principal,
-    hash_client_secret,
     issue_access_token,
     require_scopes,
     verify_client_secret,
@@ -646,7 +644,7 @@ async def stk_callback(
         return {"ResultCode": 0, "ResultDesc": "Accepted"}
     await _apply_stk_callback(session, integration, row)
     await session.commit()
-    return {"ResultCode": "0", "ResultDesc": "Accepted"}
+    return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
 
 @router.post("/callbacks/mpesa/c2b/{integration_id}/validation", include_in_schema=False)
@@ -670,7 +668,7 @@ async def c2b_validation(
         if callback.business_short_code != integration.shortcode:
             raise ValueError
     except (MpesaCoreError, InvalidOperation, ValueError):
-        return {"ResultCode": "C2B0001", "ResultDesc": "Rejected"}
+        return {"ResultCode": 1, "ResultDesc": "Rejected"}
     return {"ResultCode": "0", "ResultDesc": "Accepted"}
 
 
