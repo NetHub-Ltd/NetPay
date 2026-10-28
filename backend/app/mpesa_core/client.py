@@ -243,7 +243,7 @@ class MpesaCore:
         code = _safe_provider_code(body.get("ResponseCode"))
         if code is not None and code != "0":
             logger.info("daraja_operation_rejected operation={} provider_code={}", operation, code)
-            raise ProviderRejected("Daraja rejected the operation", provider_code=code)
+            raise ProviderRejected("Daraja rejected the operation", provider_code=code, http_status=response.status_code)
 
         request_id, conversation_id, originator_id = self._safe_ids(body)
         outcome = OperationOutcome.ACCEPTED if asynchronous or operation in {"stk_push", "stk_query", "dynamic_qr", "c2b_registration", "c2b_simulation"} else OperationOutcome.ACCEPTED
