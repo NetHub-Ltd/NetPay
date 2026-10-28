@@ -251,9 +251,9 @@ class MpesaCore:
         return password, timestamp
 
     def _callback(self, context: IntegrationContext, url: str | None) -> str:
-        selected = url or getattr(self._settings, "mpesa_public_base_url", None)
+        selected = url
         if not selected:
-            raise InvalidRequest("callback URL is required")
+            raise InvalidRequest("application-resolved callback URL is required")
         selected = validate_callback_url(selected, production=context.environment == "production")
         return selected
 
