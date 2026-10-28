@@ -139,3 +139,14 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - **Verified by read-back:** `backend/app/main.py` no longer imports or registers the Core callback router; all 9 `backend/app/mpesa_core/` files and both Core-specific test files are listed as deletions in PR #214.
 - **Not verified:** repository-wide runtime reference audit and final CI conclusions. The GitHub code-search connector indexes the default branch rather than this topic branch, so it is not evidence of a complete topic-branch reference scan.
 - **Next safe action:** retrieve the workflow conclusions and review any failures; do not merge. Replacement-class design remains a separate post-merge discussion requiring the user's approval before code is written.
+
+
+## mpesa_core complete implementation — rollback boundary (2026-10-29)
+
+- Pre-change base: dev SHA 82bae5b7c8e1704491b0aa8eec1dfa8fa948364f. Topic branch: feat/mpesa-core-complete. Initial spec commit: 09e94644e6144ca8f2ef7e397dde77131c3ae5b4.
+- Existing Core package was removed by merged PR #214; do not cherry-pick or restore its deleted files. This is a fresh design and implementation.
+- Roll back code through a reviewed revert commit on the topic branch. Preserve Git history; never reset, rebase, squash, force-push or rewrite commits.
+- Do not modify dev/main, deployment manifests, Flux resources or GHCR build/push behavior. Do not use production credentials or initiate real financial transactions.
+- Reuse existing integration/provider-operation/verification/reconciliation models where justified. If a schema change is necessary, add a new Alembic revision; do not edit applied historical migrations. Review downgrade impact before removing any columns/tables or records.
+- The spec and trackers are documentation only. No implementation/test/runtime result is claimed yet.
+- Ambiguous provider outcomes must remain unresolved; rollback must not turn them into failed/succeeded payments or trigger automatic duplicate requests.
