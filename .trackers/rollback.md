@@ -148,7 +148,7 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - Roll back code through a reviewed revert commit on the topic branch. Preserve Git history; never reset, rebase, squash, force-push or rewrite commits.
 - Do not modify dev/main, deployment manifests, Flux resources or GHCR build/push behavior. Do not use production credentials or initiate real financial transactions.
 - Reuse existing integration/provider-operation/verification/reconciliation models where justified. If a schema change is necessary, add a new Alembic revision; do not edit applied historical migrations. Review downgrade impact before removing any columns/tables or records.
-- The spec and trackers are documentation only. No implementation/test/runtime result is claimed yet.
+- Initial snapshot was documentation-only; see the implementation progress sections above for current code and test evidence.
 - Ambiguous provider outcomes must remain unresolved; rollback must not turn them into failed/succeeded payments or trigger automatic duplicate requests.
 
 
