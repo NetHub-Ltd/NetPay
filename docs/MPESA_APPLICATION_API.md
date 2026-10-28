@@ -11,7 +11,8 @@ Set `M2M_TOKEN_SIGNING_SECRET` to a high-entropy secret (at least 32 random byte
 Exchange client credentials at `POST /api/v1/oauth/token` using JSON or form-encoded `grant_type=client_credentials`, `client_id` and `client_secret`. Optional `scope` may only narrow the provisioned scopes. Access tokens expire after 15 minutes. Clients are reloaded on each protected request so revocation and current scope changes take effect.
 
 Scopes:
-- `integrations:write` — create/list integrations and request opt-in C2B registration.
+- `integrations:read` — list integration configuration/status without secrets.
+- `integrations:write` — create integrations and request opt-in C2B registration.
 - `payments:write` — initiate STK Push.
 - `payments:read` — retrieve payment status.
 
