@@ -531,8 +531,8 @@ class MpesaCore:
         """Query the Pull Transactions reconciliation endpoint."""
         self._require(context, "pull_transactions")
         payload = {"ShortCode": context.shortcode,
-                   "StartDate": request.start_at.strftime("%Y-%m-%d %H:%M:%S"),
-                   "EndDate": request.end_at.strftime("%Y-%m-%d %H:%M:%S"),
+                   "StartDate": request.start_at.astimezone(ZoneInfo("Africa/Nairobi")).strftime("%Y-%m-%d %H:%M:%S"),
+                   "EndDate": request.end_at.astimezone(ZoneInfo("Africa/Nairobi")).strftime("%Y-%m-%d %H:%M:%S"),
                    "OffSetValue": "0"}
         return await self._request(context, "pull_transactions", "POST", "/pulltransactions/v1/query", payload)
 
