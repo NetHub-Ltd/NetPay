@@ -150,3 +150,11 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - Reuse existing integration/provider-operation/verification/reconciliation models where justified. If a schema change is necessary, add a new Alembic revision; do not edit applied historical migrations. Review downgrade impact before removing any columns/tables or records.
 - The spec and trackers are documentation only. No implementation/test/runtime result is claimed yet.
 - Ambiguous provider outcomes must remain unresolved; rollback must not turn them into failed/succeeded payments or trigger automatic duplicate requests.
+
+
+## Implementation changes after initial specification
+
+- Added new Core package files and one test module; updated backend/app/main.py only for app-scoped client lifecycle. No DB schema or migration change was made.
+- Revert these changes through reviewed revert commits on feat/mpesa-core-complete only. Do not restore the removed pre-PR-214 Core implementation.
+- Current tests are pending CI verification. If startup tests reveal lifespan ordering issues, adjust lifecycle while preserving mandatory database readiness behavior.
+- Provisional product payload contracts are not to be treated as production-ready until validated. Disable capability use rather than sending guessed/incorrect payloads if contract validation finds a mismatch.
