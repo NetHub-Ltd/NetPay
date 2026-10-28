@@ -130,6 +130,7 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
     )
     monkeypatch.setattr(security, "get_settings", lambda: settings)
     monkeypatch.setattr(router_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(core_credentials, "get_settings", lambda: settings)
     fake_core = FakeCore()
     merchant_ids: list[UUID] = []
     payment_ids: list[UUID] = []
