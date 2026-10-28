@@ -24,6 +24,7 @@ from app.models.operations import AuditLog
 from app.models.operations import ProviderRequest
 from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
 from app.mpesa_core import DarajaCredentials, IntegrationContext
+from app.mpesa_core.credentials import decrypt_credentials, encrypt_credentials
 from app.mpesa_core.callbacks import callback_fingerprint, parse_c2b_callback, parse_stk_callback
 from app.mpesa_core.errors import (
     AmbiguousOutcome,
@@ -43,8 +44,6 @@ from app.payments.schemas import (
 )
 from app.payments.security import (
     Principal,
-    decrypt_credentials,
-    encrypt_credentials,
     hash_client_secret,
     issue_access_token,
     require_scopes,
