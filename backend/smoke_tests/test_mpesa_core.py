@@ -26,6 +26,7 @@ from app.mpesa_core.errors import (
     CapabilityDisabled,
     CatalogueContractUnavailable,
     InvalidRequest,
+    MalformedProviderResponse,
     OAuthError,
     OperationOutcome,
     ProviderRejected,
@@ -676,7 +677,7 @@ async def test_every_typed_operation_normalizes_provider_rejection() -> None:
             return httpx.Response(400, json={"ResponseCode": "1", "ResponseDescription": "rejected"})
         core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
         try:
-            with pytest.raises(ProviderRejected), pytest.MonkeyPatch.context() as _:
+            with pytest.raises(ProviderRejected):
                 await invoke(core)
         finally:
             await core.aclose()
