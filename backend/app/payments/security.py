@@ -52,7 +52,12 @@ def _signing_secret() -> bytes:
     return configured.get_secret_value().encode()
 
 
-def issue_access_token(client: M2MClient, merchant: Merchant, lifetime_seconds: int = 900) -> str:
+def issue_access_token(
+    client: M2MClient,
+    merchant: Merchant,
+    lifetime_seconds: int = 900,
+    scopes: list[str] | None = None,
+) -> str:
     """Issue a short-lived HS256 JWT scoped to one active M2M client and merchant."""
     now = int(datetime.now(UTC).timestamp())
     header = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
@@ -62,7 +67,7 @@ def issue_access_token(client: M2MClient, merchant: Merchant, lifetime_seconds: 
         "sub": client.client_id,
         "client_id": str(client.id),
         "merchant_id": str(merchant.id),
-        "scope": " ".join(client.scopes),
+        "scope": " ".join(client.scopes if scopes is None else scopes),
         "iat": now,
         "nbf": now,
         "exp": now + lifetime_seconds,
@@ -134,7 +139,8 @@ def require_scopes(*required_scopes: str):
         merchant = await session.get(Merchant, client.merchant_id)
         if merchant is None or merchant.status != "active" or merchant.deleted_at is not None:
             raise HTTPException(status_code=403, detail="merchant_inactive")
-        if not set(required_scopes).issubset(set(client.scopes)):
+        token_scopes = set(str(claims.get("scope", "")).split())
+        if not token_scopes.issubset(set(client.scopes)) or not set(required_scopes).issubset(token_scopes):
             raise HTTPException(status_code=403, detail="insufficient_scope")
         return Principal(claims, client)
     return dependency
