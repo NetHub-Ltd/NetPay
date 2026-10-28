@@ -208,9 +208,9 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [ ] Freeze and document capability/permission gates; sandbox-only C2B simulation; opt-in C2B registration.
 - [ ] Implement shared schemas, validation, typed errors, OAuth cache/concurrency and HTTP lifecycle.
 - [ ] Implement each documented API adapter with per-operation success/rejection/malformed/transport/ambiguous/security tests.
-- [ ] Implement callback parsers/normalizers without moving application route/state ownership into Core.
-- [ ] Run backend, migration, CI, frontend, image and container checks; record exact evidence.
-- [ ] Re-fetch and reconcile trackers/issue; open one PR targeting dev; do not merge without user approval.
+- [x] Implement callback parsers/normalizers without moving application route/state ownership into Core.
+- [x] Run backend, migration, CI, frontend, image and container checks on code head `a3264063f7b3219235c4b9bc48a620bbed691730` (CI run `40780329065` passed); rerun after the tracker/spec-only status commit.
+- [x] Re-fetch and reconcile trackers/issue; open one draft PR targeting dev (#215); do not merge without user approval.
 
 **Acceptance note:** all proposed API families must have an implemented and tested contract. If official documentation proves a proposed product name is retired, unavailable or not a distinct endpoint, record the evidence and implement the documented equivalent only when one exists; never invent an endpoint to satisfy a label.
 
@@ -220,6 +220,6 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [x] Add Core package foundation, typed operation schemas, validation, errors, OAuth/HTTP transport and app lifespan.
 - [x] Add callback parsing, safe response redaction and RSA initiator-credential encryption.
 - [x] Add mocked tests across operation payloads and shared failure/security paths.
-- [ ] Confirm current-head CI is green and fix all failures.
+- [x] Confirm CI is green on code head `a3264063f7b3219235c4b9bc48a620bbed691730` (run `40780329065`); rerun after the tracker/spec-only status commit.
 - [ ] Validate provisional API contracts (especially Bill Manager, Ratiba, B2B Express Checkout, Lipa na Bonga and Pull Transactions) against authenticated official docs/sandbox.
-- [ ] Finalize documentation and all tracker read-backs; open/maintain one PR targeting dev.
+- [x] Finalize documentation and tracker read-back; maintain one PR targeting dev (#215).

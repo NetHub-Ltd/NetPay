@@ -156,5 +156,5 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 
 - Added new Core package files and one test module; updated backend/app/main.py only for app-scoped client lifecycle. No DB schema or migration change was made.
 - Revert these changes through reviewed revert commits on feat/mpesa-core-complete only. Do not restore the removed pre-PR-214 Core implementation.
-- Current tests are pending CI verification. If startup tests reveal lifespan ordering issues, adjust lifecycle while preserving mandatory database readiness behavior.
+- CI run `40780329065` passed on code head `a3264063f7b3219235c4b9bc48a620bbed691730`: backend tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness and frontend lint/build also passed. Rerun checks after the tracker/spec-only status commit; no runtime rollback is indicated by current checks.
 - Provisional product payload contracts are not to be treated as production-ready until validated. Disable capability use rather than sending guessed/incorrect payloads if contract validation finds a mismatch.

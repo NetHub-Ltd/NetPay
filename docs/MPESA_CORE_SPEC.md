@@ -1,8 +1,8 @@
 # NetPay mpesa_core — implementation specification
 
-Status: Approved implementation scope; endpoint-level contracts must be verified against current Safaricom documentation before coding each adapter.
+Status: Approved scope implemented and mocked tests passing on code head `a3264063f7b3219235c4b9bc48a620bbed691730` (CI run `40780329065`). Several product payload contracts remain provisional and are explicitly gated from production pending authenticated documentation or sandbox verification.
 Repository baseline: dev at 82bae5b7c8e1704491b0aa8eec1dfa8fa948364f (observed 2026-10-28).
-Decision: Implement the complete proposed API inventory, including capabilities not exposed in the initial merchant UX. No adapter is complete until its contract and tests exist.
+Decision: Implement the complete proposed API inventory, including capabilities not exposed in the initial merchant UX. Every adapter has typed request/response handling and mocked tests; provisional provider contracts are not production-ready until verified.
 
 ## 1. Goal and boundaries
 

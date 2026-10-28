@@ -241,7 +241,7 @@ These are historical reports, not fresh verification performed during tracker cr
 - **Important instruction reconciliation:** older AGENTS.md says work only on work/minimal-netpay-rebuild and forbids new branches, but the current user-approved task and later tracker workflow explicitly require a topic branch from dev and one PR targeting dev. For this task, use feat/mpesa-core-complete only; do not touch work/minimal-netpay-rebuild, dev or main directly.
 - **Existing models observed:** DarajaIntegration stores integration metadata and encrypted credential material; ProviderRequest supports operation/correlation/idempotency and safe request/response metadata; PaymentVerification and reconciliation records exist. Inspect their current consumers before deciding whether any schema change is required. Do not duplicate these models or edit historical migration revisions.
 - **Initial status at branch creation:** docs/spec and issue/tracker coordination only; superseded by the Implementation progress snapshot below.
-- **Next action:** verify every proposed API against current official Safaricom docs and freeze exact contracts before coding. Catalogue names not confirmed by the current docs must be mapped to a documented endpoint/command or clearly reported as unavailable rather than fabricated.
+- **Next action:** validate provisional Bill Manager, Ratiba, B2B Express Checkout, Lipa na Bonga and Pull Transactions contracts against authenticated Safaricom documentation or sandbox. Keep these capabilities production-gated until verified; rerun checks after the tracker/spec-only status commit.
 
 
 ## Implementation progress snapshot (2026-10-29)
@@ -250,4 +250,4 @@ These are historical reports, not fresh verification performed during tracker cr
 - Updated backend/app/main.py to create one MpesaCore per FastAPI lifespan and close it during shutdown.
 - Core uses existing httpx, Pydantic, Loguru and cryptography dependencies; no new dependency, migration, deployment manifest, Flux or GHCR workflow change.
 - API adapters are implemented for documented common Daraja APIs and the proposed product families, including Tax Remittance, Pull Transactions, B2B Express Checkout, Ratiba, Lipa na Bonga and Bill Manager operations. Unverified/ambiguous product payloads must remain flagged for sandbox validation, not advertised as production-verified.
-- The new test suite has been committed but has not yet been confirmed green in CI. Do not claim tests passed until a run associated with the latest branch head completes successfully.
+- CI run `40780329065` passed on code head `a3264063f7b3219235c4b9bc48a620bbed691730`: backend smoke tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness, frontend lint and frontend build passed on the same head. A tracker/spec-only commit follows, so verify the new head before review.
