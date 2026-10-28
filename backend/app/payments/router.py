@@ -28,6 +28,7 @@ from app.mpesa_core.credentials import decrypt_credentials, encrypt_credentials
 from app.mpesa_core.callbacks import callback_fingerprint, parse_c2b_callback, parse_stk_callback
 from app.mpesa_core.errors import (
     AmbiguousOutcome,
+    CredentialStorageError,
     MalformedProviderResponse,
     MpesaCoreError,
     ProviderRejected,
@@ -106,6 +107,10 @@ def _context(row: DarajaIntegration) -> IntegrationContext:
             passkey=SecretStr(raw["passkey"]),
             credential_version=row.credential_version,
         )
+    except CredentialStorageError as exc:
+        code = exc.code
+        status_code = 503 if code.startswith("credential_encryption_") else 500
+        raise HTTPException(status_code=status_code, detail=code) from None
     except (KeyError, TypeError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=500, detail="stored_credentials_invalid") from exc
     return IntegrationContext(
@@ -306,8 +311,8 @@ async def create_integration(
             "consumer_secret": payload.consumer_secret.get_secret_value(),
             "passkey": payload.passkey.get_secret_value(),
         }, separators=(",", ":")).encode())
-    except HTTPException:
-        raise
+    except CredentialStorageError as exc:
+        raise HTTPException(status_code=503, detail=exc.code) from None
     integration.stk_callback_url = f"{base_url}/callbacks/mpesa/stk/{integration.integration_id}"
     integration.c2b_validation_url = f"{base_url}/callbacks/mpesa/c2b/{integration.integration_id}/validation"
     integration.c2b_confirmation_url = f"{base_url}/callbacks/mpesa/c2b/{integration.integration_id}/confirmation"
