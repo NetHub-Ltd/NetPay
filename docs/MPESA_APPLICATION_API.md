@@ -61,3 +61,9 @@ The callback handlers remain disabled until opt-in. This implementation is not e
 ## Verification boundary
 
 Automated tests must prove route-level behavior, PostgreSQL uniqueness/persistence, merchant isolation, callback deduplication and atomic outbox behavior. CI fakes Daraja; only an explicitly configured, authorized sandbox can prove provider interoperability. See issue #216 for the exhaustive readiness gate.
+
+## Credential rotation and integration inspection
+
+`GET /api/v1/integrations` requires `integrations:read` and returns only the authenticated merchant's integration status, callback URLs, credential validation timestamp/version, and C2B registration state. It never returns credentials.
+
+Rotate credentials with `PUT /api/v1/integrations/{integration_id}/credentials`. NetPay validates replacement OAuth credentials before replacing encrypted material and incrementing the credential version. Failed validation leaves the previous credentials active. The version participates in Core token-cache identity so a token cached for the previous credential set is not reused.
