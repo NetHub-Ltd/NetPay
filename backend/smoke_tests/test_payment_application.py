@@ -432,6 +432,13 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
             )
             assert registration.status_code == 200, registration.text
             assert fake_core.registration_calls == 1
+            registration_replay = client.post(
+                f"/api/v1/integrations/{integration['integration_id']}/c2b/register",
+                headers=bearer,
+            )
+            assert registration_replay.status_code == 200
+            assert registration_replay.json()["provider_outcome"] == "already_registered"
+            assert fake_core.registration_calls == 1
             validation_url = f"/callbacks/mpesa/c2b/{integration['integration_id']}/validation"
             valid_validation = client.post(validation_url, json=c2b_payload)
             assert valid_validation.json()["ResultCode"] == 0
