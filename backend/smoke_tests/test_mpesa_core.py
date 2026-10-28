@@ -312,7 +312,14 @@ async def test_c2b_registration_uses_documented_payload_and_is_capability_gated(
             validation_url="https://payments.example.test/c2b/validation",
             confirmation_url="https://payments.example.test/c2b/confirmation",
         ))
+        await core.simulate_c2b(context(), C2BSimulationRequest(
+            phone_number="0712345678", amount_minor=1000, bill_reference="ORDER-1",
+        ))
         request = next(r for r in seen if r.url.path == "/mpesa/c2b/v1/registerurl")
+        simulation = next(r for r in seen if r.url.path == "/mpesa/c2b/v1/simulate")
+        simulation_payload = json.loads(simulation.content)
+        assert simulation_payload["CommandID"] == "CustomerPayBillOnline"
+        assert simulation_payload["Msisdn"] == "254712345678"
         payload = json.loads(request.content)
         assert payload["ShortCode"] == "174379"
         assert payload["ResponseType"] == "Completed"
@@ -842,5 +849,26 @@ async def test_provisional_product_contracts_are_blocked_in_production() -> None
                 callback_url="https://example.test/bill",
             ))
         assert seen == []
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_b2b_command_variants_are_passed_without_silent_substitution() -> None:
+    seen: list[httpx.Request] = []
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({}, seen)))
+    commands = [
+        "BusinessPayBill", "BusinessBuyGoods", "BusinessToBusinessTransfer",
+        "BusinessTransferFromMMFToUtility", "BusinessTransferFromUtilityToMMF", "BusinessPayToBulk",
+    ]
+    try:
+        for index, command in enumerate(commands):
+            await core.b2b_payment(context(), B2BPaymentRequest(
+                party_b="600000", amount_minor=100, command_id=command,
+                result_url="https://example.test/result", timeout_url="https://example.test/timeout",
+                account_reference=f"INV-{index}",
+            ))
+        bodies = [json.loads(r.content) for r in seen if r.url.path == "/mpesa/b2b/v1/paymentrequest"]
+        assert [body["CommandID"] for body in bodies] == commands
     finally:
         await core.aclose()
