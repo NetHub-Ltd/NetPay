@@ -308,7 +308,7 @@ class RatibaStandingOrderRequest(CoreModel):
     description: str = Field(min_length=1, max_length=13)
     frequency: Literal["1", "2", "3", "4", "5", "6", "7", "8", "9"]
     start_date: str = Field(pattern=r"^\d{8}$")
-    end_date: str = Field(pattern=r"^\\d{8}$")
+    end_date: str = Field(pattern=r"^\d{8}$")
 
     @field_validator("amount_minor")
     @classmethod
