@@ -158,3 +158,13 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Revert these changes through reviewed revert commits on feat/mpesa-core-complete only. Do not restore the removed pre-PR-214 Core implementation.
 - CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness and frontend lint/build also passed. The branch now contains tracker/spec-only commits after the tested code head; rerun checks on the current branch tip before review. No runtime rollback is indicated by current checks.
 - Provisional product payload contracts are not to be treated as production-ready until validated. Disable capability use rather than sending guessed/incorrect payloads if contract validation finds a mismatch.
+
+
+## Post-merge verification task rollback boundary — 2026-10-29
+
+- Baseline `dev` SHA: `3d77327c1d00f713b7ec088492dc91dd953d139c`; task branch `test/mpesa-e2e-verification-216`; issue #216.
+- This branch is for application-level payment lifecycle verification and narrowly scoped fixes/tests. Preserve all history; rollback only through reviewed revert commits on this branch and a reviewed PR. Never reset/rebase/squash/force-push.
+- No application code changes had been made at the tracker initialization point.
+- No historical migration edits, Flux/deployment-manifest changes, or GHCR build/push changes. PostgreSQL is required for startup; Redis remains auxiliary under current design.
+- Never use production credentials or perform real financial transactions. Keep provisional API families gated until their contracts are verified.
+- Before changing payment-state behavior, inspect existing models/constraints and write explicit invariants. Ambiguous provider outcomes must remain unknown/reconcilable; never convert them into false success/failure or issue blind duplicate mutations.
