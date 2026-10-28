@@ -72,6 +72,7 @@ from app.mpesa_core.validation import normalize_ke_phone, require_capability, va
 
 _SANDBOX = "https://sandbox.safaricom.co.ke"
 _PRODUCTION = "https://api.safaricom.co.ke"
+_PROVISIONAL_CAPABILITIES = frozenset({"pull_transactions", "b2b_express_checkout", "ratiba", "lipa_na_bonga", "bill_manager"})
 
 
 class MpesaCore:
@@ -180,6 +181,8 @@ class MpesaCore:
         validate_context(context)
         if capability not in context.enabled_capabilities:
             raise CapabilityDisabled(f"capability '{capability}' is not enabled")
+        if context.environment == "production" and capability in _PROVISIONAL_CAPABILITIES:
+            raise CapabilityDisabled(f"capability '{capability}' is gated from production pending contract verification")
         if self._closed:
             raise InvalidRequest("mpesa_core client is closed")
 
