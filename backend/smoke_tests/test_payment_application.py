@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import delete
 from sqlmodel import Session as SyncSession, create_engine, select
+from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
 
 from app import main as main_module
 from app.core.config import Settings
@@ -146,7 +147,7 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
     integration_ids: list[UUID] = []
     client_ids: list[UUID] = []
     sync_engine = create_engine(settings.alembic_database_url(), pool_pre_ping=True)
-    with TestClient(main_module.app) as client:
+    with TestClient(main_module.app, raise_server_exceptions=False) as client:
         main_module.app.state.mpesa_core = fake_core
         try:
             with SyncSession(sync_engine, expire_on_commit=False) as session:
@@ -256,6 +257,19 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
                 }},
             }
             callback_url = f"/callbacks/mpesa/stk/{integration['integration_id']}"
+            original_commit = SQLModelAsyncSession.commit
+
+            async def fail_commit(_session: SQLModelAsyncSession) -> None:
+                raise RuntimeError("simulated PostgreSQL commit failure")
+
+            monkeypatch.setattr(SQLModelAsyncSession, "commit", fail_commit)
+            failed_callback_commit = client.post(callback_url, json=callback)
+            monkeypatch.setattr(SQLModelAsyncSession, "commit", original_commit)
+            assert failed_callback_commit.status_code == 500
+            pending_after_rollback = client.get(f"/api/v1/payments/{payment['id']}", headers=bearer)
+            assert pending_after_rollback.json()["status"] == "pending"
+
+            # The callback and payment/outbox transaction can be retried after DB recovery.
             assert client.post(callback_url, json=callback).status_code == 200
             status_response = client.get(f"/api/v1/payments/{payment['id']}", headers=bearer)
             assert status_response.status_code == 200
