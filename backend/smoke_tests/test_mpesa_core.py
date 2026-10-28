@@ -148,7 +148,7 @@ def test_callback_url_requires_absolute_http_url_and_https_in_production() -> No
 
 def test_stk_request_rejects_fractional_kes() -> None:
     with pytest.raises(ValidationError):
-        STKPushRequest(phone_number="0712345678", amount_minor=150, account_reference="INV", description="Sale")
+        STKPushRequest(phone_number="0712345678", amount_minor=150, account_reference="INV", description="Sale", callback_url="https://example.test/stk")
 
 
 @pytest.mark.asyncio
@@ -821,3 +821,11 @@ async def test_oauth_response_requires_expiry_metadata() -> None:
             await core._token(context())
     finally:
         await core.aclose()
+
+
+def test_stk_request_requires_callback_url() -> None:
+    with pytest.raises(ValidationError):
+        STKPushRequest(
+            phone_number="0712345678", amount_minor=100,
+            account_reference="INV", description="Sale",
+        )
