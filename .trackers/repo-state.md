@@ -271,3 +271,11 @@ These are historical reports, not fresh verification performed during tracker cr
 - **Post-merge CI evidence:** CI run `40781707731` passed backend smoke tests, initial migration, PostgreSQL/Redis checks, image build (no push) and container startup smoke. Readiness `40781707758`, frontend lint `40781708005`, frontend build `40781707798` passed on the same SHA. These are verified workflow conclusions, not proof of Daraja sandbox behavior.
 - **External contract boundary:** Pull Transactions, Bill Manager, Ratiba, B2B Express Checkout and Lipa na Bonga remain provisional and production-gated pending authenticated official docs or authorized sandbox contract tests.
 - **Constraints:** no direct push to `dev`/`main`, no history rewrite, no Flux/deployment manifest changes, no GHCR build/push changes, no production credentials/real transactions, preserve historical migrations. Redis remains auxiliary unless evidence shows otherwise; PostgreSQL is required for startup.
+
+
+## Audit finding — current application integration gap (2026-10-29)
+
+- Audit document: `docs/MPESA_E2E_VERIFICATION.md`, commit `0f318c0e68b1325236069e1a94a6bc7b0a448af5` on `test/mpesa-e2e-verification-216`.
+- Source-tree evidence: `backend/app/` contains `main.py`, `core/`, `models/`, and `mpesa_core/`, but no app API/router package, M2M auth dependency, payment service or callback route handlers. Core callback functions are pure parsers only. Models/constraints are persistence primitives, not a complete payment flow.
+- README claims about implemented M2M auth, integration onboarding, STK state/callback processing, C2B confirmation and outbox delivery are not supported by the audited source tree at the current baseline; treat as stale until implementation evidence exists.
+- No runtime code changed in this task. No unauthenticated payment routes added. Issue #216 documents the scope boundary: next work requires the secured API/service slice rather than tests alone.
