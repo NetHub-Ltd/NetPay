@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 type Tone = "teal" | "navy" | "muted" | "onNavy";
 
 const tones: Record<Tone, string> = {
-  teal: "bg-[var(--teal-soft)] text-[var(--teal-dark)]",
+  teal: "bg-[var(--accent-soft)] text-[var(--accent-hover)]",
   navy: "bg-[var(--navy)] text-[var(--on-navy)]",
   muted: "bg-[var(--surface)] text-[var(--muted)] border border-[var(--line)]",
   onNavy: "bg-white/10 text-[var(--on-navy-muted)]",

@@ -20,7 +20,7 @@ const plexMono = IBM_Plex_Mono({
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 
 /** Runs before paint to restore data-theme and avoid flash. */
-const themeInitScript = `(function(){try{var k='netpay_theme';var t=localStorage.getItem(k);if(t==='harbor'||t==='ink'||t==='signal'){document.documentElement.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','harbor');}}catch(e){document.documentElement.setAttribute('data-theme','harbor');}})();`;
+const themeInitScript = `(function(){try{var k='netpay_theme';var t=localStorage.getItem(k);if(t==='harbor'||t==='shamba'||t==='ledger'){document.documentElement.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','harbor');}}catch(e){document.documentElement.setAttribute('data-theme','harbor');}})();`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
