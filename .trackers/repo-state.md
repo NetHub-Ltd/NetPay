@@ -259,3 +259,14 @@ These are historical reports, not fresh verification performed during tracker cr
 - Core uses existing httpx, Pydantic, Loguru and cryptography dependencies; no new dependency, migration, deployment manifest, Flux or GHCR workflow change.
 - API adapters are implemented for documented common Daraja APIs and the proposed product families, including Tax Remittance, Pull Transactions, B2B Express Checkout, Ratiba, Lipa na Bonga and Bill Manager operations. Unverified/ambiguous product payloads must remain flagged for sandbox validation, not advertised as production-verified.
 - CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend smoke tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness, frontend lint and frontend build passed on the same head. Tracker/spec-only commits follow the tested code head; verify current branch-tip checks before review.
+
+## Approved #217 implementation — current branch state (2026-10-29 UTC)
+
+- Contract approval recorded in [issue #217](https://github.com/NetHub-Ltd/NetPay/issues/217).
+- Working branch `feat/mpesa-application-flow-217` was created from `dev` SHA `3d77327c1d00f713b7ec088492dc91dd953d139c`.
+- Added application API modules under `backend/app/payments/`, Core credential encryption in `backend/app/mpesa_core/credentials.py`, Core OAuth validation method, M2M signing setting, one-time provisioning script, API contract documentation, and PostgreSQL-backed application integration tests.
+- Main API is registered through `backend/app/main.py`; existing model fields and Alembic revisions were reused. No historical migration was edited and no new migration is currently planned.
+- **Not yet verified:** Python import/typing/runtime correctness, DB integration test behavior, migration checks on branch tip, all CI workflows, live Daraja sandbox interoperability, callback acknowledgement contract, and C2B provider registration. CI is the next evidence gate.
+- Current work is application runtime code and tests, unlike the earlier audit-only branch. Flux/deployment manifests and GHCR build/push behavior have not been intentionally changed.
+- Issue #216 remains a verification-only gate after #217's reviewed merge to `dev`.
+
