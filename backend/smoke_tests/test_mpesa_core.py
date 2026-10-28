@@ -181,7 +181,7 @@ async def test_oauth_requests_are_shared_under_concurrency() -> None:
         calls["stk"] += 1
         return httpx.Response(200, json={"ResponseCode": "0", "CheckoutRequestID": f"checkout-{calls['stk']}"})
     core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
-    req = STKPushRequest(phone_number="254712345678", amount_minor=100, account_reference="INV", description="Sale")
+    req = STKPushRequest(phone_number="254712345678", amount_minor=100, account_reference="INV", description="Sale", callback_url="https://example.test/stk")
     try:
         results = await asyncio.gather(*(core.stk_push(context(), req) for _ in range(8)))
         assert calls == {"oauth": 1, "stk": 8}
@@ -266,6 +266,7 @@ async def test_timeout_after_possible_send_is_ambiguous_and_not_retried() -> Non
         with pytest.raises(AmbiguousOutcome):
             await core.stk_push(context(), STKPushRequest(
                 phone_number="254712345678", amount_minor=100, account_reference="INV", description="Sale",
+                callback_url="https://example.test/stk",
             ))
         assert attempts == 1
     finally:
