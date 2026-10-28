@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import get_settings
@@ -47,7 +47,7 @@ def verify_client_secret(secret: str, encoded: str) -> bool:
 
 def _signing_secret() -> bytes:
     configured = get_settings().m2m_token_signing_secret
-    if configured is None or not configured.get_secret_value():
+    if configured is None or len(configured.get_secret_value().encode()) < 32:
         raise HTTPException(status_code=503, detail="m2m_auth_not_configured")
     return configured.get_secret_value().encode()
 
