@@ -27,6 +27,9 @@ from app.mpesa_core.errors import (
     TransportFailure,
 )
 from app.mpesa_core.schemas import (
+    BillManagerBulkCancelInvoiceRequest,
+    BillManagerBulkInvoiceRequest,
+    LipaNaBongaQuoteRequest,
     B2BExpressCheckoutRequest,
     BillManagerCancelInvoiceRequest,
     BillManagerInvoiceItem,
@@ -516,5 +519,38 @@ async def test_provider_response_metadata_redacts_secret_fields_and_masks_phone(
         assert result.response["PhoneNumber"] == "***5678"
         assert "do-not-return-this" not in repr(result)
         assert "254712345678" not in repr(result)
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_bill_manager_bulk_update_and_bonga_quote_endpoints() -> None:
+    seen: list[httpx.Request] = []
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({}, seen)))
+    invoice = BillManagerInvoiceRequest(
+        external_reference="INV-2", billed_full_name="Test Customer",
+        billed_phone_number="0712345678", amount_minor=10000, due_date="2026-11-15",
+        account_reference="ACC-2", invoice_name="Service",
+    )
+    try:
+        await core.bill_manager_bulk_invoices(context(), BillManagerBulkInvoiceRequest(invoices=[invoice]))
+        await core.bill_manager_cancel_bulk_invoices(context(), BillManagerBulkCancelInvoiceRequest(
+            external_references=["INV-2", "INV-3"],
+        ))
+        await core.bill_manager_update_opt_in(context(), BillManagerOptInRequest(
+            email="billing@example.test", official_contact="0712345678",
+            callback_url="https://example.test/bill-manager",
+        ))
+        await core.bill_manager_update_invoice(context(), invoice)
+        await core.bill_manager_update_bulk_invoices(context(), BillManagerBulkInvoiceRequest(invoices=[invoice]))
+        await core.calculate_lipa_na_bonga_value(context(), LipaNaBongaQuoteRequest(bonga_points=400))
+        assert {r.url.path for r in seen} >= {
+            "/v1/billmanager-invoice/bulk-invoicing",
+            "/v1/billmanager-invoice/cancel-bulk-invoice",
+            "/v1/billmanager-invoice/change-optin-details",
+            "/v1/billmanager-invoice/change-invoice",
+            "/v1/billmanager-invoice/change-invoices",
+            "/v1/lipa/na/bonga/calculate-points",
+        }
     finally:
         await core.aclose()
