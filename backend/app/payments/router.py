@@ -642,23 +642,70 @@ async def c2b_validation(
     payload: dict[str, Any],
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    """Validate an explicitly enabled C2B callback; disabled integrations are rejected."""
+    """Persist and deduplicate the validation decision without retaining raw callback PII."""
     integration = await session.scalar(select(DarajaIntegration).where(
         DarajaIntegration.integration_id == integration_id,
         DarajaIntegration.deleted_at.is_(None),
     ))
     if integration is None or integration.status != "active" or not integration.c2b_enabled:
         return {"ResultCode": 1, "ResultDesc": "Rejected"}
+
+    fingerprint = callback_fingerprint(payload)
+    safe_payload: dict[str, Any] = {"field_names": sorted(payload.keys())}
+    processing_status = "rejected"
+    processing_error = "invalid_c2b_validation"
+    callback = None
     try:
         callback = parse_c2b_callback(payload)
         amount = Decimal(callback.trans_amount)
-        if amount <= 0 or amount * 100 != int(amount * 100):
-            raise ValueError
-        if callback.business_short_code != integration.shortcode or not 1 <= len(callback.trans_id) <= 64:
-            raise ValueError
-    except (MpesaCoreError, InvalidOperation, ValueError):
-        return {"ResultCode": 1, "ResultDesc": "Rejected"}
-    return {"ResultCode": 0, "ResultDesc": "Accepted"}
+        if (
+            amount <= 0
+            or amount * 100 != int(amount * 100)
+            or callback.business_short_code != integration.shortcode
+            or not 1 <= len(callback.trans_id) <= 64
+        ):
+            raise ValueError("c2b_validation_mismatch")
+        phone_last4 = None
+        if callback.msisdn:
+            phone_last4 = normalize_ke_phone(callback.msisdn)[-4:]
+        safe_payload = {
+            "trans_id": callback.trans_id,
+            "trans_amount": str(amount),
+            "business_short_code": callback.business_short_code,
+            "bill_ref_number": callback.bill_ref_number,
+            "msisdn_last4": phone_last4,
+        }
+        processing_status = "processed"
+        processing_error = ""
+    except (MpesaCoreError, InvalidOperation, ValueError) as exc:
+        processing_error = exc.code if isinstance(exc, MpesaCoreError) else "c2b_validation_mismatch"
+
+    now = datetime.now(UTC)
+    row = ProviderCallback(
+        integration_id=integration.id,
+        provider_event_id=fingerprint,
+        merchant_id=integration.merchant_id,
+        callback_type="c2b_validation",
+        dedupe_fingerprint=fingerprint,
+        provider_transaction_id=callback.trans_id if callback is not None else None,
+        payload=safe_payload,
+        processing_status=processing_status,
+        processing_error=processing_error or None,
+        processed_at=now,
+    )
+    session.add(row)
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        existing = await session.scalar(select(ProviderCallback).where(
+            ProviderCallback.integration_id == integration.id,
+            ProviderCallback.dedupe_fingerprint == fingerprint,
+        ))
+        accepted = existing is not None and existing.processing_status == "processed"
+        return {"ResultCode": 0 if accepted else 1, "ResultDesc": "Accepted" if accepted else "Rejected"}
+    accepted = processing_status == "processed"
+    return {"ResultCode": 0 if accepted else 1, "ResultDesc": "Accepted" if accepted else "Rejected"}
 
 
 @router.post("/callbacks/mpesa/c2b/{integration_id}/confirmation", include_in_schema=False)
