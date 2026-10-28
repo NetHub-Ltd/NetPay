@@ -338,6 +338,38 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
             still_pending = client.get(f"/api/v1/payments/{invalid_payment['id']}", headers=bearer)
             assert still_pending.json()["status"] == "pending"
 
+            # A provider receipt already assigned to another payment cannot settle this one.
+            receipt_conflict_payload = {
+                **request_payload,
+                "merchant_reference": f"receipt-conflict-{uuid4().hex[:8]}",
+            }
+            receipt_conflict_response = client.post(
+                "/api/v1/payments/stk",
+                headers={**bearer, "Idempotency-Key": "flow-key-receipt-conflict"},
+                json=receipt_conflict_payload,
+            )
+            assert receipt_conflict_response.status_code == 202
+            receipt_conflict_payment = receipt_conflict_response.json()
+            payment_ids.append(UUID(receipt_conflict_payment["id"]))
+            reused_receipt_callback = {
+                "Body": {"stkCallback": {
+                    "MerchantRequestID": receipt_conflict_payment["provider_merchant_request_id"],
+                    "CheckoutRequestID": receipt_conflict_payment["provider_checkout_request_id"],
+                    "ResultCode": 0,
+                    "ResultDesc": "Success",
+                    "CallbackMetadata": {"Item": [
+                        {"Name": "Amount", "Value": 100},
+                        {"Name": "MpesaReceiptNumber", "Value": "QAB123XYZ"},
+                        {"Name": "PhoneNumber", "Value": 254712345678},
+                    ]},
+                }},
+            }
+            assert client.post(callback_url, json=reused_receipt_callback).status_code == 200
+            receipt_conflict_status = client.get(
+                f"/api/v1/payments/{receipt_conflict_payment['id']}", headers=bearer
+            )
+            assert receipt_conflict_status.json()["status"] == "pending"
+
             # A potentially transmitted request with no definitive response remains unknown.
             fake_core.next_stk_error = AmbiguousOutcome("test timeout after send")
             ambiguous_request = {
@@ -434,9 +466,14 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
                     ProviderCallback.integration_id == integration_ids[0],
                     ProviderCallback.callback_type == "stk",
                 )).all()
-                assert len(stk_callbacks) == 2
+                assert len(stk_callbacks) == 3
                 assert sum(row.processing_status == "processed" for row in stk_callbacks) == 1
-                assert sum(row.processing_status == "rejected" for row in stk_callbacks) == 1
+                assert sum(row.processing_status == "rejected" for row in stk_callbacks) == 2
+                successful_attempts = session.exec(select(PaymentAttempt).where(
+                    PaymentAttempt.payment_id == payment_ids[0],
+                )).all()
+                assert len(successful_attempts) == 1
+                assert successful_attempts[0].status == "succeeded"
                 session.exec(delete(EventOutbox).where(EventOutbox.merchant_id.in_(merchant_ids)))
                 session.exec(delete(ProviderCallback).where(ProviderCallback.integration_id.in_(integration_ids)))
                 session.exec(delete(ProviderRequest).where(ProviderRequest.merchant_id.in_(merchant_ids)))
