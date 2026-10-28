@@ -242,3 +242,12 @@ These are historical reports, not fresh verification performed during tracker cr
 - **Existing models observed:** DarajaIntegration stores integration metadata and encrypted credential material; ProviderRequest supports operation/correlation/idempotency and safe request/response metadata; PaymentVerification and reconciliation records exist. Inspect their current consumers before deciding whether any schema change is required. Do not duplicate these models or edit historical migration revisions.
 - **Status:** docs/spec and issue/tracker coordination only. No Core implementation, schema migration, test run, workflow change or deployment action has occurred yet.
 - **Next action:** verify every proposed API against current official Safaricom docs and freeze exact contracts before coding. Catalogue names not confirmed by the current docs must be mapped to a documented endpoint/command or clearly reported as unavailable rather than fabricated.
+
+
+## Implementation progress snapshot (2026-10-29)
+
+- Added docs/MPESA_CORE_SPEC.md and backend/app/mpesa_core/{__init__.py,client.py,schemas.py,validation.py,errors.py,callbacks.py}; added backend/smoke_tests/test_mpesa_core.py.
+- Updated backend/app/main.py to create one MpesaCore per FastAPI lifespan and close it during shutdown.
+- Core uses existing httpx, Pydantic, Loguru and cryptography dependencies; no new dependency, migration, deployment manifest, Flux or GHCR workflow change.
+- API adapters are implemented for documented common Daraja APIs and the proposed product families, including Tax Remittance, Pull Transactions, B2B Express Checkout, Ratiba, Lipa na Bonga and Bill Manager operations. Unverified/ambiguous product payloads must remain flagged for sandbox validation, not advertised as production-verified.
+- The new test suite has been committed but has not yet been confirmed green in CI. Do not claim tests passed until a run associated with the latest branch head completes successfully.
