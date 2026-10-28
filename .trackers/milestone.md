@@ -238,4 +238,13 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [ ] Only after approved merge, execute #216 exhaustive test matrix and decide controlled test-environment readiness.
 
 **Evidence discipline:** code being written is not evidence that behavior works. Current branch tests/CI are not yet verified.
+## #217 verification checkpoint — 2026-10-29 UTC
+
+- Draft PR [#218](https://github.com/NetHub-Ltd/NetPay/pull/218) is open against `dev`; it has not been merged and remains under review.
+- **Observed CI failure and fix:** run [40787891591](https://github.com/NetHub-Ltd/NetPay/actions/runs/40787891591) failed because the test expected one STK callback row while the implementation correctly retained both the processed callback and a mismatched/rejected callback. The assertion was corrected to verify one `processed` and one `rejected` record.
+- **Observed backend test success:** run [40788087483](https://github.com/NetHub-Ltd/NetPay/actions/runs/40788087483) completed backend migration, test, PostgreSQL and Redis steps successfully; its log reported **65 passed, 1 warning**. Its container image/startup job was still in progress at observation time, so it was not yet a complete workflow success.
+- A PostgreSQL commit-failure rollback test has since been added for callback/payment/outbox atomicity. Latest code also validates production callback URL HTTPS and selects the STK transaction type from integration product type.
+- **Current-head status:** CI, backend readiness, frontend lint and frontend build have been triggered for the newer head and were still in progress at last observation. Do not mark the PR ready until the exact latest-head checks finish successfully.
+- No live Daraja sandbox transaction has been performed. Fake-Core tests prove application behavior only, not provider interoperability.
+- #216 remains a separate verification-only readiness gate after #217's reviewed merge to `dev`.
 
