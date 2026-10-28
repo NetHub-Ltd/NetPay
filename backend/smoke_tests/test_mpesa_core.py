@@ -27,6 +27,7 @@ from app.mpesa_core.errors import (
     CatalogueContractUnavailable,
     InvalidRequest,
     MalformedProviderResponse,
+    MissingCredential,
     OAuthError,
     OperationOutcome,
     ProviderRejected,
@@ -762,12 +763,12 @@ async def test_missing_passkey_or_initiator_credentials_fail_before_network_io()
         passkey=SecretStr("passkey-test"),
     )})
     try:
-        with pytest.raises(Exception, match="passkey"):
+        with pytest.raises(MissingCredential, match="passkey"):
             await core.stk_push(no_passkey, STKPushRequest(
                 phone_number="0712345678", amount_minor=100, account_reference="INV",
                 description="Sale", callback_url="https://example.test/stk",
             ))
-        with pytest.raises(Exception, match="initiator name"):
+        with pytest.raises(MissingCredential, match="initiator name"):
             await core.account_balance(no_initiator, AccountBalanceRequest(
                 result_url="https://example.test/result", timeout_url="https://example.test/timeout",
             ))
