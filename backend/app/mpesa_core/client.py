@@ -363,7 +363,7 @@ class MpesaCore:
                    "CPI": request.credit_party_identifier, "Size": str(request.size)}
         return await self._request(context, "dynamic_qr", "POST", "/mpesa/qrcode/v1/generate", payload)
 
-    def _initiator_payload(self, context: IntegrationContext) -> dict[str, str]:
+    def _initiator_payload(self, context: IntegrationContext, *, field_name: str = "Initiator") -> dict[str, str]:
         """Resolve the initiator and create Daraja's RSA-encrypted credential when needed."""
         initiator = context.credentials.initiator_name
         if not initiator:
@@ -389,7 +389,7 @@ class MpesaCore:
                 security_value = base64.b64encode(encrypted).decode("ascii")
             except (ValueError, TypeError):
                 raise MissingCredential("Daraja credential encryption configuration is invalid") from None
-        return {"Initiator": initiator, "SecurityCredential": security_value}
+        return {field_name: initiator, "SecurityCredential": security_value}
 
     async def transaction_status(self, context: IntegrationContext, request: TransactionStatusRequest) -> ProviderOperationResult:
         """Request asynchronous transaction status verification."""
@@ -440,7 +440,7 @@ class MpesaCore:
         """Initiate a B2C disbursement; completion is reported asynchronously."""
         self._require(context, "b2c")
         payload = {
-            **self._initiator_payload(context), "OriginatorConversationID": request.originator_conversation_id,
+            **self._initiator_payload(context, field_name="InitiatorName"),
             "CommandID": request.command_id, "Amount": request.amount_minor // 100,
             "PartyA": context.shortcode, "PartyB": normalize_ke_phone(request.phone_number),
             "Remarks": request.remarks,
