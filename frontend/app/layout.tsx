@@ -19,6 +19,9 @@ const plexMono = IBM_Plex_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 
+/** Runs before paint to restore data-theme and avoid flash. */
+const themeInitScript = `(function(){try{var k='netpay_theme';var t=localStorage.getItem(k);if(t==='harbor'||t==='ink'||t==='signal'){document.documentElement.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','harbor');}}catch(e){document.documentElement.setAttribute('data-theme','harbor');}})();`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -60,7 +63,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${jakarta.variable} ${plexMono.variable}`} data-theme="harbor" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className={jakarta.className}>{children}</body>
     </html>
   );

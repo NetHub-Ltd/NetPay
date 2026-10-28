@@ -1,66 +1,119 @@
 @import "tailwindcss";
 
-/* NetPay public theme foundation (U1)
-   Solid navy header/chrome; teal accent; cool surface canvas.
-   Components should prefer these tokens over raw hex. */
+/*
+  NetPay theme system
+  - data-theme="harbor" | "ink" | "signal" on <html>
+  - Default: harbor (current product direction, fixed contrast)
+*/
 
-:root {
+:root,
+html[data-theme="harbor"] {
   color-scheme: light;
+  --theme-name: "Harbor";
+  --theme-tagline: "Deep navy chrome, classic teal signal";
 
-  /* Brand / structure */
   --navy: #101b2d;
   --navy-soft: #172740;
   --navy-muted: #24344d;
-
-  /* Accent */
   --teal: #20b89a;
   --teal-dark: #07836f;
   --teal-soft: #e6f8f3;
-
-  /* Text */
-  --ink: #142033;
-  --muted: #5a6b82;
-  --on-navy: #f8fafc;
-  --on-navy-muted: rgba(248, 250, 252, 0.72);
-
-  /* Surfaces */
-  --bg: #eef1f5;
+  --ink: #0f172a;
+  --muted: #5b6b81;
+  --on-navy: #f1f5f9;
+  --on-navy-muted: #94a3b8;
+  --bg: #eef2f6;
   --panel: #ffffff;
   --surface: #f5f7fa;
-  --line: #e3e8ef;
-  --line-strong: #d0d7e2;
-
-  /* Semantic */
-  --danger: #c43c3c;
+  --line: #d8dee8;
+  --line-strong: #c5cedc;
+  --danger: #c4352c;
   --danger-soft: #fceeee;
   --warn: #b86a00;
   --warn-soft: #fff4e5;
   --ok: #07836f;
   --ok-soft: #e6f8f3;
-
-  /* Focus / elevation */
   --focus-ring: #07836f;
-  --shadow-sm: 0 1px 2px rgba(16, 27, 45, 0.05);
-  --shadow: 0 1px 2px rgba(16, 27, 45, 0.05), 0 10px 28px rgba(16, 27, 45, 0.08);
-  --shadow-lg: 0 24px 60px -24px rgba(16, 27, 45, 0.28);
-
-  /* Radius */
+  --shadow-sm: 0 1px 2px rgba(16, 27, 45, 0.06);
+  --shadow: 0 1px 2px rgba(16, 27, 45, 0.05), 0 12px 32px rgba(16, 27, 45, 0.1);
+  --shadow-lg: 0 28px 64px -24px rgba(16, 27, 45, 0.32);
   --radius-sm: 10px;
   --radius: 14px;
   --radius-lg: 20px;
   --radius-xl: 24px;
-
-  /* Type (weights used with Plus Jakarta Sans) */
   --font-sans: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-mono-stack), ui-monospace, "SFMono-Regular", Menlo, monospace;
   --text-body: 0.9375rem;
   --leading-body: 1.55;
 }
 
+html[data-theme="ink"] {
+  color-scheme: light;
+  --theme-name: "Ink";
+  --theme-tagline: "Ink navy + signal teal — higher contrast infrastructure look";
+
+  --navy: #0b1220;
+  --navy-soft: #121a2b;
+  --navy-muted: #1c2740;
+  --teal: #12b89a;
+  --teal-dark: #0a7a68;
+  --teal-soft: #e6faf5;
+  --ink: #0f172a;
+  --muted: #5b6b81;
+  --on-navy: #f1f5f9;
+  --on-navy-muted: #94a3b8;
+  --bg: #eef2f6;
+  --panel: #ffffff;
+  --surface: #f4f7fb;
+  --line: #d8dee8;
+  --line-strong: #c5cedc;
+  --danger: #c4352c;
+  --danger-soft: #fceeee;
+  --warn: #b86a00;
+  --warn-soft: #fff4e5;
+  --ok: #0a7a68;
+  --ok-soft: #e6faf5;
+  --focus-ring: #0a7a68;
+  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.06);
+  --shadow: 0 1px 2px rgba(11, 18, 32, 0.05), 0 12px 32px rgba(11, 18, 32, 0.12);
+  --shadow-lg: 0 28px 64px -24px rgba(11, 18, 32, 0.36);
+}
+
+html[data-theme="signal"] {
+  color-scheme: light;
+  --theme-name: "Signal";
+  --theme-tagline: "Teal-forward, softer navy — brighter product energy";
+
+  --navy: #0f2a32;
+  --navy-soft: #16343d;
+  --navy-muted: #234852;
+  --teal: #14c4a5;
+  --teal-dark: #0b8f78;
+  --teal-soft: #e3faf5;
+  --ink: #10242a;
+  --muted: #4f6b72;
+  --on-navy: #f0fdfa;
+  --on-navy-muted: #99d5c8;
+  --bg: #eef8f5;
+  --panel: #ffffff;
+  --surface: #f3faf8;
+  --line: #d0e6e0;
+  --line-strong: #b5d4cb;
+  --danger: #c4352c;
+  --danger-soft: #fceeee;
+  --warn: #b86a00;
+  --warn-soft: #fff4e5;
+  --ok: #0b8f78;
+  --ok-soft: #e3faf5;
+  --focus-ring: #0b8f78;
+  --shadow-sm: 0 1px 2px rgba(15, 42, 50, 0.05);
+  --shadow: 0 1px 2px rgba(15, 42, 50, 0.04), 0 12px 28px rgba(15, 42, 50, 0.09);
+  --shadow-lg: 0 24px 56px -20px rgba(15, 42, 50, 0.28);
+}
+
 @theme {
   --color-np-navy: var(--navy);
   --color-np-navy-soft: var(--navy-soft);
-  --color-np-navy-muted: var(--navy-muted);
   --color-np-teal: var(--teal);
   --color-np-teal-dark: var(--teal-dark);
   --color-np-teal-soft: var(--teal-soft);
@@ -71,21 +124,13 @@
   --color-np-panel: var(--panel);
   --color-np-surface: var(--surface);
   --color-np-line: var(--line);
-  --color-np-danger: var(--danger);
-  --color-np-danger-soft: var(--danger-soft);
-  --color-np-warn: var(--warn);
-  --color-np-warn-soft: var(--warn-soft);
-  --color-np-ok: var(--ok);
-  --color-np-ok-soft: var(--ok-soft);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --shadow-np-sm: var(--shadow-sm);
   --shadow-np: var(--shadow);
   --shadow-np-lg: var(--shadow-lg);
-  --radius-np-sm: var(--radius-sm);
   --radius-np: var(--radius);
   --radius-np-lg: var(--radius-lg);
-  --radius-np-xl: var(--radius-xl);
 }
 
 * {
@@ -122,16 +167,9 @@ h1 {
   font-weight: 800;
 }
 
-h2 {
-  font-weight: 700;
-}
-
+h2,
 h3 {
   font-weight: 700;
-}
-
-p {
-  line-height: 1.65;
 }
 
 a {
