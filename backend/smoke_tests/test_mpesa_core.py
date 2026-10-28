@@ -135,6 +135,7 @@ async def test_stk_push_builds_documented_payload_and_returns_acceptance_only() 
     try:
         result = await core.stk_push(context(), STKPushRequest(
             phone_number="0712345678", amount_minor=1500, account_reference="INV-123", description="NetPay sale",
+            callback_url="https://payments.example.test/callback/int_test_01",
         ))
         assert result.outcome is OperationOutcome.ACCEPTED
         assert result.provider_request_id == "request-123"
@@ -143,7 +144,7 @@ async def test_stk_push_builds_documented_payload_and_returns_acceptance_only() 
         assert payload["Amount"] == 15
         assert payload["PartyA"] == "254712345678"
         assert payload["PhoneNumber"] == "254712345678"
-        assert payload["CallBackURL"] == "https://payments.example.test/callback"
+        assert payload["CallBackURL"] == "https://payments.example.test/callback/int_test_01"
         assert payload["Password"] != "passkey-test"
         assert "oauth-token-test" not in repr(result)
         assert "consumer-secret-test" not in repr(result)
