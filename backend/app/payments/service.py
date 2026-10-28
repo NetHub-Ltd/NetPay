@@ -8,6 +8,7 @@ from typing import Any
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.models.attempts import PaymentAttempt
 from app.models.events import EventOutbox
 from app.models.integrations import DarajaIntegration
 from app.models.operations import AuditLog
@@ -89,8 +90,22 @@ class PaymentApplicationService:
         payment.provider_result_code = str(result_code)
         payment.provider_result_description = str(data.get("result_description", ""))[:250]
         receipt = metadata.get("MpesaReceiptNumber")
-        if receipt is not None:
-            payment.provider_receipt = str(receipt)[:64]
+        if result_code == 0:
+            if not receipt:
+                callback_row.processing_status = "rejected"
+                callback_row.processing_error = "successful_callback_missing_receipt"
+                return False
+            receipt_value = str(receipt)[:64]
+            existing_receipt = await session.scalar(select(Payment).where(
+                Payment.integration_id == integration.id,
+                Payment.provider_receipt == receipt_value,
+                Payment.id != payment.id,
+            ))
+            if existing_receipt is not None:
+                callback_row.processing_status = "rejected"
+                callback_row.processing_error = "provider_receipt_already_used"
+                return False
+            payment.provider_receipt = receipt_value
             payment.provider_transaction_id = str(receipt)[:120]
         now = datetime.now(UTC)
         if result_code == 0:
@@ -112,6 +127,20 @@ class PaymentApplicationService:
         callback_row.processing_status = "processed"
         callback_row.processing_error = None
         callback_row.processed_at = now
+        attempt_result = await session.exec(select(PaymentAttempt).where(
+            PaymentAttempt.payment_id == payment.id,
+        ).order_by(PaymentAttempt.attempt_number.desc()))
+        attempt = attempt_result.first()
+        if attempt is not None:
+            attempt.status = payment.status
+            attempt.completed_at = now
+            if payment.status == "failed":
+                attempt.safe_error_code = str(result_code)
+                attempt.safe_error_message = "Daraja callback reported payment failure"
+            else:
+                attempt.safe_error_code = None
+                attempt.safe_error_message = None
+            session.add(attempt)
         session.add(AuditLog(
             merchant_id=payment.merchant_id,
             actor_type="provider_callback",
