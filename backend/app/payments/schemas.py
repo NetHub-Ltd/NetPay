@@ -13,8 +13,10 @@ class APIModel(BaseModel):
 
 
 class TokenRequest(APIModel):
+    grant_type: Literal["client_credentials"] = "client_credentials"
     client_id: str = Field(min_length=1, max_length=80)
     client_secret: SecretStr
+    scope: str | None = Field(default=None, max_length=500)
 
 
 class IntegrationCreate(APIModel):
