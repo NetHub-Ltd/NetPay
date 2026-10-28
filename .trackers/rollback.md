@@ -108,3 +108,14 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 - No Flux manifests, deployment resources, production database, production credentials, or main branch were changed.
 - Final code commit 18e3de35185f1219014ba183879835fd3740cefb passed CI: 34 backend tests, readiness, frontend lint/build, and container startup smoke. The PR remains unmerged and undeployed.
 - Live Daraja sandbox verification and production rollout remain explicitly out of scope until separately approved.
+
+
+## User-approved cleanup — remove rejected M-Pesa Core (2026-10-28)
+
+- **User decision:** The current M-Pesa Core implementation is rejected as unnecessarily complex. Delete the existing Core package and its Core-only tests; do not implement a replacement in this change.
+- **Issue:** [#213 — Remove rejected M-Pesa Core implementation](https://github.com/NetHub-Ltd/NetPay/issues/213).
+- **Branch:** `chore/remove-rejected-mpesa-core`, created from the live `dev` ref. PR must target `dev`; do not merge.
+- **Scope:** delete `backend/app/mpesa_core/`; remove its `main.py` router import/registration; remove tests that solely import/test the deleted package; update these trackers. Keep shared application models and historical Alembic revisions unless an explicit reference audit proves removal is necessary; never delete/alter applied migration history in this cleanup.
+- **Out of scope:** replacement singleton/client, new APIs/services/routes/schemas, new migrations/dependencies, unrelated app behavior, frontend, deployment manifests, CI/GHCR workflow behavior, `dev`, and `main`.
+- **Approval boundary:** the next task after this PR is merged is to discuss the replacement class architecture and API methods with the user before writing code.
+- **Verification discipline:** inspect all references before deletion; report actual test runs and unverified behavior accurately. Preserve history; rollback through a reviewed revert commit.
