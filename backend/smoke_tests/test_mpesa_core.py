@@ -775,3 +775,46 @@ async def test_missing_passkey_or_initiator_credentials_fail_before_network_io()
         assert seen == []
     finally:
         await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_server_error_is_ambiguous_and_rate_limit_is_safe_to_retry() -> None:
+    server_core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({
+        "/mpesa/qrcode/v1/generate": httpx.Response(503, json={"errorCode": "TEMPORARY"}),
+    })))
+    try:
+        with pytest.raises(AmbiguousOutcome) as error:
+            await server_core.dynamic_qr(context(), DynamicQRRequest(
+                merchant_name="Shop", reference="INV", amount_minor=100,
+                transaction_code="PB", credit_party_identifier="174379",
+            ))
+        assert error.value.http_status == 503
+    finally:
+        await server_core.aclose()
+
+    rate_limit_core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({
+        "/mpesa/qrcode/v1/generate": httpx.Response(429, json={"errorCode": "RATE_LIMIT"}),
+    })))
+    try:
+        with pytest.raises(ProviderRejected) as error:
+            await rate_limit_core.dynamic_qr(context(), DynamicQRRequest(
+                merchant_name="Shop", reference="INV", amount_minor=100,
+                transaction_code="PB", credit_party_identifier="174379",
+            ))
+        from app.mpesa_core.errors import RetryDisposition
+        assert error.value.http_status == 429
+        assert error.value.retry_disposition is RetryDisposition.SAFE
+    finally:
+        await rate_limit_core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_oauth_response_requires_expiry_metadata() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"access_token": "token-without-expiry"})
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(OAuthError):
+            await core._token(context())
+    finally:
+        await core.aclose()
