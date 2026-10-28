@@ -8,6 +8,7 @@ import {
   Smartphone,
   Workflow,
 } from "lucide-react";
+import { SiteHeader } from "../components/SiteHeader";
 import { Badge, Button, Card, Container, Section } from "../components/ui";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
@@ -115,33 +116,7 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
-      <header className="border-b border-white/10 bg-[var(--navy)] text-[var(--on-navy)]">
-        <nav
-          className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-8"
-          aria-label="Main navigation"
-        >
-          <a href="/" className="flex items-center gap-3" aria-label="NetPay home">
-            <span className="grid size-10 place-items-center rounded-xl bg-[var(--teal)] text-lg font-black text-[var(--navy)]">
-              N
-            </span>
-            <span className="text-xl font-bold tracking-tight">NetPay</span>
-          </a>
-          <div className="hidden items-center gap-8 text-sm text-[var(--on-navy-muted)] md:flex">
-            <a href="#capabilities" className="transition hover:text-[var(--on-navy)]">
-              Capabilities
-            </a>
-            <a href="#how-it-works" className="transition hover:text-[var(--on-navy)]">
-              How it works
-            </a>
-            <a href="#developers" className="transition hover:text-[var(--on-navy)]">
-              Developers
-            </a>
-          </div>
-          <Button href="/dashboard/" variant="onNavyOutline" size="sm">
-            Dashboard
-          </Button>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main id="main-content" tabIndex={-1}>
         {/* Hero */}
