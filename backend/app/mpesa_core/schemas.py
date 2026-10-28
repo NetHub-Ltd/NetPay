@@ -231,6 +231,8 @@ class PullTransactionsRequest(CoreModel):
 class STKCallback(CoreModel):
     """Validated STK callback fields, with optional provider metadata."""
 
+    model_config = ConfigDict(extra="allow", hide_input_in_errors=True)
+
     merchant_request_id: str = Field(alias="MerchantRequestID")
     checkout_request_id: str = Field(alias="CheckoutRequestID")
     result_code: int = Field(alias="ResultCode")
@@ -240,6 +242,8 @@ class STKCallback(CoreModel):
 
 class C2BCallback(CoreModel):
     """Normalized C2B confirmation/validation payload."""
+
+    model_config = ConfigDict(extra="allow", hide_input_in_errors=True)
 
     transaction_type: str | None = Field(default=None, alias="TransactionType")
     trans_id: str = Field(alias="TransID")
@@ -254,6 +258,8 @@ class C2BCallback(CoreModel):
 class AsyncResultCallback(CoreModel):
     """Common envelope for asynchronous Daraja result callbacks."""
 
+    model_config = ConfigDict(extra="allow", hide_input_in_errors=True)
+
     result: dict[str, Any] = Field(alias="Result")
 
 
@@ -262,3 +268,133 @@ class CatalogueOperationRequest(CoreModel):
 
     operation: Literal["bill_manager", "ratiba", "lipa_na_bonga", "b2b_express_checkout"]
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class PullTransactionsRegistrationRequest(CoreModel):
+    """Register a shortcode/MSISDN and callback for transaction pull recovery."""
+
+    nominated_phone_number: str
+    callback_url: str
+
+
+class B2BExpressCheckoutRequest(CoreModel):
+    """Trigger a USSD checkout to the paying merchant's till operator."""
+
+    primary_shortcode: str = Field(min_length=1, max_length=32)
+    receiver_shortcode: str = Field(min_length=1, max_length=32)
+    amount_minor: int = Field(gt=0)
+    reference: str = Field(min_length=1, max_length=20)
+    partner_name: str = Field(min_length=1, max_length=64)
+    callback_url: str
+    request_ref_id: str = Field(min_length=1, max_length=64)
+
+    @field_validator("amount_minor")
+    @classmethod
+    def whole_shillings(cls, value: int) -> int:
+        if value % 100:
+            raise ValueError("B2B Express Checkout amount must be whole KES shillings")
+        return value
+
+
+class RatibaStandingOrderRequest(CoreModel):
+    """Create a customer-authorized M-Pesa Ratiba standing order."""
+
+    standing_order_name: str = Field(min_length=1, max_length=64)
+    transaction_type: Literal["Standing Order Customer Pay Bill", "Standing Order Customer Pay Merchant"]
+    amount_minor: int = Field(gt=0)
+    phone_number: str
+    callback_url: str
+    account_reference: str = Field(min_length=1, max_length=20)
+    description: str = Field(min_length=1, max_length=13)
+    frequency: Literal["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    start_date: str = Field(pattern=r"^\\d{8}$")
+    end_date: str = Field(pattern=r"^\\d{8}$")
+
+    @field_validator("amount_minor")
+    @classmethod
+    def whole_shillings(cls, value: int) -> int:
+        if value % 100:
+            raise ValueError("Ratiba amount must be whole KES shillings")
+        return value
+
+
+class LipaNaBongaRequest(CoreModel):
+    """Redeem Bonga points toward a Paybill payment."""
+
+    phone_number: str
+    amount_minor: int = Field(gt=0)
+    bonga_points: int = Field(gt=0)
+    account_reference: str = Field(min_length=1, max_length=20)
+
+    @field_validator("amount_minor")
+    @classmethod
+    def whole_shillings(cls, value: int) -> int:
+        if value % 100:
+            raise ValueError("Lipa na Bonga amount must be whole KES shillings")
+        return value
+
+
+class BillManagerOptInRequest(CoreModel):
+    """Opt a shortcode into Bill Manager."""
+
+    email: str = Field(min_length=3, max_length=254)
+    official_contact: str
+    send_reminders: bool = True
+    callback_url: str
+    logo_url: str | None = None
+
+
+class BillManagerInvoiceItem(CoreModel):
+    """One item in a Bill Manager invoice."""
+
+    item_name: str = Field(min_length=1, max_length=120)
+    amount_minor: int = Field(gt=0)
+
+    @field_validator("amount_minor")
+    @classmethod
+    def whole_shillings(cls, value: int) -> int:
+        if value % 100:
+            raise ValueError("invoice item amount must be whole KES shillings")
+        return value
+
+
+class BillManagerInvoiceRequest(CoreModel):
+    """Send one Bill Manager invoice to a customer."""
+
+    external_reference: str = Field(min_length=1, max_length=64)
+    billed_full_name: str = Field(min_length=1, max_length=120)
+    billed_phone_number: str
+    amount_minor: int = Field(gt=0)
+    due_date: str = Field(min_length=8, max_length=10)
+    account_reference: str = Field(min_length=1, max_length=64)
+    invoice_name: str = Field(min_length=1, max_length=120)
+    billed_period: str | None = Field(default=None, max_length=64)
+    invoice_items: list[BillManagerInvoiceItem] = Field(default_factory=list)
+
+    @field_validator("amount_minor")
+    @classmethod
+    def whole_shillings(cls, value: int) -> int:
+        if value % 100:
+            raise ValueError("invoice amount must be whole KES shillings")
+        return value
+
+
+class BillManagerCancelInvoiceRequest(CoreModel):
+    """Cancel a single Bill Manager invoice by external reference."""
+
+    external_reference: str = Field(min_length=1, max_length=64)
+
+
+class BillManagerReconciliationRequest(CoreModel):
+    """Reconcile a provider payment against a Bill Manager invoice."""
+
+    external_reference: str = Field(min_length=1, max_length=64)
+    transaction_id: str = Field(min_length=1, max_length=32)
+    amount_minor: int = Field(gt=0)
+
+    @field_validator("amount_minor")
+    @classmethod
+    def whole_shillings(cls, value: int) -> int:
+        if value % 100:
+            raise ValueError("reconciliation amount must be whole KES shillings")
+        return value
