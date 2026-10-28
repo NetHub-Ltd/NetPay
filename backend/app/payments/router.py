@@ -669,7 +669,7 @@ async def c2b_validation(
             raise ValueError
     except (MpesaCoreError, InvalidOperation, ValueError):
         return {"ResultCode": 1, "ResultDesc": "Rejected"}
-    return {"ResultCode": "0", "ResultDesc": "Accepted"}
+    return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
 
 @router.post("/callbacks/mpesa/c2b/{integration_id}/confirmation", include_in_schema=False)
@@ -684,7 +684,7 @@ async def c2b_confirmation(
         DarajaIntegration.deleted_at.is_(None),
     ))
     if integration is None or integration.status != "active" or not integration.c2b_enabled:
-        return {"ResultCode": "C2B0001", "ResultDesc": "Rejected"}
+        return {"ResultCode": 1, "ResultDesc": "Rejected"}
     try:
         callback = parse_c2b_callback(payload)
         amount = Decimal(callback.trans_amount)
@@ -692,14 +692,14 @@ async def c2b_confirmation(
             raise ValueError
         amount_minor = int(amount * 100)
     except (MpesaCoreError, InvalidOperation, ValueError):
-        return {"ResultCode": "C2B0001", "ResultDesc": "Rejected"}
+        return {"ResultCode": 1, "ResultDesc": "Rejected"}
     fingerprint = callback_fingerprint(payload)
     existing = await session.scalar(select(Payment).where(
         Payment.integration_id == integration.id,
         Payment.provider_receipt == callback.trans_id,
     ))
     if existing is not None:
-        return {"ResultCode": "0", "ResultDesc": "Accepted"}
+        return {"ResultCode": 0, "ResultDesc": "Accepted"}
     payment = Payment(
         merchant_id=integration.merchant_id,
         integration_id=integration.id,
@@ -742,5 +742,5 @@ async def c2b_confirmation(
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        return {"ResultCode": "0", "ResultDesc": "Accepted"}
-    return {"ResultCode": "0", "ResultDesc": "Accepted"}
+        return {"ResultCode": 0, "ResultDesc": "Accepted"}
+    return {"ResultCode": 0, "ResultDesc": "Accepted"}
