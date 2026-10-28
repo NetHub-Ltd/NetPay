@@ -169,7 +169,7 @@ class MpesaCore:
             self._tokens[key] = (token, now + expires_in)
             return token
 
-    def _require(self, context: IntegrationContext, capability: str) -> None:
+    def _require(self, context: IntegrationContext, *, capability: str) -> None:
         validate_context(context)
         if capability not in context.enabled_capabilities:
             raise CapabilityDisabled(f"capability '{capability}' is not enabled")
@@ -303,7 +303,7 @@ class MpesaCore:
 
     async def stk_push(self, context: IntegrationContext, request: STKPushRequest) -> ProviderOperationResult:
         """Initiate STK Push; provider acceptance is not payment completion."""
-        self._require(context, "stk_push")
+        self._require(context, capability="stk_push")
         phone = normalize_ke_phone(request.phone_number)
         password, timestamp = self._timestamp_password(context)
         callback = self._callback(context, request.callback_url)
@@ -325,7 +325,7 @@ class MpesaCore:
 
     async def stk_query(self, context: IntegrationContext, request: STKQueryRequest) -> ProviderOperationResult:
         """Query STK request status without interpreting acceptance as payment."""
-        self._require(context, "stk_query")
+        self._require(context, capability="stk_query")
         password, timestamp = self._timestamp_password(context)
         payload = {
             "BusinessShortCode": context.shortcode,
@@ -337,7 +337,7 @@ class MpesaCore:
 
     async def register_c2b_urls(self, context: IntegrationContext, request: C2BRegistrationRequest) -> ProviderOperationResult:
         """Register C2B URLs only when the application explicitly enables C2B."""
-        self._require(context, "c2b_registration")
+        self._require(context, capability="c2b_registration")
         validation = validate_callback_url(request.validation_url, production=context.environment == "production")
         confirmation = validate_callback_url(request.confirmation_url, production=context.environment == "production")
         payload = {"ShortCode": context.shortcode, "ResponseType": request.response_type,
@@ -346,7 +346,7 @@ class MpesaCore:
 
     async def simulate_c2b(self, context: IntegrationContext, request: C2BSimulationRequest) -> ProviderOperationResult:
         """Simulate a C2B payment in sandbox only."""
-        self._require(context, "c2b_simulation")
+        self._require(context, capability="c2b_simulation")
         if context.environment != "sandbox":
             raise CapabilityDisabled("C2B simulation is sandbox-only")
         payload = {"ShortCode": context.shortcode, "CommandID": "CustomerPayBillOnline",
@@ -356,7 +356,7 @@ class MpesaCore:
 
     async def dynamic_qr(self, context: IntegrationContext, request: DynamicQRRequest) -> ProviderOperationResult:
         """Generate a Dynamic QR payload."""
-        self._require(context, "dynamic_qr")
+        self._require(context, capability="dynamic_qr")
         payload = {"MerchantName": request.merchant_name, "RefNo": request.reference,
                    "Amount": request.amount_minor // 100, "TrxCode": request.transaction_code,
                    "CPI": request.credit_party_identifier, "Size": str(request.size)}
@@ -392,7 +392,7 @@ class MpesaCore:
 
     async def transaction_status(self, context: IntegrationContext, request: TransactionStatusRequest) -> ProviderOperationResult:
         """Request asynchronous transaction status verification."""
-        self._require(context, "transaction_status")
+        self._require(context, capability="transaction_status")
         payload: dict[str, Any] = {
             **self._initiator_payload(context), "CommandID": "TransactionStatusQuery",
             "PartyA": context.shortcode, "IdentifierType": "4",
@@ -410,7 +410,7 @@ class MpesaCore:
 
     async def account_balance(self, context: IntegrationContext, request: AccountBalanceRequest) -> ProviderOperationResult:
         """Request asynchronous account balance evidence."""
-        self._require(context, "account_balance")
+        self._require(context, capability="account_balance")
         payload = {
             **self._initiator_payload(context), "CommandID": "AccountBalance",
             "PartyA": context.shortcode, "IdentifierType": "4",
@@ -422,7 +422,7 @@ class MpesaCore:
 
     async def reverse_transaction(self, context: IntegrationContext, request: ReversalRequest) -> ProviderOperationResult:
         """Request a supported reversal; final outcome arrives asynchronously."""
-        self._require(context, "reversal")
+        self._require(context, capability="reversal")
         payload = {
             **self._initiator_payload(context), "CommandID": "TransactionReversal",
             "TransactionID": request.transaction_id, "Amount": request.amount_minor // 100,
@@ -437,7 +437,7 @@ class MpesaCore:
 
     async def b2c_payment(self, context: IntegrationContext, request: B2CPaymentRequest) -> ProviderOperationResult:
         """Initiate a B2C disbursement; completion is reported asynchronously."""
-        self._require(context, "b2c")
+        self._require(context, capability="b2c")
         payload = {
             **self._initiator_payload(context, field_name="InitiatorName"),
             "CommandID": request.command_id, "Amount": request.amount_minor // 100,
@@ -452,7 +452,7 @@ class MpesaCore:
 
     async def b2b_payment(self, context: IntegrationContext, request: B2BPaymentRequest) -> ProviderOperationResult:
         """Initiate a permitted B2B command; command permissions are provider-side."""
-        self._require(context, "b2b")
+        self._require(context, capability="b2b")
         payload: dict[str, Any] = {
             **self._initiator_payload(context), "CommandID": request.command_id,
             "SenderIdentifierType": "4", "RecieverIdentifierType": "4",
@@ -469,7 +469,7 @@ class MpesaCore:
 
     async def tax_remittance(self, context: IntegrationContext, request: TaxRemittanceRequest) -> ProviderOperationResult:
         """Remit a KRA PRN using the documented B2B Tax Remittance product."""
-        self._require(context, "tax_remittance")
+        self._require(context, capability="tax_remittance")
         payload = {
             **self._initiator_payload(context), "CommandID": "PayTaxToKRA",
             "SenderIdentifierType": "4", "RecieverIdentifierType": "4",
@@ -483,7 +483,7 @@ class MpesaCore:
 
     async def register_pull_transactions(self, context: IntegrationContext, request: PullTransactionsRegistrationRequest) -> ProviderOperationResult:
         """Register the shortcode for missed-C2B transaction recovery."""
-        self._require(context, "pull_transactions")
+        self._require(context, capability="pull_transactions")
         payload = {"ShortCode": context.shortcode,
                    "NominatedNumber": normalize_ke_phone(request.nominated_phone_number),
                    "CallBackURL": validate_callback_url(request.callback_url, production=context.environment == "production")}
@@ -491,7 +491,7 @@ class MpesaCore:
 
     async def pull_transactions(self, context: IntegrationContext, request: PullTransactionsRequest) -> ProviderOperationResult:
         """Query the Pull Transactions reconciliation endpoint."""
-        self._require(context, "pull_transactions")
+        self._require(context, capability="pull_transactions")
         payload = {"ShortCode": context.shortcode,
                    "StartDate": request.start_at.astimezone(ZoneInfo("Africa/Nairobi")).strftime("%Y-%m-%d %H:%M:%S"),
                    "EndDate": request.end_at.astimezone(ZoneInfo("Africa/Nairobi")).strftime("%Y-%m-%d %H:%M:%S"),
@@ -500,7 +500,7 @@ class MpesaCore:
 
     async def b2b_express_checkout(self, context: IntegrationContext, request: B2BExpressCheckoutRequest) -> ProviderOperationResult:
         """Trigger the B2B USSD checkout prompt for a paying merchant."""
-        self._require(context, "b2b_express_checkout")
+        self._require(context, capability="b2b_express_checkout")
         payload = {"primaryShortCode": request.primary_shortcode,
                    "receiverShortCode": request.receiver_shortcode,
                    "amount": request.amount_minor // 100,
@@ -512,7 +512,7 @@ class MpesaCore:
 
     async def create_ratiba_order(self, context: IntegrationContext, request: RatibaStandingOrderRequest) -> ProviderOperationResult:
         """Create a customer-authorized M-Pesa Ratiba standing order."""
-        self._require(context, "ratiba")
+        self._require(context, capability="ratiba")
         payload = {"StandingOrderName": request.standing_order_name,
                    "BusinessShortCode": context.shortcode,
                    "TransactionType": request.transaction_type,
@@ -529,7 +529,7 @@ class MpesaCore:
 
     async def redeem_lipa_na_bonga(self, context: IntegrationContext, request: LipaNaBongaRequest) -> ProviderOperationResult:
         """Redeem Bonga points toward a Paybill payment; settlement arrives via C2B."""
-        self._require(context, "lipa_na_bonga")
+        self._require(context, capability="lipa_na_bonga")
         payload = {"BusinessShortCode": context.shortcode,
                    "PhoneNumber": normalize_ke_phone(request.phone_number),
                    "Amount": request.amount_minor // 100,
@@ -539,7 +539,7 @@ class MpesaCore:
 
     async def bill_manager_opt_in(self, context: IntegrationContext, request: BillManagerOptInRequest) -> ProviderOperationResult:
         """Opt the integration shortcode into Bill Manager."""
-        self._require(context, "bill_manager")
+        self._require(context, capability="bill_manager")
         payload: dict[str, Any] = {"ShortCode": context.shortcode,
                                    "Email": request.email,
                                    "OfficialContact": normalize_ke_phone(request.official_contact),
@@ -551,7 +551,7 @@ class MpesaCore:
 
     async def bill_manager_single_invoice(self, context: IntegrationContext, request: BillManagerInvoiceRequest) -> ProviderOperationResult:
         """Send one typed Bill Manager invoice."""
-        self._require(context, "bill_manager")
+        self._require(context, capability="bill_manager")
         items = [{"ItemName": item.item_name, "Amount": item.amount_minor // 100} for item in request.invoice_items]
         payload: dict[str, Any] = {"ExternalReference": request.external_reference,
                                    "BilledFullName": request.billed_full_name,
@@ -567,13 +567,13 @@ class MpesaCore:
 
     async def bill_manager_cancel_invoice(self, context: IntegrationContext, request: BillManagerCancelInvoiceRequest) -> ProviderOperationResult:
         """Cancel one Bill Manager invoice by its external reference."""
-        self._require(context, "bill_manager")
+        self._require(context, capability="bill_manager")
         return await self._request(context, "bill_manager_cancel_invoice", "POST", "/v1/billmanager-invoice/cancel-single-invoice",
                                    {"ExternalReference": request.external_reference})
 
     async def bill_manager_reconcile_payment(self, context: IntegrationContext, request: BillManagerReconciliationRequest) -> ProviderOperationResult:
         """Reconcile a provider payment against a Bill Manager invoice."""
-        self._require(context, "bill_manager")
+        self._require(context, capability="bill_manager")
         payload = {"ExternalReference": request.external_reference,
                    "TransactionID": request.transaction_id,
                    "Amount": request.amount_minor // 100}
@@ -584,26 +584,26 @@ class MpesaCore:
 
     async def calculate_lipa_na_bonga_value(self, context: IntegrationContext, request: LipaNaBongaQuoteRequest) -> ProviderOperationResult:
         """Calculate the value of Bonga points before the customer redeems them."""
-        self._require(context, "lipa_na_bonga")
+        self._require(context, capability="lipa_na_bonga")
         return await self._request(context, "lipa_na_bonga_quote", "POST", "/v1/lipa/na/bonga/calculate-points",
                                    {"BongaPoints": request.bonga_points})
 
     async def bill_manager_bulk_invoices(self, context: IntegrationContext, request: BillManagerBulkInvoiceRequest) -> ProviderOperationResult:
         """Send a bounded batch of typed Bill Manager invoices."""
-        self._require(context, "bill_manager")
+        self._require(context, capability="bill_manager")
         invoices = [self._bill_manager_invoice_payload(item) for item in request.invoices]
         return await self._request(context, "bill_manager_bulk_invoice", "POST", "/v1/billmanager-invoice/bulk-invoicing",
                                    {"Invoices": invoices})
 
     async def bill_manager_cancel_bulk_invoices(self, context: IntegrationContext, request: BillManagerBulkCancelInvoiceRequest) -> ProviderOperationResult:
         """Cancel a bounded batch of Bill Manager invoices."""
-        self._require(context, "bill_manager")
+        self._require(context, capability="bill_manager")
         return await self._request(context, "bill_manager_cancel_bulk", "POST", "/v1/billmanager-invoice/cancel-bulk-invoice",
                                    {"ExternalReferences": request.external_references})
 
     async def bill_manager_update_opt_in(self, context: IntegrationContext, request: BillManagerOptInRequest) -> ProviderOperationResult:
         """Update a shortcode's Bill Manager onboarding details."""
-        self._require(context, "bill_manager")
+        self._require(context, capability="bill_manager")
         payload = {"ShortCode": context.shortcode, "Email": request.email,
                    "OfficialContact": normalize_ke_phone(request.official_contact),
                    "SendReminders": "1" if request.send_reminders else "0",
@@ -614,13 +614,13 @@ class MpesaCore:
 
     async def bill_manager_update_invoice(self, context: IntegrationContext, request: BillManagerInvoiceRequest) -> ProviderOperationResult:
         """Update one existing Bill Manager invoice."""
-        self._require(context, "bill_manager")
+        self._require(context, capability="bill_manager")
         return await self._request(context, "bill_manager_update_invoice", "POST", "/v1/billmanager-invoice/change-invoice",
                                    self._bill_manager_invoice_payload(request))
 
     async def bill_manager_update_bulk_invoices(self, context: IntegrationContext, request: BillManagerBulkInvoiceRequest) -> ProviderOperationResult:
         """Update a bounded batch of existing Bill Manager invoices."""
-        self._require(context, "bill_manager")
+        self._require(context, capability="bill_manager")
         invoices = [self._bill_manager_invoice_payload(item) for item in request.invoices]
         return await self._request(context, "bill_manager_update_bulk", "POST", "/v1/billmanager-invoice/change-invoices",
                                    {"Invoices": invoices})
