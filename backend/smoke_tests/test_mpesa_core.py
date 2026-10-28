@@ -496,3 +496,25 @@ def test_ratiba_date_and_pull_window_validation() -> None:
             start_at=datetime(2026, 1, 2, tzinfo=UTC),
             end_at=datetime(2026, 1, 1, tzinfo=UTC),
         )
+
+
+@pytest.mark.asyncio
+async def test_provider_response_metadata_redacts_secret_fields_and_masks_phone() -> None:
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({
+        "/mpesa/qrcode/v1/generate": httpx.Response(200, json={
+            "ResponseCode": "0", "QRCode": "base64-data",
+            "ConsumerSecret": "do-not-return-this",
+            "PhoneNumber": "254712345678",
+        })
+    })))
+    try:
+        result = await core.dynamic_qr(context(), DynamicQRRequest(
+            merchant_name="Shop", reference="INV", amount_minor=100,
+            transaction_code="PB", credit_party_identifier="174379",
+        ))
+        assert result.response["ConsumerSecret"] == "[REDACTED]"
+        assert result.response["PhoneNumber"] == "***5678"
+        assert "do-not-return-this" not in repr(result)
+        assert "254712345678" not in repr(result)
+    finally:
+        await core.aclose()
