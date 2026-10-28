@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse
 
-from app.mpesa_core.errors import InvalidRequest
+from app.mpesa_core.errors import CapabilityDisabled, InvalidRequest
 from app.mpesa_core.schemas import IntegrationContext
 
 
@@ -35,7 +35,7 @@ def validate_callback_url(url: str, *, production: bool) -> str:
 def require_capability(context: IntegrationContext, capability: str) -> None:
     """Fail before network I/O when the integration has not enabled a capability."""
     if capability not in context.enabled_capabilities:
-        raise InvalidRequest(f"capability '{capability}' is not enabled for this integration")
+        raise CapabilityDisabled(f"capability '{capability}' is not enabled for this integration")
 
 
 def validate_context(context: IntegrationContext) -> None:
