@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from cryptography.fernet import Fernet, InvalidToken
-from fastapi import HTTPException
 
 from app.core.config import get_settings
+from app.mpesa_core.errors import CredentialStorageError
 
 
 def _keyring() -> tuple[str, dict[str, Fernet]]:
@@ -12,19 +12,19 @@ def _keyring() -> tuple[str, dict[str, Fernet]]:
     settings = get_settings()
     raw = settings.mpesa_credential_encryption_keys
     if raw is None or not raw.get_secret_value().strip():
-        raise HTTPException(status_code=503, detail="credential_encryption_not_configured")
+        raise CredentialStorageError("credential_encryption_not_configured", "credential encryption is not configured")
     keys: dict[str, Fernet] = {}
     for item in raw.get_secret_value().split(","):
         key_id, separator, key = item.strip().partition("=")
         if not separator or not key_id or not key:
-            raise HTTPException(status_code=503, detail="credential_encryption_keyring_invalid")
+            raise CredentialStorageError("credential_encryption_keyring_invalid", "credential keyring configuration is invalid")
         try:
             keys[key_id] = Fernet(key.encode("ascii"))
-        except (ValueError, UnicodeEncodeError) as exc:
-            raise HTTPException(status_code=503, detail="credential_encryption_keyring_invalid") from exc
+        except (ValueError, UnicodeEncodeError):
+            raise CredentialStorageError("credential_encryption_keyring_invalid", "credential keyring configuration is invalid") from None
     active = settings.mpesa_credential_active_key_id
     if active not in keys:
-        raise HTTPException(status_code=503, detail="credential_encryption_active_key_missing")
+        raise CredentialStorageError("credential_encryption_active_key_missing", "active credential encryption key is unavailable")
     return active, keys
 
 
@@ -42,7 +42,7 @@ def decrypt_credentials(ciphertext: bytes) -> bytes:
         _, keys = _keyring()
         key = keys.get(key_id)
         if key is None:
-            raise HTTPException(status_code=503, detail="credential_encryption_key_unavailable")
+            raise CredentialStorageError("credential_encryption_key_unavailable", "credential encryption key is unavailable")
         return key.decrypt(token)
-    except (ValueError, UnicodeDecodeError, InvalidToken) as exc:
-        raise HTTPException(status_code=500, detail="stored_credentials_unreadable") from exc
+    except (ValueError, UnicodeDecodeError, InvalidToken):
+        raise CredentialStorageError("stored_credentials_unreadable", "stored credentials cannot be decrypted") from None
