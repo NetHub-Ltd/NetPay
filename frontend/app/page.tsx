@@ -106,7 +106,7 @@ export default function HomePage() {
     <>
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-[var(--panel)] focus:px-4 focus:py-3 focus:font-semibold focus:text-[var(--navy)] focus:shadow-[var(--shadow)]"
+        className="np-skip-link"
       >
         Skip to content
       </a>
@@ -122,15 +122,15 @@ export default function HomePage() {
         <section className="relative overflow-hidden bg-[var(--navy)] text-[var(--on-navy)]">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -right-24 -top-24 size-[28rem] rounded-full border border-white/5"
+            className="pointer-events-none absolute -right-24 -top-24 size-[28rem] rounded-full border border-[var(--on-navy-faint)]"
           />
           <Container className="relative grid gap-12 py-16 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:py-24">
             <div>
               <Badge tone="onNavy">M-Pesa infrastructure for software</Badge>
-              <h1 className="mt-6 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+              <h1 className="np-display np-on-navy mt-6 max-w-3xl">
                 Collect M-Pesa payments with state you can trust.
               </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--on-navy-muted)]">
+              <p className="np-lead np-on-navy-muted mt-6 max-w-2xl">
                 NetPay connects your product to merchant-owned Daraja integrations. Initiate STK Push,
                 host callbacks, and publish durable payment events—without treating initiation as proof
                 of payment.
@@ -153,7 +153,7 @@ export default function HomePage() {
             </div>
             <Card
               elevated
-              className="border-white/10 bg-[var(--navy-soft)] p-6 text-[var(--on-navy)] sm:p-8"
+              className="border-[var(--header-border)] bg-[var(--navy-soft)] p-6 text-[var(--on-navy)] sm:p-8"
             >
               <p className="text-sm font-bold uppercase tracking-[0.14em] text-[var(--teal)]">
                 Payment truth
@@ -223,7 +223,7 @@ export default function HomePage() {
               id="developers"
               className="overflow-hidden rounded-[var(--radius-xl)] bg-[var(--navy)] p-6 text-[var(--on-navy)] shadow-[var(--shadow-lg)] sm:p-8"
             >
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center justify-between border-b border-[var(--header-border)] pb-4">
                 <p className="font-bold">Example request</p>
                 <Badge tone="onNavy">HTTP</Badge>
               </div>

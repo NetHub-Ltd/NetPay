@@ -26,10 +26,10 @@ export default function ApiOverviewPage() {
       <main id="main-content">
         <Section className="bg-[var(--bg)] pt-12 lg:pt-16">
           <Badge>For integrators</Badge>
-          <h1 className="mt-4 max-w-3xl text-4xl font-extrabold tracking-tight sm:text-5xl">
+          <h1 className="np-h1 mt-4 max-w-3xl">
             API overview
           </h1>
-          <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
+          <p className="np-lead mt-4 max-w-2xl">
             NetPay exposes a merchant-scoped M2M API. Authenticate with client credentials, initiate
             STK Push, and consume payment state from provider-backed evidence.
           </p>

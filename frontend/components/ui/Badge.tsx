@@ -6,7 +6,7 @@ const tones: Record<Tone, string> = {
   teal: "bg-[var(--accent-soft)] text-[var(--accent-hover)]",
   navy: "bg-[var(--navy)] text-[var(--on-navy)]",
   muted: "bg-[var(--surface)] text-[var(--muted)] border border-[var(--line)]",
-  onNavy: "bg-white/10 text-[var(--on-navy-muted)]",
+  onNavy: "bg-[var(--on-navy-soft-fill)] text-[var(--on-navy-muted)]",
 };
 
 export function Badge({
@@ -20,7 +20,7 @@ export function Badge({
 }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${tones[tone]} ${className}`}
+      className={`inline-flex items-center rounded-full px-3 py-1 text-[length:var(--text-xs)] font-[number:var(--weight-bold)] uppercase tracking-[var(--tracking-label)] ${tones[tone]} ${className}`}
     >
       {children}
     </span>

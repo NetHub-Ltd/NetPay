@@ -75,10 +75,10 @@ export default function FaqPage() {
       <main id="main-content">
         <Section className="bg-[var(--bg)] pt-12 lg:pt-16">
           <Badge>FAQ</Badge>
-          <h1 className="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl">
+          <h1 className="np-h1 mt-4">
             Questions about NetPay
           </h1>
-          <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
+          <p className="np-lead mt-4 max-w-2xl">
             Straight answers aligned with how the product actually works—not marketing shortcuts.
           </p>
           <div className="mt-10 space-y-4">

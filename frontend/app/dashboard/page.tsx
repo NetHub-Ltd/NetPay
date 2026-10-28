@@ -38,8 +38,8 @@ export default function DashboardPage() {
         className="hidden w-60 shrink-0 flex-col border-r border-[var(--line)] bg-[var(--navy)] text-[var(--on-navy)] md:flex"
         aria-label="Dashboard navigation preview"
       >
-        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-          <span className="grid size-9 place-items-center rounded-xl bg-[var(--teal)] text-sm font-black text-[var(--navy)]">
+        <div className="flex items-center gap-3 border-b border-[var(--header-border)] px-5 py-5">
+          <span className="grid size-9 place-items-center rounded-xl bg-[var(--accent)] text-[length:var(--text-sm)] font-[number:var(--weight-black)] text-[var(--on-accent)]">
             N
           </span>
           <div>
@@ -53,7 +53,7 @@ export default function DashboardPage() {
               key={label}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${
                 active
-                  ? "bg-white/10 text-[var(--on-navy)]"
+                  ? "bg-[var(--on-navy-soft-fill)] text-[var(--on-navy)]"
                   : "text-[var(--on-navy-muted)]"
               }`}
               aria-current={active ? "page" : undefined}
@@ -63,7 +63,7 @@ export default function DashboardPage() {
             </span>
           ))}
         </nav>
-        <p className="border-t border-white/10 px-5 py-4 text-xs text-[var(--on-navy-muted)]">
+        <p className="border-t border-[var(--header-border)] px-5 py-4 text-xs text-[var(--on-navy-muted)]">
           Preview only — navigation is not interactive yet.
         </p>
       </aside>

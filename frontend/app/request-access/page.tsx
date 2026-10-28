@@ -29,10 +29,10 @@ export default function RequestAccessPage() {
       <main id="main-content">
         <Section className="bg-[var(--bg)] pt-12 lg:pt-16">
           <Badge>Get started</Badge>
-          <h1 className="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl">
+          <h1 className="np-h1 mt-4">
             Request API access
           </h1>
-          <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
+          <p className="np-lead mt-4 max-w-2xl">
             Tell us about your product and volume. We onboard merchants with their own Daraja
             credentials—do not send consumer secrets in the first email.
           </p>
