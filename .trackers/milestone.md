@@ -223,3 +223,20 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [x] Confirm CI is green on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3` (run `40780804974`); rerun after the tracker reconciliation commit.
 - [ ] Validate provisional API contracts (especially Bill Manager, Ratiba, B2B Express Checkout, Lipa na Bonga and Pull Transactions) against authenticated official docs/sandbox.
 - [x] Finalize documentation and tracker read-back; maintain one PR targeting dev (#215).
+
+
+## M1 — Application-owned M-Pesa flow verification (started 2026-10-29)
+
+- [x] Create issue #216 before implementation: https://github.com/NetHub-Ltd/NetPay/issues/216
+- [x] Create `test/mpesa-e2e-verification-216` from `dev` SHA `3d77327c1d00f713b7ec088492dc91dd953d139c`.
+- [x] Verify post-merge workflow conclusions: CI `40781707731`; backend readiness `40781707758`; frontend lint `40781708005`; frontend build `40781707798`.
+- [x] Refresh/read current shared CORE engineering skill and AGENTS operating charter from `NetHub-Ltd/skills-`.
+- [x] Inspect app entry point, core settings/database lifecycle, M-Pesa Core, domain models, current idempotency and startup tests.
+- [ ] Complete full repository/source inspection for any app-owned routes, services, callback handling and model consumers.
+- [ ] Write down payment-state and idempotency invariants before implementation.
+- [ ] Add tests that exercise actual application-owned STK/C2B persistence/callback flow; do not mistake Core mocks or DB uniqueness tests for end-to-end tests.
+- [ ] Cover duplicate/delayed/invalid callbacks, ambiguous provider outcomes, DB failures/recovery, and non-success initiation acknowledgements.
+- [ ] Run current-branch CI/readiness/frontend checks and reconcile evidence.
+- [ ] Update all four trackers and issue #216 with exact results; open a reviewable PR targeting `dev` only after evidence is collected.
+
+**Acceptance boundary:** No production transaction or production credential. Do not enable provisional provider product contracts. If the inspected repo lacks a safe application-level foundation and implementation scope becomes a major API/product design decision, stop and document the gap rather than inventing public contracts.
