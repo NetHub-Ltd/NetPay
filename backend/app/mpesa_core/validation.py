@@ -8,7 +8,7 @@ from app.mpesa_core.errors import CapabilityDisabled, InvalidRequest
 from app.mpesa_core.schemas import IntegrationContext
 
 
-_PHONE_RE = re.compile(r"^(?:254|0|\+254)?([17]\d{8})$")
+_PHONE_RE = re.compile(r"^(?:254|\+254|0)?((?:7\d{8}|1[01]\d{7}))$")
 
 
 def normalize_ke_phone(value: str) -> str:
