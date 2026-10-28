@@ -424,3 +424,74 @@ class BillManagerBulkCancelInvoiceRequest(CoreModel):
         if len(set(values)) != len(values):
             raise ValueError("external invoice references must be unique")
         return values
+
+
+class DarajaAcknowledgement(CoreModel):
+    """Typed common Daraja response envelope; unknown provider fields remain bounded."""
+
+    model_config = ConfigDict(extra="allow", hide_input_in_errors=True)
+    response_code: str | None = Field(default=None, alias="ResponseCode")
+    response_description: str | None = Field(default=None, alias="ResponseDescription")
+    request_id: str | None = Field(default=None, alias="RequestID")
+    merchant_request_id: str | None = Field(default=None, alias="MerchantRequestID")
+    checkout_request_id: str | None = Field(default=None, alias="CheckoutRequestID")
+    conversation_id: str | None = Field(default=None, alias="ConversationID")
+    originator_conversation_id: str | None = Field(default=None, alias="OriginatorConversationID")
+    result_code: str | int | None = Field(default=None, alias="ResultCode")
+    result_description: str | None = Field(default=None, alias="ResultDesc")
+
+
+class STKPushResponse(DarajaAcknowledgement):
+    """Typed STK initiation acknowledgement; not a final payment result."""
+
+    pass
+
+
+class STKQueryResponse(DarajaAcknowledgement):
+    """Typed STK query evidence, including optional final result code."""
+
+    pass
+
+
+class C2BRegistrationResponse(DarajaAcknowledgement):
+    """Typed C2B URL registration acknowledgement."""
+
+    pass
+
+
+class C2BSimulationResponse(DarajaAcknowledgement):
+    """Typed sandbox C2B simulation acknowledgement."""
+
+    pass
+
+
+class DynamicQRResponse(DarajaAcknowledgement):
+    """Typed Dynamic QR response."""
+
+    qr_code: str | None = Field(default=None, alias="QRCode")
+
+
+class AsyncOperationResponse(DarajaAcknowledgement):
+    """Typed acknowledgement for operations completed through later callbacks."""
+
+    pass
+
+
+class PullTransactionsResponse(DarajaAcknowledgement):
+    """Typed transaction-pull response envelope."""
+
+    transactions: list[dict[str, Any]] | None = Field(default=None, alias="Transactions")
+
+
+class LipaNaBongaResponse(DarajaAcknowledgement):
+    """Typed Lipa na Bonga operation response."""
+
+    bonga_points: int | None = Field(default=None, alias="BongaPoints")
+    amount: int | None = Field(default=None, alias="Amount")
+
+
+class BillManagerResponse(DarajaAcknowledgement):
+    """Typed Bill Manager response envelope."""
+
+    external_reference: str | None = Field(default=None, alias="ExternalReference")
+    invoice_id: str | None = Field(default=None, alias="InvoiceID")
