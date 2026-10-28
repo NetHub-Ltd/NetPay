@@ -17,6 +17,8 @@ export default function robots(): MetadataRoute.Robots {
           "/health/",
           "/dashboard",
           "/dashboard/",
+          "/theme",
+          "/theme/",
         ],
       },
     ],
