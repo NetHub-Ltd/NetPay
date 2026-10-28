@@ -191,21 +191,11 @@ async def _apply_stk_callback(
         callback_row.processing_status = "rejected"
         callback_row.processing_error = "merchant_request_id_mismatch"
         return False
-    callback_phone = metadata.get("PhoneNumber")
-    if callback_phone is not None:
-        try:
-            if normalize_ke_phone(str(callback_phone)) != payment.phone_number:
-                callback_row.processing_status = "rejected"
-                callback_row.processing_error = "phone_mismatch"
-                return False
-        except MpesaCoreError:
-            callback_row.processing_status = "rejected"
-            callback_row.processing_error = "invalid_callback_phone"
-            return False
-        except ValueError:
-            callback_row.processing_status = "rejected"
-            callback_row.processing_error = "invalid_callback_phone"
-            return False
+    callback_phone_last4 = metadata.get("PhoneNumberLast4")
+    if callback_phone_last4 is not None and str(callback_phone_last4) != (payment.phone_number or "")[-4:]:
+        callback_row.processing_status = "rejected"
+        callback_row.processing_error = "phone_mismatch"
+        return False
 
     if payment.status in {"succeeded", "failed", "cancelled", "expired"}:
         callback_row.processing_status = "duplicate_or_terminal"
@@ -641,6 +631,12 @@ async def stk_callback(
         raise HTTPException(status_code=400, detail=exc.safe_message) from None
     fingerprint = callback_fingerprint(payload)
     metadata = _callback_metadata(callback)
+    callback_phone = metadata.pop("PhoneNumber", None)
+    if callback_phone is not None:
+        try:
+            metadata["PhoneNumberLast4"] = normalize_ke_phone(str(callback_phone))[-4:]
+        except MpesaCoreError:
+            metadata["PhoneNumberLast4"] = "invalid"
     safe_payload = {
         "checkout_request_id": callback.checkout_request_id,
         "merchant_request_id": callback.merchant_request_id,
