@@ -5,6 +5,7 @@ NetPay is being rebuilt as a minimal, multi-merchant M-Pesa Daraja gateway.
 ## Start here
 
 - Agent rules: [AGENTS.md](AGENTS.md)
+- UI theme (Ledger): [Theme.md](Theme.md)
 - Implementation brief: [docs/REBUILD_SPEC.md](docs/REBUILD_SPEC.md)
 - Verified Daraja capability notes: [docs/DARAJA_CAPABILITIES.md](docs/DARAJA_CAPABILITIES.md)
 - Backend setup and M2M bootstrap: [backend/README.md](backend/README.md)

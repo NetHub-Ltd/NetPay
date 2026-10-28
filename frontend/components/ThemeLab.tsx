@@ -89,7 +89,7 @@ export function ThemeLab() {
             Distinct systems
           </p>
           <p className="mt-2 max-w-2xl text-[var(--muted)]">
-            Three different colour combinations for NetPay. Choice is stored in{" "}
+            Product default is Ledger. Harbor and Shamba remain lab-only for comparison. Choice is stored in{" "}
             <code className="rounded bg-[var(--surface)] px-1.5 py-0.5 text-xs">localStorage</code> and
             applies site-wide on this browser.
           </p>
@@ -498,8 +498,7 @@ export function ThemeLab() {
         </section>
 
         <p className="text-sm text-[var(--muted)]">
-          Tell us which to lock: <strong>harbor</strong>, <strong>shamba</strong>, or{" "}
-          <strong>ledger</strong>.
+          Product default is locked to <strong>ledger</strong>. Lab switches still persist in this browser for comparison only.
         </p>
       </Container>
 
