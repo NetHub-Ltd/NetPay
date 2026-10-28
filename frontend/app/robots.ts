@@ -10,10 +10,17 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        // Let crawlers read dashboard metadata; its page-level noindex is authoritative.
-        disallow: ["/api/", "/docs", "/openapi.json", "/health/"],
+        disallow: [
+          "/api/",
+          "/docs",
+          "/openapi.json",
+          "/health/",
+          "/dashboard",
+          "/dashboard/",
+        ],
       },
     ],
     sitemap: new URL("/sitemap.xml", siteUrl).toString(),
+    host: siteUrl,
   };
 }
