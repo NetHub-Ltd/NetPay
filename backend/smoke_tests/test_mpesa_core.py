@@ -109,6 +109,9 @@ def handler_for(routes: dict[str, Any], seen: list[httpx.Request] | None = None)
             raise result
         if callable(result):
             return result(request)
+        if result is None and request.url.path == "/mpesa/qrcode/v1/generate":
+            return httpx.Response(200, json={"ResponseCode": "0", "ResponseDescription": "Accepted",
+                                             "QRCode": "test-qr-payload", "RequestID": "request-123"})
         if result is None:
             return httpx.Response(200, json={"ResponseCode": "0", "ResponseDescription": "Accepted",
                                              "RequestID": "request-123", "ConversationID": "conversation-123"})
