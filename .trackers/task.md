@@ -312,3 +312,11 @@ Do not merge or deploy without explicit approval.
 - **Important test scope:** CI's backend test step runs `smoke_tests`, including the mocked Core tests and current database-backed guardrails. Passing it does not establish full merchant-to-provider-to-callback payment lifecycle correctness or authenticated Daraja contract correctness.
 - **Initial repository finding:** `backend/app` currently exposes `main.py`, `core/`, `models/`, and `mpesa_core/`; no application API routers or payment services are present in the inspected tree. Existing Payment, PaymentAttempt, IdempotencyRecord, ProviderRequest, PaymentVerification, integration, outbox and callback-related models must be inspected with their consumers before designing behavior. The task is now to establish the smallest correct application-owned STK/C2B path and tests, or document gaps that require separate approval if the implementation expands materially.
 - **Next:** finish source inspection; map state invariants; implement focused app-owned integration and regression tests on this branch; update all trackers and issue; run CI and open one PR targeting `dev`. Do not merge without explicit approval.
+
+
+## Repository audit result — 2026-10-29
+
+- Added `docs/MPESA_E2E_VERIFICATION.md` on `test/mpesa-e2e-verification-216` (commit `0f318c0e68b1325236069e1a94a6bc7b0a448af5`).
+- Audit confirmed the current `backend/app/` tree has no API/router package, M2M auth implementation, payment application service or callback route handlers. The Core client and models exist, but the end-to-end STK/C2B path is absent from the inspected source. Existing README implementation claims are not supported by the current audited app tree.
+- No runtime code changed. Do not claim end-to-end behavior or add unprotected public payment routes.
+- **Scope gate:** implementing the secured application path requires M2M auth, route contracts, payment/idempotency/provider-operation persistence, callback correlation and atomic payment/outbox transitions. This is the next major product slice, not a test-only patch. Findings posted to issue #216; await user direction before expanding implementation.
