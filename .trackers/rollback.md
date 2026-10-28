@@ -168,3 +168,11 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - No historical migration edits, Flux/deployment-manifest changes, or GHCR build/push changes. PostgreSQL is required for startup; Redis remains auxiliary under current design.
 - Never use production credentials or perform real financial transactions. Keep provisional API families gated until their contracts are verified.
 - Before changing payment-state behavior, inspect existing models/constraints and write explicit invariants. Ambiguous provider outcomes must remain unknown/reconcilable; never convert them into false success/failure or issue blind duplicate mutations.
+
+
+## Audit-only change boundary — 2026-10-29
+
+- Current task branch `test/mpesa-e2e-verification-216` from `dev` SHA `3d77327c1d00f713b7ec088492dc91dd953d139c`.
+- Changes so far are tracker updates and `docs/MPESA_E2E_VERIFICATION.md`; no runtime code, schema, migration, workflow, deployment manifest, or GHCR behavior changed.
+- Rollback, if needed, should be a reviewed revert commit on this topic branch. Preserve history; no reset/rebase/squash/force-push.
+- Next implementation is a major secured application API/service slice. Do not add unauthenticated endpoints; await resolution of the scope gate documented in issue #216 before expanding beyond this audit.
