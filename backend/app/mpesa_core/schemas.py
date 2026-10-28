@@ -179,7 +179,7 @@ class B2BPaymentRequest(CoreModel):
     amount_minor: int = Field(gt=0)
     command_id: Literal[
         "BusinessPayBill", "BusinessBuyGoods", "BusinessToBusinessTransfer",
-        "BusinessTransferFromMMFToUtility", "BusinessTransferFromUtilityToMMF",
+        "BusinessTransferFromMMFToUtility", "BusinessTransferFromUtilityToMMF", "BusinessPayToBulk",
     ]
     result_url: str
     timeout_url: str
@@ -398,3 +398,30 @@ class BillManagerReconciliationRequest(CoreModel):
         if value % 100:
             raise ValueError("reconciliation amount must be whole KES shillings")
         return value
+
+
+class LipaNaBongaQuoteRequest(CoreModel):
+    """Calculate the KES value of a requested number of Bonga points."""
+
+    bonga_points: int = Field(gt=0, le=1_000_000)
+
+
+class BillManagerBulkInvoiceRequest(CoreModel):
+    """Submit a bounded batch of typed Bill Manager invoices."""
+
+    invoices: list[BillManagerInvoiceRequest] = Field(min_length=1, max_length=100)
+
+
+class BillManagerBulkCancelInvoiceRequest(CoreModel):
+    """Cancel a bounded batch of Bill Manager invoices."""
+
+    external_references: list[str] = Field(min_length=1, max_length=100)
+
+    @field_validator("external_references")
+    @classmethod
+    def validate_references(cls, values: list[str]) -> list[str]:
+        if any(not value.strip() or len(value) > 64 for value in values):
+            raise ValueError("external invoice references must be 1-64 characters")
+        if len(set(values)) != len(values):
+            raise ValueError("external invoice references must be unique")
+        return values
