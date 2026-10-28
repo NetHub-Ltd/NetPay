@@ -10,7 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.events import EventOutbox
 from app.models.integrations import DarajaIntegration
-from app.models.merchants import AuditLog
+from app.models.operations import AuditLog
 from app.models.payments import Payment, ProviderCallback
 from app.mpesa_core.errors import MpesaCoreError
 
