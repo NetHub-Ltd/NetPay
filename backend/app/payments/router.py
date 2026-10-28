@@ -78,6 +78,9 @@ def _integration_view(row: DarajaIntegration) -> IntegrationView:
         c2b_confirmation_url=row.c2b_confirmation_url or "",
         c2b_enabled=row.c2b_enabled,
         c2b_registration_status=row.c2b_registration_status,
+        c2b_registered_at=row.c2b_registered_at,
+        registration_error=row.registration_error,
+        credentials_validated_at=row.credentials_validated_at,
     )
 
 
@@ -557,6 +560,7 @@ async def initiate_stk(
         payment.status = "pending"
         attempt.status = "accepted"
         provider_request.outcome = result.outcome.value
+        provider_request.http_status = result.http_status
         provider_request.provider_request_id = result.provider_request_id
         provider_request.response_metadata = {
             "provider_request_id": result.provider_request_id,
