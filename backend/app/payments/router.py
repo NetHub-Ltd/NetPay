@@ -35,7 +35,7 @@ from app.mpesa_core.errors import (
     TransportFailure,
 )
 from app.mpesa_core.schemas import C2BRegistrationRequest, STKPushRequest
-from app.mpesa_core.validation import normalize_ke_phone
+from app.mpesa_core.validation import normalize_ke_phone, validate_callback_url
 from app.payments.schemas import (
     IntegrationCreate,
     IntegrationView,
@@ -314,6 +314,10 @@ async def create_integration(
     integration.stk_callback_url = f"{base_url}/callbacks/mpesa/stk/{integration.integration_id}"
     integration.c2b_validation_url = f"{base_url}/callbacks/mpesa/c2b/{integration.integration_id}/validation"
     integration.c2b_confirmation_url = f"{base_url}/callbacks/mpesa/c2b/{integration.integration_id}/confirmation"
+    try:
+        validate_callback_url(integration.stk_callback_url, production=payload.environment == "production")
+    except MpesaCoreError as exc:
+        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.safe_message}) from None
     context = IntegrationContext(
         integration_id=integration.integration_id,
         environment=payload.environment,
@@ -544,6 +548,7 @@ async def initiate_stk(
                 account_reference=payment.id.hex[:12],
                 description=payload.description[:13],
                 callback_url=integration.stk_callback_url or "",
+                transaction_type="CustomerBuyGoodsOnline" if integration.product_type == "buygoods" else "CustomerPayBillOnline",
             ),
         )
         payment.provider_checkout_request_id = result.response.get("CheckoutRequestID")
