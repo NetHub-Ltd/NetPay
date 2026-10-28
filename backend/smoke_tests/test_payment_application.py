@@ -19,10 +19,12 @@ from app.models.integrations import DarajaIntegration
 from app.models.merchants import M2MClient, Merchant
 from app.models.operations import AuditLog, ProviderRequest
 from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
+from app.mpesa_core.credentials import decrypt_credentials, encrypt_credentials
 from app.mpesa_core.errors import OperationOutcome, RetryDisposition
 from app.mpesa_core.schemas import ProviderOperationResult
 from app.payments import router as router_module
 from app.payments import security
+from app.mpesa_core import credentials as core_credentials
 
 
 def test_client_secret_hash_is_one_way_and_verified() -> None:
@@ -64,13 +66,13 @@ def test_credential_encryption_supports_key_ids(monkeypatch: pytest.MonkeyPatch)
         ),
         mpesa_credential_active_key_id="active",
     )
-    monkeypatch.setattr(security, "get_settings", lambda: settings)
+    monkeypatch.setattr(core_credentials, "get_settings", lambda: settings)
     plaintext = b'{"consumer_key":"never-return-this"}'
-    encrypted = security.encrypt_credentials(plaintext)
+    encrypted = encrypt_credentials(plaintext)
     assert plaintext not in encrypted
-    assert security.decrypt_credentials(encrypted) == plaintext
+    assert decrypt_credentials(encrypted) == plaintext
     previous_ciphertext = b"old:" + Fernet(old_key).encrypt(plaintext)
-    assert security.decrypt_credentials(previous_ciphertext) == plaintext
+    assert decrypt_credentials(previous_ciphertext) == plaintext
 
 
 class FakeCore:
