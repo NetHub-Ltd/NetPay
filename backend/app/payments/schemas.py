@@ -1,6 +1,7 @@
 """Typed application-owned contracts for M2M and M-Pesa payment APIs."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -78,3 +79,6 @@ class IntegrationView(APIModel):
     c2b_confirmation_url: str
     c2b_enabled: bool
     c2b_registration_status: str
+    c2b_registered_at: datetime | None = None
+    registration_error: str | None = None
+    credentials_validated_at: datetime | None = None
