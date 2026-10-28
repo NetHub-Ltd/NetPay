@@ -13,7 +13,6 @@ from app.models.integrations import DarajaIntegration
 from app.models.merchants import AuditLog
 from app.models.payments import Payment, ProviderCallback
 from app.mpesa_core.errors import MpesaCoreError
-from app.mpesa_core.validation import normalize_ke_phone
 
 
 class PaymentApplicationService:
