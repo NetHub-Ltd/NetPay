@@ -23,12 +23,14 @@ async def test_provider_request_idempotency_key_is_unique_per_integration_operat
     engine = create_database_engine(settings)
     factory = create_session_factory(engine)
     merchant = Merchant(name="Idempotency test merchant", slug=f"mpesa-idem-{uuid4().hex}")
-    integration = None
+    integration_id = None
+    merchant_id = None
     try:
         async with factory() as session:
             session.add(merchant)
             await session.commit()
             await session.refresh(merchant)
+            merchant_id = merchant.id
             integration = DarajaIntegration(
                 merchant_id=merchant.id,
                 environment="sandbox",
@@ -41,6 +43,7 @@ async def test_provider_request_idempotency_key_is_unique_per_integration_operat
             session.add(integration)
             await session.commit()
             await session.refresh(integration)
+            integration_id = integration.id
 
             first = ProviderRequest(
                 merchant_id=merchant.id,
@@ -78,16 +81,16 @@ async def test_provider_request_idempotency_key_is_unique_per_integration_operat
             await session.commit()
     finally:
         async with factory() as session:
-            if integration is not None:
+            if integration_id is not None:
                 rows = await session.exec(
-                    select(ProviderRequest).where(ProviderRequest.integration_id == integration.id)
+                    select(ProviderRequest).where(ProviderRequest.integration_id == integration_id)
                 )
                 for row in rows.all():
                     await session.delete(row)
-                stored_integration = await session.get(DarajaIntegration, integration.id)
+                stored_integration = await session.get(DarajaIntegration, integration_id)
                 if stored_integration is not None:
                     await session.delete(stored_integration)
-            stored_merchant = await session.get(Merchant, merchant.id)
+            stored_merchant = await session.get(Merchant, merchant_id) if merchant_id is not None else None
             if stored_merchant is not None:
                 await session.delete(stored_merchant)
             await session.commit()
