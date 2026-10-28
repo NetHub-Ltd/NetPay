@@ -606,7 +606,7 @@ async def stk_callback(
     integration_id: str,
     payload: dict[str, Any],
     session: AsyncSession = Depends(get_session),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Receive untrusted Daraja STK callbacks and persist evidence before acknowledging."""
     integration = await session.scalar(select(DarajaIntegration).where(
         DarajaIntegration.integration_id == integration_id,
@@ -677,7 +677,7 @@ async def c2b_confirmation(
     integration_id: str,
     payload: dict[str, Any],
     session: AsyncSession = Depends(get_session),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Persist and deduplicate C2B confirmation before acknowledging the provider."""
     integration = await session.scalar(select(DarajaIntegration).where(
         DarajaIntegration.integration_id == integration_id,
