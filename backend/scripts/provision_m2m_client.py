@@ -54,7 +54,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--merchant-name", required=True)
     parser.add_argument("--merchant-slug", required=True)
-    parser.add_argument("--scopes", default="integrations:write payments:write payments:read")
+    parser.add_argument("--scopes", default="integrations:read integrations:write payments:write payments:read")
     args = parser.parse_args()
     import asyncio
     asyncio.run(provision(args))
