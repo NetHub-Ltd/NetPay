@@ -829,3 +829,18 @@ def test_stk_request_requires_callback_url() -> None:
             phone_number="0712345678", amount_minor=100,
             account_reference="INV", description="Sale",
         )
+
+
+@pytest.mark.asyncio
+async def test_provisional_product_contracts_are_blocked_in_production() -> None:
+    seen: list[httpx.Request] = []
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({}, seen)))
+    try:
+        with pytest.raises(CapabilityDisabled, match="pending contract verification"):
+            await core.bill_manager_opt_in(context(environment="production"), BillManagerOptInRequest(
+                email="billing@example.test", official_contact="0712345678",
+                callback_url="https://example.test/bill",
+            ))
+        assert seen == []
+    finally:
+        await core.aclose()
