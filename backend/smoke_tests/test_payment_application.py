@@ -20,7 +20,7 @@ from app.models.merchants import M2MClient, Merchant
 from app.models.operations import AuditLog, ProviderRequest
 from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
 from app.mpesa_core.credentials import decrypt_credentials, encrypt_credentials
-from app.mpesa_core.errors import OperationOutcome, RetryDisposition
+from app.mpesa_core.errors import AmbiguousOutcome, OAuthError, OperationOutcome, ProviderRejected, RetryDisposition
 from app.mpesa_core.schemas import ProviderOperationResult
 from app.payments import router as router_module
 from app.payments import security
@@ -81,12 +81,21 @@ class FakeCore:
     def __init__(self) -> None:
         self.stk_calls = 0
         self.registration_calls = 0
+        self.validation_error: Exception | None = None
+        self.next_stk_error: Exception | None = None
 
     async def validate_credentials(self, _context: object) -> None:
-        return None
+        if self.validation_error is not None:
+            error = self.validation_error
+            self.validation_error = None
+            raise error
 
     async def stk_push(self, _context: object, _request: object) -> ProviderOperationResult:
         self.stk_calls += 1
+        if self.next_stk_error is not None:
+            error = self.next_stk_error
+            self.next_stk_error = None
+            raise error
         return ProviderOperationResult(
             operation="stk_push",
             outcome=OperationOutcome.ACCEPTED,
@@ -172,15 +181,28 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
             assert second_token.status_code == 200
             bearer = {"Authorization": f"Bearer {first_token.json()['access_token']}"}
             other_bearer = {"Authorization": f"Bearer {second_token.json()['access_token']}"}
-
-            integration_response = client.post("/api/v1/integrations", headers=bearer, json={
+            restricted_token = client.post("/api/v1/oauth/token", json={
+                "grant_type": "client_credentials",
+                "client_id": first_client.client_id,
+                "client_secret": "first-secret",
+                "scope": "payments:read",
+            })
+            restricted_bearer = {"Authorization": f"Bearer {restricted_token.json()['access_token']}"}
+            create_payload = {
                 "environment": "sandbox",
                 "shortcode": "174379",
                 "product_type": "paybill",
                 "consumer_key": "test-consumer-key",
                 "consumer_secret": "test-consumer-secret",
                 "passkey": "test-passkey",
-            })
+            }
+            assert client.post("/api/v1/integrations", headers=restricted_bearer, json=create_payload).status_code == 403
+            fake_core.validation_error = OAuthError("Daraja authorization was rejected")
+            invalid_integration = client.post("/api/v1/integrations", headers=bearer, json=create_payload)
+            assert invalid_integration.status_code == 422
+            assert "test-consumer-secret" not in invalid_integration.text
+
+            integration_response = client.post("/api/v1/integrations", headers=bearer, json=create_payload)
             assert integration_response.status_code == 201, integration_response.text
             integration = integration_response.json()
             integration_ids.append(UUID(integration["id"]))
@@ -241,6 +263,82 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
             assert client.post(callback_url, json=callback).status_code == 200
             assert client.get(f"/api/v1/payments/{payment['id']}", headers=other_bearer).status_code == 404
 
+            # A mismatched callback must be retained as evidence without marking payment paid.
+            invalid_callback_payload = {
+                "integration_id": integration["integration_id"],
+                "phone_number": "0712345678",
+                "amount_minor": 10000,
+                "merchant_reference": f"invalid-{uuid4().hex[:12]}",
+                "description": "Mismatch test",
+            }
+            invalid_initiated = client.post(
+                "/api/v1/payments/stk",
+                headers={**bearer, "Idempotency-Key": "flow-key-invalid-callback"},
+                json=invalid_callback_payload,
+            )
+            assert invalid_initiated.status_code == 202
+            invalid_payment = invalid_initiated.json()
+            payment_ids.append(UUID(invalid_payment["id"]))
+            bad_callback = {
+                "Body": {"stkCallback": {
+                    "MerchantRequestID": "mr_invalid",
+                    "CheckoutRequestID": invalid_payment["provider_checkout_request_id"],
+                    "ResultCode": 0,
+                    "ResultDesc": "Success",
+                    "CallbackMetadata": {"Item": [
+                        {"Name": "Amount", "Value": 99},
+                        {"Name": "MpesaReceiptNumber", "Value": "BADAMOUNT1"},
+                        {"Name": "PhoneNumber", "Value": 254712345678},
+                    ]},
+                }},
+            }
+            assert client.post(callback_url, json=bad_callback).status_code == 200
+            still_pending = client.get(f"/api/v1/payments/{invalid_payment['id']}", headers=bearer)
+            assert still_pending.json()["status"] == "pending"
+
+            # A potentially transmitted request with no definitive response remains unknown.
+            fake_core.next_stk_error = AmbiguousOutcome("test timeout after send")
+            ambiguous_request = {
+                **request_payload,
+                "merchant_reference": f"unknown-{uuid4().hex[:12]}",
+            }
+            before_unknown = fake_core.stk_calls
+            unknown_response = client.post(
+                "/api/v1/payments/stk",
+                headers={**bearer, "Idempotency-Key": "flow-key-ambiguous"},
+                json=ambiguous_request,
+            )
+            assert unknown_response.status_code == 202
+            assert unknown_response.json()["status"] == "unknown"
+            payment_ids.append(UUID(unknown_response.json()["id"]))
+            unknown_replay = client.post(
+                "/api/v1/payments/stk",
+                headers={**bearer, "Idempotency-Key": "flow-key-ambiguous"},
+                json=ambiguous_request,
+            )
+            assert unknown_replay.json()["status"] == "unknown"
+            assert fake_core.stk_calls == before_unknown + 1
+
+            # A definitive provider rejection is persisted and never retried on replay.
+            fake_core.next_stk_error = ProviderRejected("provider rejected test request")
+            rejected_request = {
+                **request_payload,
+                "merchant_reference": f"rejected-{uuid4().hex[:12]}",
+            }
+            rejected = client.post(
+                "/api/v1/payments/stk",
+                headers={**bearer, "Idempotency-Key": "flow-key-rejected"},
+                json=rejected_request,
+            )
+            assert rejected.status_code == 422
+            rejected_replay = client.post(
+                "/api/v1/payments/stk",
+                headers={**bearer, "Idempotency-Key": "flow-key-rejected"},
+                json=rejected_request,
+            )
+            assert rejected_replay.status_code == 202
+            assert rejected_replay.json()["status"] == "failed"
+
             c2b_payload = {
                 "TransID": f"C2B{uuid4().hex[:10]}",
                 "TransTime": "20261029120000",
@@ -274,7 +372,7 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
 
             with SyncSession(sync_engine, expire_on_commit=False) as session:
                 events = session.exec(select(EventOutbox).where(EventOutbox.merchant_id == merchant_ids[0])).all()
-                assert len(events) == 2
+                assert len(events) == 3
                 stk_callbacks = session.exec(select(ProviderCallback).where(
                     ProviderCallback.integration_id == integration_ids[0],
                     ProviderCallback.callback_type == "stk",
@@ -283,7 +381,7 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
                 session.exec(delete(EventOutbox).where(EventOutbox.merchant_id.in_(merchant_ids)))
                 session.exec(delete(ProviderCallback).where(ProviderCallback.integration_id.in_(integration_ids)))
                 session.exec(delete(ProviderRequest).where(ProviderRequest.merchant_id.in_(merchant_ids)))
-                session.exec(delete(PaymentAttempt).where(PaymentAttempt.payment_id.in_(payment_ids)))
+                session.exec(delete(PaymentAttempt).where(PaymentAttempt.payment_id.in_(select(Payment.id).where(Payment.merchant_id.in_(merchant_ids)))))
                 session.exec(delete(IdempotencyRecord).where(IdempotencyRecord.merchant_id.in_(merchant_ids)))
                 session.exec(delete(Payment).where(Payment.merchant_id.in_(merchant_ids)))
                 session.exec(delete(AuditLog).where(AuditLog.merchant_id.in_(merchant_ids)))
