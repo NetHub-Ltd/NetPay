@@ -6,12 +6,12 @@ import { Menu, X } from "lucide-react";
 import { Button } from "./ui";
 
 const links = [
-  { href: "#capabilities", label: "Capabilities" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#developers", label: "Developers" },
+  { href: "/api-overview/", label: "API overview" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/faq/", label: "FAQ" },
 ];
 
-/** Solid navy public header with mobile menu (P6). */
+/** Solid navy public header with mobile menu. */
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
@@ -22,7 +22,7 @@ export function SiteHeader() {
         aria-label="Main navigation"
       >
         <Link href="/" className="flex items-center gap-3" aria-label="NetPay home">
-          <span className="grid size-10 place-items-center rounded-xl bg-[var(--teal)] text-lg font-black text-[var(--navy)]">
+          <span className="grid size-10 place-items-center rounded-xl bg-[var(--accent)] text-lg font-black text-[var(--on-accent)]">
             N
           </span>
           <span className="text-xl font-bold tracking-tight">NetPay</span>
@@ -30,15 +30,15 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-8 text-sm text-[var(--on-navy-muted)] md:flex">
           {links.map((l) => (
-            <a key={l.href} href={l.href} className="transition hover:text-[var(--on-navy)]">
+            <Link key={l.href} href={l.href} className="transition hover:text-[var(--on-navy)]">
               {l.label}
-            </a>
+            </Link>
           ))}
         </div>
 
         <div className="flex items-center gap-2">
-          <Button href="/dashboard/" variant="onNavyOutline" size="sm" className="hidden sm:inline-flex">
-            Dashboard
+          <Button href="/api-overview/" variant="onNavy" size="sm" className="hidden sm:inline-flex">
+            API overview
           </Button>
           <button
             type="button"
@@ -54,25 +54,22 @@ export function SiteHeader() {
       </nav>
 
       {open && (
-        <div
-          id="mobile-nav"
-          className="border-t border-white/10 px-6 py-4 md:hidden"
-        >
+        <div id="mobile-nav" className="border-t border-white/10 px-6 py-4 md:hidden">
           <ul className="flex flex-col gap-1">
             {links.map((l) => (
               <li key={l.href}>
-                <a
+                <Link
                   href={l.href}
                   className="block rounded-xl px-3 py-3 text-sm font-semibold text-[var(--on-navy)] hover:bg-white/5"
                   onClick={() => setOpen(false)}
                 >
                   {l.label}
-                </a>
+                </Link>
               </li>
             ))}
             <li className="pt-2">
-              <Button href="/dashboard/" variant="onNavy" size="md" className="w-full">
-                Dashboard preview
+              <Button href="/request-access/" variant="onNavy" size="md" className="w-full">
+                Request access
               </Button>
             </li>
           </ul>

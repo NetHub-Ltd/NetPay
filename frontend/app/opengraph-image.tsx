@@ -1,10 +1,11 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "NetPay — M-Pesa payments infrastructure";
+export const alt = "NetPay — M-Pesa payment API for business software";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const dynamic = "force-static";
 
+/** Ledger theme (Theme.md): indigo chrome + sky accent */
 export default function OpenGraphImage() {
   return new ImageResponse(
     (
@@ -16,8 +17,8 @@ export default function OpenGraphImage() {
           width: "100%",
           height: "100%",
           padding: "68px",
-          backgroundColor: "#101b2d",
-          color: "#f8fafc",
+          backgroundColor: "#1e1b4b",
+          color: "#f5f3ff",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
@@ -29,8 +30,8 @@ export default function OpenGraphImage() {
               width: "62px",
               height: "62px",
               borderRadius: "16px",
-              backgroundColor: "#20b89a",
-              color: "#101b2d",
+              backgroundColor: "#3b82f6",
+              color: "#ffffff",
               fontSize: "38px",
               fontWeight: 800,
             }}
@@ -39,23 +40,28 @@ export default function OpenGraphImage() {
           </div>
           <div style={{ fontSize: "34px", fontWeight: 700 }}>NetPay</div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          <div style={{ fontSize: "22px", fontWeight: 700, color: "#55d6b9", letterSpacing: "3px" }}>
-            M-PESA PAYMENT INFRASTRUCTURE
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div
+            style={{
+              fontSize: "52px",
+              fontWeight: 800,
+              lineHeight: 1.15,
+              letterSpacing: "-0.03em",
+              maxWidth: "900px",
+            }}
+          >
+            M-Pesa payment API for business software
           </div>
-          <div style={{ fontSize: "64px", lineHeight: 1.08, fontWeight: 700, letterSpacing: "-2px" }}>
-            Build on payment states, not assumptions.
-          </div>
-          <div style={{ fontSize: "27px", color: "#cbd5e1" }}>
-            A consistent API for merchant-owned Daraja integrations.
+          <div style={{ fontSize: "24px", color: "#c4b5fd", maxWidth: "820px", lineHeight: 1.4 }}>
+            Merchant-owned Daraja integrations, STK Push, and payment events grounded in provider
+            results.
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "20px", color: "#94a3b8" }}>
-          <div style={{ width: "9px", height: "9px", borderRadius: "99px", backgroundColor: "#20b89a" }} />
+        <div style={{ display: "flex", fontSize: "20px", color: "#c4b5fd" }}>
           pay.nethub.co.ke
         </div>
       </div>
     ),
-    size,
+    { ...size },
   );
 }

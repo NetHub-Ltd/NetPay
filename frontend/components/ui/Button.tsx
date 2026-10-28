@@ -54,6 +54,16 @@ export function Button({
 
   if ("href" in rest && rest.href) {
     const { href, ...linkRest } = rest;
+    const external = /^(mailto:|https?:|tel:)/i.test(href);
+    if (external) {
+      return (
+        <a href={href} className={classes}>
+          {leftIcon}
+          {children}
+          {rightIcon}
+        </a>
+      );
+    }
     return (
       <Link href={href} className={classes} {...linkRest}>
         {leftIcon}

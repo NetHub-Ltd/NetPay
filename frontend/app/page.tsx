@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import {
-  ArrowDownRight,
   ArrowRight,
   CheckCircle2,
   Code2,
@@ -137,18 +136,20 @@ export default function HomePage() {
                 of payment.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button href="#how-it-works" variant="onNavy" size="lg" rightIcon={<ArrowRight size={17} aria-hidden />}>
-                  See how it works
+                <Button href="/api-overview/" variant="onNavy" size="lg" rightIcon={<ArrowRight size={17} aria-hidden />}>
+                  API overview
                 </Button>
-                <Button
-                  href="#capabilities"
-                  variant="onNavyOutline"
-                  size="lg"
-                  rightIcon={<ArrowDownRight size={17} aria-hidden />}
-                >
-                  Explore capabilities
+                <Button href="/request-access/" variant="onNavyOutline" size="lg">
+                  Request access
                 </Button>
               </div>
+              <p className="mt-4 text-sm text-[var(--on-navy-muted)]">
+                <a href="#how-it-works" className="underline-offset-2 hover:underline">How it works</a>
+                {" · "}
+                <a href="#capabilities" className="underline-offset-2 hover:underline">Capabilities</a>
+                {" · "}
+                <a href="/faq/" className="underline-offset-2 hover:underline">FAQ</a>
+              </p>
             </div>
             <Card
               elevated
@@ -260,15 +261,22 @@ Content-Type: application/json
                 Start with the API and add optional event delivery when your workflow needs it.
               </p>
             </div>
-            <Button
-              href="/dashboard/"
-              variant="onNavy"
-              size="lg"
-              className="shrink-0"
-              rightIcon={<ArrowRight size={17} aria-hidden />}
-            >
-              View dashboard preview
-            </Button>
+            <div className="flex shrink-0 flex-col gap-3 sm:items-end">
+              <Button
+                href="/api-overview/"
+                variant="onNavy"
+                size="lg"
+                rightIcon={<ArrowRight size={17} aria-hidden />}
+              >
+                API overview
+              </Button>
+              <Button href="/request-access/" variant="onNavyOutline" size="md">
+                Request access
+              </Button>
+              <a href="/dashboard/" className="text-center text-sm text-[var(--on-navy-muted)] hover:text-[var(--on-navy)]">
+                Dashboard preview
+              </a>
+            </div>
           </div>
         </Section>
       </main>
