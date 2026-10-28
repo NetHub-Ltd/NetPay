@@ -369,6 +369,11 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
                 json=c2b_payload,
             )
             assert duplicate_c2b.json()["ResultCode"] == 0
+            mismatched_duplicate = client.post(
+                f"/callbacks/mpesa/c2b/{integration['integration_id']}/confirmation",
+                json={**c2b_payload, "TransAmount": "200.00"},
+            )
+            assert mismatched_duplicate.json()["ResultCode"] == 1
 
             with SyncSession(sync_engine, expire_on_commit=False) as session:
                 events = session.exec(select(EventOutbox).where(EventOutbox.merchant_id == merchant_ids[0])).all()
