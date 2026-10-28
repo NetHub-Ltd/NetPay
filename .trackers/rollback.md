@@ -158,3 +158,14 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Revert these changes through reviewed revert commits on feat/mpesa-core-complete only. Do not restore the removed pre-PR-214 Core implementation.
 - CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness and frontend lint/build also passed. The branch now contains tracker/spec-only commits after the tested code head; rerun checks on the current branch tip before review. No runtime rollback is indicated by current checks.
 - Provisional product payload contracts are not to be treated as production-ready until validated. Disable capability use rather than sending guessed/incorrect payloads if contract validation finds a mismatch.
+
+## #217 implementation rollback and safety checkpoint — 2026-10-29 UTC
+
+- Product owner approved the contract; implementation is isolated on `feat/mpesa-application-flow-217`.
+- No production credentials, production DB operations, live financial transactions, Flux/deployment manifest changes, or GHCR build/push behavior changes were made.
+- No schema fields were intentionally added and no historical migration was edited. Verify the existing schema is sufficient in CI before relying on that assumption.
+- If the PR is rejected, use a reviewed revert commit or close the branch/PR; do not reset, rebase, squash, or force-push history.
+- Core OAuth onboarding is a provider call; payment initiation persists operation evidence before making the STK mutation. Ambiguous outcomes must remain unknown and must not be blindly retried.
+- C2B registration is sandbox-only and ambiguous registration outcomes block another registration attempt until reconciled. Production C2B remains gated pending provider-contract evidence.
+- **Current rollback readiness:** proposed only; runtime behavior and tests are not yet verified. Document any discovered data/schema or compatibility risks before marking PR ready.
+
