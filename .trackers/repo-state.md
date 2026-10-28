@@ -209,3 +209,13 @@ These are historical reports, not fresh verification performed during tracker cr
 - **Out of scope:** replacement singleton/client, new APIs/services/routes/schemas, new migrations/dependencies, unrelated app behavior, frontend, deployment manifests, CI/GHCR workflow behavior, `dev`, and `main`.
 - **Approval boundary:** the next task after this PR is merged is to discuss the replacement class architecture and API methods with the user before writing code.
 - **Verification discipline:** inspect all references before deletion; report actual test runs and unverified behavior accurately. Preserve history; rollback through a reviewed revert commit.
+
+
+## Cleanup implementation update — 2026-10-28
+
+- **OBSERVED / changed on this topic branch:** removed the complete `backend/app/mpesa_core/` package (9 Python files), deleted `backend/smoke_tests/test_mpesa_core.py` and `backend/smoke_tests/test_mpesa_callbacks.py` because both directly test the rejected package, and removed the two Core callback-router wiring lines from `backend/app/main.py`.
+- **Preserved deliberately:** application/domain models, historical Alembic revision `0003_mpesa_core_capabilities`, database schema history, frontend, settings, CI/GHCR workflows, deployment/Flux files, and all other application code. Historical migrations are not deleted or rewritten; schema cleanup would require separate data-impact review.
+- **Architecture boundary:** no replacement class or new API has been written. Replacement design must be discussed with the user after this cleanup PR is reviewed and merged.
+- **Verification so far:** GitHub read-back confirmed the Core files and `test_mpesa_core.py` are absent; callback test deletion and `main.py` update were acknowledged by GitHub write responses. Final read-back/reference audit and CI results remain pending.
+- **Not verified yet:** test suite, import checks, frontend build, container smoke, or runtime behavior. Do not describe these as passing until evidence is retrieved.
+- **Rollback:** reviewed revert commits only; do not reset/rewrite history. Reverting this PR restores the package and its route wiring. No DB migration or deployment change was made.
