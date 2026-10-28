@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Button } from "./ui";
 
@@ -20,12 +21,12 @@ export function SiteHeader() {
         className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-8"
         aria-label="Main navigation"
       >
-        <a href="/" className="flex items-center gap-3" aria-label="NetPay home">
+        <Link href="/" className="flex items-center gap-3" aria-label="NetPay home">
           <span className="grid size-10 place-items-center rounded-xl bg-[var(--teal)] text-lg font-black text-[var(--navy)]">
             N
           </span>
           <span className="text-xl font-bold tracking-tight">NetPay</span>
-        </a>
+        </Link>
 
         <div className="hidden items-center gap-8 text-sm text-[var(--on-navy-muted)] md:flex">
           {links.map((l) => (
