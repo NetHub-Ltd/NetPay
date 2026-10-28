@@ -19,7 +19,8 @@ from app.core.database import get_session
 from app.models.attempts import PaymentAttempt
 from app.models.events import EventOutbox
 from app.models.integrations import DarajaIntegration
-from app.models.merchants import AuditLog, M2MClient, Merchant
+from app.models.merchants import M2MClient, Merchant
+from app.models.operations import AuditLog
 from app.models.operations import ProviderRequest
 from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
 from app.mpesa_core import DarajaCredentials, IntegrationContext
@@ -397,6 +398,7 @@ async def register_c2b(
         raise HTTPException(status_code=202, detail="c2b_registration_outcome_unknown_do_not_retry") from None
     except MpesaCoreError as exc:
         integration.c2b_registration_status = "failed"
+        integration.c2b_enabled = False
         integration.registration_error = exc.code
         await session.commit()
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.safe_message}) from None
