@@ -1,16 +1,91 @@
 @import "tailwindcss";
 
+/* NetPay public theme foundation (U1)
+   Solid navy header/chrome; teal accent; cool surface canvas.
+   Components should prefer these tokens over raw hex. */
+
 :root {
   color-scheme: light;
-  --ink: #142033;
-  --muted: #627087;
+
+  /* Brand / structure */
   --navy: #101b2d;
   --navy-soft: #172740;
+  --navy-muted: #24344d;
+
+  /* Accent */
   --teal: #20b89a;
   --teal-dark: #07836f;
+  --teal-soft: #e6f8f3;
+
+  /* Text */
+  --ink: #142033;
+  --muted: #5a6b82;
+  --on-navy: #f8fafc;
+  --on-navy-muted: rgba(248, 250, 252, 0.72);
+
+  /* Surfaces */
+  --bg: #eef1f5;
+  --panel: #ffffff;
   --surface: #f5f7fa;
   --line: #e3e8ef;
+  --line-strong: #d0d7e2;
+
+  /* Semantic */
+  --danger: #c43c3c;
+  --danger-soft: #fceeee;
+  --warn: #b86a00;
+  --warn-soft: #fff4e5;
+  --ok: #07836f;
+  --ok-soft: #e6f8f3;
+
+  /* Focus / elevation */
   --focus-ring: #07836f;
+  --shadow-sm: 0 1px 2px rgba(16, 27, 45, 0.05);
+  --shadow: 0 1px 2px rgba(16, 27, 45, 0.05), 0 10px 28px rgba(16, 27, 45, 0.08);
+  --shadow-lg: 0 24px 60px -24px rgba(16, 27, 45, 0.28);
+
+  /* Radius */
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+
+  /* Type (weights used with Plus Jakarta Sans) */
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono-stack), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --text-body: 0.9375rem;
+  --leading-body: 1.55;
+}
+
+@theme {
+  --color-np-navy: var(--navy);
+  --color-np-navy-soft: var(--navy-soft);
+  --color-np-navy-muted: var(--navy-muted);
+  --color-np-teal: var(--teal);
+  --color-np-teal-dark: var(--teal-dark);
+  --color-np-teal-soft: var(--teal-soft);
+  --color-np-ink: var(--ink);
+  --color-np-muted: var(--muted);
+  --color-np-on-navy: var(--on-navy);
+  --color-np-bg: var(--bg);
+  --color-np-panel: var(--panel);
+  --color-np-surface: var(--surface);
+  --color-np-line: var(--line);
+  --color-np-danger: var(--danger);
+  --color-np-danger-soft: var(--danger-soft);
+  --color-np-warn: var(--warn);
+  --color-np-warn-soft: var(--warn-soft);
+  --color-np-ok: var(--ok);
+  --color-np-ok-soft: var(--ok-soft);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --shadow-np-sm: var(--shadow-sm);
+  --shadow-np: var(--shadow);
+  --shadow-np-lg: var(--shadow-lg);
+  --radius-np-sm: var(--radius-sm);
+  --radius-np: var(--radius);
+  --radius-np-lg: var(--radius-lg);
+  --radius-np-xl: var(--radius-xl);
 }
 
 * {
@@ -25,10 +100,38 @@ html {
 body {
   margin: 0;
   color: var(--ink);
-  background: #fff;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: 500;
+  line-height: var(--leading-body);
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--ink);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+h1 {
+  font-weight: 800;
+}
+
+h2 {
+  font-weight: 700;
+}
+
+h3 {
+  font-weight: 700;
+}
+
+p {
+  line-height: 1.65;
 }
 
 a {
@@ -39,6 +142,13 @@ a {
 button,
 input {
   font: inherit;
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
+  font-weight: 500;
 }
 
 :focus-visible {
