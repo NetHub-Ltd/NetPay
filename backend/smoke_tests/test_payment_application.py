@@ -1,0 +1,290 @@
+"""Application-level payment lifecycle integration tests against PostgreSQL."""
+from __future__ import annotations
+
+from uuid import uuid4
+
+import pytest
+from cryptography.fernet import Fernet
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from pydantic import SecretStr
+from sqlalchemy import delete
+from sqlmodel import select
+
+from app import main as main_module
+from app.core.config import Settings
+from app.models.attempts import PaymentAttempt
+from app.models.events import EventOutbox
+from app.models.integrations import DarajaIntegration
+from app.models.merchants import M2MClient, Merchant
+from app.models.operations import AuditLog, ProviderRequest
+from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
+from app.mpesa_core.errors import OperationOutcome, RetryDisposition
+from app.mpesa_core.schemas import ProviderOperationResult
+from app.payments import router as router_module
+from app.payments import security
+
+
+def test_client_secret_hash_is_one_way_and_constant_time_verified() -> None:
+    """Provisioned client secrets validate without being stored in plaintext."""
+    secret = "high-entropy-client-secret"
+    encoded = security.hash_client_secret(secret)
+    assert encoded != secret
+    assert security.verify_client_secret(secret, encoded)
+    assert not security.verify_client_secret("wrong-secret", encoded)
+    assert not security.verify_client_secret(secret, "invalid")
+
+
+def test_m2m_token_rejects_tampering(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The signed token cannot be altered without invalidating its signature."""
+    settings = Settings(m2m_token_signing_secret=SecretStr("test-only-token-signing-secret-32-bytes"))
+    monkeypatch.setattr(security, "get_settings", lambda: settings)
+    merchant = Merchant(name="Token test", slug=f"token-{uuid4().hex}")
+    client = M2MClient(
+        merchant_id=uuid4(),
+        client_id="client-token-test",
+        secret_hash=security.hash_client_secret("test-secret"),
+        scopes=["payments:read"],
+    )
+    token = security.issue_access_token(client, merchant)
+    assert security.decode_access_token(token)["sub"] == client.client_id
+    header, payload, signature = token.split(".")
+    altered = f"{header}.{payload}.{signature[:-2]}xx"
+    with pytest.raises(HTTPException):
+        security.decode_access_token(altered)
+
+
+def test_credential_encryption_supports_key_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ciphertext is encrypted and remains decryptable with a retained previous key."""
+    old_key = Fernet.generate_key()
+    active_key = Fernet.generate_key()
+    settings = Settings(
+        mpesa_credential_encryption_keys=SecretStr(
+            f"old={old_key.decode()},active={active_key.decode()}"
+        ),
+        mpesa_credential_active_key_id="active",
+    )
+    monkeypatch.setattr(security, "get_settings", lambda: settings)
+    plaintext = b'{"consumer_key":"never-return-this"}'
+    encrypted = security.encrypt_credentials(plaintext)
+    assert plaintext not in encrypted
+    assert security.decrypt_credentials(encrypted) == plaintext
+    previous_ciphertext = b"old:" + Fernet(old_key).encrypt(plaintext)
+    assert security.decrypt_credentials(previous_ciphertext) == plaintext
+
+
+class FakeCore:
+    """Deterministic Core substitute; no Daraja network request is made."""
+
+    def __init__(self) -> None:
+        self.stk_calls = 0
+        self.registration_calls = 0
+
+    async def validate_credentials(self, _context: object) -> None:
+        return None
+
+    async def stk_push(self, _context: object, _request: object) -> ProviderOperationResult:
+        self.stk_calls += 1
+        return ProviderOperationResult(
+            operation="stk_push",
+            outcome=OperationOutcome.ACCEPTED,
+            response={
+                "ResponseCode": "0",
+                "CheckoutRequestID": f"ws_CO_{uuid4().hex}",
+                "MerchantRequestID": f"mr_{uuid4().hex}",
+                "ResponseDescription": "Success. Request accepted for processing",
+            },
+            provider_request_id="provider-request-test",
+            http_status=200,
+            retry_disposition=RetryDisposition.NEVER,
+        )
+
+    async def register_c2b_urls(self, _context: object, _request: object) -> ProviderOperationResult:
+        self.registration_calls += 1
+        return ProviderOperationResult(
+            operation="c2b_registration",
+            outcome=OperationOutcome.ACCEPTED,
+            response={"ResponseCode": "0"},
+            http_status=200,
+            retry_disposition=RetryDisposition.NEVER,
+        )
+
+    async def aclose(self) -> None:
+        return None
+
+
+@pytest.mark.integration
+def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise the application API, persistence, callback state, and transactional outbox."""
+    key = Fernet.generate_key().decode()
+    settings = Settings(
+        environment="test",
+        m2m_token_signing_secret=SecretStr("test-only-token-signing-secret-32-bytes"),
+        mpesa_credential_encryption_keys=SecretStr(f"test={key}"),
+        mpesa_credential_active_key_id="test",
+        mpesa_public_base_url="https://callbacks.test.invalid",
+    )
+    monkeypatch.setattr(security, "get_settings", lambda: settings)
+    monkeypatch.setattr(router_module, "get_settings", lambda: settings)
+    fake_core = FakeCore()
+    merchant_ids = []
+    payment_ids = []
+    integration_ids = []
+    client_ids = []
+    with TestClient(main_module.app) as client:
+        main_module.app.state.mpesa_core = fake_core
+        factory = main_module.app.state.session_factory
+        try:
+            async def seed() -> tuple[Merchant, Merchant, M2MClient, M2MClient]:
+                async with factory() as session:
+                    first = Merchant(name="Flow merchant", slug=f"flow-{uuid4().hex}")
+                    second = Merchant(name="Other merchant", slug=f"other-{uuid4().hex}")
+                    session.add_all([first, second])
+                    await session.flush()
+                    first_client = M2MClient(
+                        merchant_id=first.id,
+                        client_id=f"client-{uuid4().hex}",
+                        secret_hash=security.hash_client_secret("first-secret"),
+                        scopes=["integrations:write", "payments:write", "payments:read"],
+                    )
+                    second_client = M2MClient(
+                        merchant_id=second.id,
+                        client_id=f"client-{uuid4().hex}",
+                        secret_hash=security.hash_client_secret("second-secret"),
+                        scopes=["integrations:write", "payments:write", "payments:read"],
+                    )
+                    session.add_all([first_client, second_client])
+                    await session.commit()
+                    merchant_ids.extend([first.id, second.id])
+                    client_ids.extend([first_client.id, second_client.id])
+                    return first, second, first_client, second_client
+
+            import asyncio
+            first, second, first_client, second_client = asyncio.run(seed())
+            first_token = client.post("/api/v1/oauth/token", json={
+                "client_id": first_client.client_id, "client_secret": "first-secret",
+            })
+            second_token = client.post("/api/v1/oauth/token", json={
+                "client_id": second_client.client_id, "client_secret": "second-secret",
+            })
+            assert first_token.status_code == 200
+            assert second_token.status_code == 200
+            bearer = {"Authorization": f"Bearer {first_token.json()['access_token']}"}
+            other_bearer = {"Authorization": f"Bearer {second_token.json()['access_token']}"}
+
+            integration_response = client.post("/api/v1/integrations", headers=bearer, json={
+                "environment": "sandbox",
+                "shortcode": "174379",
+                "product_type": "paybill",
+                "consumer_key": "test-consumer-key",
+                "consumer_secret": "test-consumer-secret",
+                "passkey": "test-passkey",
+            })
+            assert integration_response.status_code == 201, integration_response.text
+            integration = integration_response.json()
+            integration_ids.append(integration["id"])
+            assert integration["status"] == "active"
+            assert "test-consumer-secret" not in integration_response.text
+            assert integration["stk_callback_url"].endswith(f"/{integration['integration_id']}")
+
+            request_payload = {
+                "integration_id": integration["integration_id"],
+                "phone_number": "0712345678",
+                "amount_minor": 10000,
+                "merchant_reference": f"order-{uuid4().hex[:12]}",
+                "description": "Test payment",
+            }
+            initiated = client.post("/api/v1/payments/stk", headers={**bearer, "Idempotency-Key": "flow-key-1"}, json=request_payload)
+            assert initiated.status_code == 202, initiated.text
+            payment = initiated.json()
+            payment_ids.append(payment["id"])
+            assert payment["status"] == "pending"
+            assert payment["provider_checkout_request_id"]
+            replay = client.post("/api/v1/payments/stk", headers={**bearer, "Idempotency-Key": "flow-key-1"}, json=request_payload)
+            assert replay.status_code == 202
+            assert replay.json()["id"] == payment["id"]
+            assert fake_core.stk_calls == 1
+            conflict_payload = {**request_payload, "amount_minor": 20000}
+            conflict = client.post("/api/v1/payments/stk", headers={**bearer, "Idempotency-Key": "flow-key-1"}, json=conflict_payload)
+            assert conflict.status_code == 409
+
+            callback = {
+                "Body": {"stkCallback": {
+                    "MerchantRequestID": "mr_test",
+                    "CheckoutRequestID": payment["provider_checkout_request_id"],
+                    "ResultCode": 0,
+                    "ResultDesc": "The service request is processed successfully.",
+                    "CallbackMetadata": {"Item": [
+                        {"Name": "Amount", "Value": 100},
+                        {"Name": "MpesaReceiptNumber", "Value": "QAB123XYZ"},
+                        {"Name": "PhoneNumber", "Value": 254712345678},
+                    ]},
+                }},
+            }
+            callback_url = f"/callbacks/mpesa/stk/{integration['integration_id']}"
+            callback_response = client.post(callback_url, json=callback)
+            assert callback_response.status_code == 200
+            status_response = client.get(f"/api/v1/payments/{payment['id']}", headers=bearer)
+            assert status_response.status_code == 200
+            assert status_response.json()["status"] == "succeeded"
+            duplicate_callback = client.post(callback_url, json=callback)
+            assert duplicate_callback.status_code == 200
+            cross_tenant = client.get(f"/api/v1/payments/{payment['id']}", headers=other_bearer)
+            assert cross_tenant.status_code == 404
+
+            c2b_before_opt_in = client.post(
+                f"/callbacks/mpesa/c2b/{integration['integration_id']}/confirmation",
+                json={"TransID": "C2BTEST1", "TransTime": "20261029120000", "TransAmount": "100.00", "BusinessShortCode": "174379"},
+            )
+            assert c2b_before_opt_in.json()["ResultCode"] != 0
+            registration = client.post(
+                f"/api/v1/integrations/{integration['integration_id']}/c2b/register",
+                headers=bearer,
+            )
+            assert registration.status_code == 200, registration.text
+            assert fake_core.registration_calls == 1
+            c2b_payload = {
+                "TransID": f"C2B{uuid4().hex[:10]}",
+                "TransTime": "20261029120000",
+                "TransAmount": "100.00",
+                "BusinessShortCode": "174379",
+                "BillRefNumber": "ORDER-1",
+                "MSISDN": "254712345678",
+            }
+            c2b = client.post(
+                f"/callbacks/mpesa/c2b/{integration['integration_id']}/confirmation",
+                json=c2b_payload,
+            )
+            assert c2b.status_code == 200
+            assert c2b.json()["ResultCode"] == 0
+            duplicate_c2b = client.post(
+                f"/callbacks/mpesa/c2b/{integration['integration_id']}/confirmation",
+                json=c2b_payload,
+            )
+            assert duplicate_c2b.json()["ResultCode"] == 0
+
+            async def verify_and_cleanup() -> None:
+                async with factory() as session:
+                    events = (await session.exec(select(EventOutbox).where(EventOutbox.merchant_id == first.id))).all()
+                    assert len(events) == 2
+                    stk_callbacks = (await session.exec(select(ProviderCallback).where(
+                        ProviderCallback.integration_id == UUID(integration["id"]),
+                        ProviderCallback.callback_type == "stk",
+                    ))).all()
+                    assert len(stk_callbacks) == 1
+                    await session.exec(delete(EventOutbox).where(EventOutbox.merchant_id.in_(merchant_ids)))
+                    await session.exec(delete(ProviderCallback).where(ProviderCallback.integration_id.in_(integration_ids)))
+                    await session.exec(delete(ProviderRequest).where(ProviderRequest.merchant_id.in_(merchant_ids)))
+                    await session.exec(delete(PaymentAttempt).where(PaymentAttempt.payment_id.in_(payment_ids)))
+                    await session.exec(delete(IdempotencyRecord).where(IdempotencyRecord.merchant_id.in_(merchant_ids)))
+                    await session.exec(delete(Payment).where(Payment.merchant_id.in_(merchant_ids)))
+                    await session.exec(delete(AuditLog).where(AuditLog.merchant_id.in_(merchant_ids)))
+                    await session.exec(delete(DarajaIntegration).where(DarajaIntegration.id.in_(integration_ids)))
+                    await session.exec(delete(M2MClient).where(M2MClient.id.in_(client_ids)))
+                    await session.exec(delete(Merchant).where(Merchant.id.in_(merchant_ids)))
+                    await session.commit()
+            asyncio.run(verify_and_cleanup())
+        finally:
+            main_module.app.state.mpesa_core = None
