@@ -37,6 +37,13 @@ class IntegrationCreate(APIModel):
         return value
 
 
+class IntegrationCredentialRotation(APIModel):
+    """Replacement Daraja credentials; never echoed by the API."""
+    consumer_key: SecretStr = Field(min_length=1, max_length=512)
+    consumer_secret: SecretStr = Field(min_length=1, max_length=512)
+    passkey: SecretStr = Field(min_length=1, max_length=512)
+
+
 class STKInitiation(APIModel):
     integration_id: str = Field(min_length=1, max_length=64)
     phone_number: str = Field(min_length=9, max_length=16)
@@ -82,3 +89,4 @@ class IntegrationView(APIModel):
     c2b_registered_at: datetime | None = None
     registration_error: str | None = None
     credentials_validated_at: datetime | None = None
+    credential_version: int
