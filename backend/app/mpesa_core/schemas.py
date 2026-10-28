@@ -1,7 +1,7 @@
 """Typed requests and results for supported Daraja operations."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
@@ -213,7 +213,7 @@ class TaxRemittanceRequest(CoreModel):
 
 
 class PullTransactionsRequest(CoreModel):
-    """Reserved for the documented Pull Transactions contract once confirmed."""
+    """Timezone-aware query window for Pull Transactions reconciliation."""
 
     start_at: datetime
     end_at: datetime
@@ -369,6 +369,15 @@ class BillManagerInvoiceRequest(CoreModel):
     invoice_name: str = Field(min_length=1, max_length=120)
     billed_period: str | None = Field(default=None, max_length=64)
     invoice_items: list[BillManagerInvoiceItem] = Field(default_factory=list)
+
+    @field_validator("due_date")
+    @classmethod
+    def valid_due_date(cls, value: str) -> str:
+        try:
+            date.fromisoformat(value)
+        except ValueError:
+            raise ValueError("due_date must use YYYY-MM-DD format") from None
+        return value
 
     @field_validator("amount_minor")
     @classmethod
