@@ -50,7 +50,7 @@ Operation-specific models:
 - B2C: recipient, amount, command, originator conversation ID, initiator/security credential, remarks/occasion and callbacks. Acknowledgement differs from final result callback.
 - B2B: supported command variant, PartyA/PartyB, amount, account reference where required, initiator/security credential, remarks/occasion and callbacks; validate each command variant.
 - Pull Transactions: documented query window/filter and response/callback context; exact date range, pagination and callback semantics must be confirmed.
-- Ratiba/Standing Orders, Bill Manager, Tax Remittance, Lipa na Bonga and B2B Express Checkout have typed adapters. Where the public portal does not expose complete field schemas, endpoint/payload assumptions are provisional and must pass authenticated documentation or sandbox contract tests before production enablement. If the catalogue maps a capability to an existing endpoint/command, use that documented mapping. Never invent new endpoints.
+- Ratiba/Standing Orders, Bill Manager, Tax Remittance, Lipa na Bonga and B2B Express Checkout have typed adapters. Where the public portal does not expose complete field schemas, endpoint/payload assumptions are provisional and are explicitly blocked from production in Core until authenticated documentation or sandbox contract tests verify them. If the catalogue maps a capability to an existing endpoint/command, use that documented mapping. Never invent new endpoints.
 
 Callback models:
 - STK callback: CheckoutRequestID, MerchantRequestID, ResultCode/ResultDesc and optional metadata items such as amount, receipt, transaction time and phone.
