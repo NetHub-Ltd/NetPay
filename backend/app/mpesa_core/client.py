@@ -30,6 +30,8 @@ from app.mpesa_core.errors import (
 from app.mpesa_core.schemas import (
     AccountBalanceRequest,
     B2BExpressCheckoutRequest,
+    BillManagerBulkCancelInvoiceRequest,
+    BillManagerBulkInvoiceRequest,
     BillManagerCancelInvoiceRequest,
     BillManagerInvoiceRequest,
     BillManagerOptInRequest,
@@ -41,6 +43,7 @@ from app.mpesa_core.schemas import (
     DarajaCredentials,
     DynamicQRRequest,
     IntegrationContext,
+    LipaNaBongaQuoteRequest,
     LipaNaBongaRequest,
     ProviderOperationResult,
     PullTransactionsRegistrationRequest,
@@ -544,6 +547,69 @@ class MpesaCore:
                    "Amount": request.amount_minor // 100}
         return await self._request(context, "bill_manager_reconciliation", "POST", "/v1/billmanager-invoice/reconciliation", payload)
 
+
+
+
+    async def calculate_lipa_na_bonga_value(self, context: IntegrationContext, request: LipaNaBongaQuoteRequest) -> ProviderOperationResult:
+        """Calculate the value of Bonga points before the customer redeems them."""
+        self._require(context, "lipa_na_bonga")
+        return await self._request(context, "lipa_na_bonga_quote", "POST", "/v1/lipa/na/bonga/calculate-points",
+                                   {"BongaPoints": request.bonga_points})
+
+    async def bill_manager_bulk_invoices(self, context: IntegrationContext, request: BillManagerBulkInvoiceRequest) -> ProviderOperationResult:
+        """Send a bounded batch of typed Bill Manager invoices."""
+        self._require(context, "bill_manager")
+        invoices = [self._bill_manager_invoice_payload(item) for item in request.invoices]
+        return await self._request(context, "bill_manager_bulk_invoice", "POST", "/v1/billmanager-invoice/bulk-invoicing",
+                                   {"Invoices": invoices})
+
+    async def bill_manager_cancel_bulk_invoices(self, context: IntegrationContext, request: BillManagerBulkCancelInvoiceRequest) -> ProviderOperationResult:
+        """Cancel a bounded batch of Bill Manager invoices."""
+        self._require(context, "bill_manager")
+        return await self._request(context, "bill_manager_cancel_bulk", "POST", "/v1/billmanager-invoice/cancel-bulk-invoice",
+                                   {"ExternalReferences": request.external_references})
+
+    async def bill_manager_update_opt_in(self, context: IntegrationContext, request: BillManagerOptInRequest) -> ProviderOperationResult:
+        """Update a shortcode's Bill Manager onboarding details."""
+        self._require(context, "bill_manager")
+        payload = {"ShortCode": context.shortcode, "Email": request.email,
+                   "OfficialContact": normalize_ke_phone(request.official_contact),
+                   "SendReminders": "1" if request.send_reminders else "0",
+                   "CallbackURL": validate_callback_url(request.callback_url, production=context.environment == "production")}
+        if request.logo_url:
+            payload["Logo"] = validate_callback_url(request.logo_url, production=context.environment == "production")
+        return await self._request(context, "bill_manager_update_opt_in", "POST", "/v1/billmanager-invoice/change-optin-details", payload)
+
+    async def bill_manager_update_invoice(self, context: IntegrationContext, request: BillManagerInvoiceRequest) -> ProviderOperationResult:
+        """Update one existing Bill Manager invoice."""
+        self._require(context, "bill_manager")
+        return await self._request(context, "bill_manager_update_invoice", "POST", "/v1/billmanager-invoice/change-invoice",
+                                   self._bill_manager_invoice_payload(request))
+
+    async def bill_manager_update_bulk_invoices(self, context: IntegrationContext, request: BillManagerBulkInvoiceRequest) -> ProviderOperationResult:
+        """Update a bounded batch of existing Bill Manager invoices."""
+        self._require(context, "bill_manager")
+        invoices = [self._bill_manager_invoice_payload(item) for item in request.invoices]
+        return await self._request(context, "bill_manager_update_bulk", "POST", "/v1/billmanager-invoice/change-invoices",
+                                   {"Invoices": invoices})
+
+    @staticmethod
+    def _bill_manager_invoice_payload(request: BillManagerInvoiceRequest) -> dict[str, Any]:
+        """Convert the typed invoice contract into the provider's field names."""
+        payload: dict[str, Any] = {
+            "ExternalReference": request.external_reference,
+            "BilledFullName": request.billed_full_name,
+            "BilledPhoneNumber": normalize_ke_phone(request.billed_phone_number),
+            "Amount": request.amount_minor // 100,
+            "DueDate": request.due_date,
+            "AccountReference": request.account_reference,
+            "InvoiceName": request.invoice_name,
+            "InvoiceItems": [{"ItemName": item.item_name, "Amount": item.amount_minor // 100}
+                             for item in request.invoice_items],
+        }
+        if request.billed_period:
+            payload["BilledPeriod"] = request.billed_period
+        return payload
 
 
 _SENSITIVE_KEY = re.compile(r"(secret|password|token|authorization|passkey|credential)", re.IGNORECASE)
