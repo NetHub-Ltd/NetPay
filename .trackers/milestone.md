@@ -209,7 +209,7 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [x] Implement shared schemas, validation, typed errors, OAuth cache/concurrency and HTTP lifecycle.
 - [x] Implement all proposed API adapters with per-operation success/rejection/malformed/transport/ambiguous/security tests; provisional product contracts remain production-gated.
 - [x] Implement callback parsers/normalizers without moving application route/state ownership into Core.
-- [x] Run backend, migration, CI, frontend, image and container checks on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3` (CI run `40780804974` passed); rerun after the tracker reconciliation commit.
+- [x] Run backend, migration, CI, frontend, image and container checks on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3` (CI run `40780804974` passed); the branch contains tracker/spec-only commits after this tested code head; current branch-tip checks are pending.
 - [x] Re-fetch and reconcile trackers/issue; open one draft PR targeting dev (#215); do not merge without user approval.
 
 **Acceptance note:** all proposed API families must have an implemented and tested contract. If official documentation proves a proposed product name is retired, unavailable or not a distinct endpoint, record the evidence and implement the documented equivalent only when one exists; never invent an endpoint to satisfy a label.

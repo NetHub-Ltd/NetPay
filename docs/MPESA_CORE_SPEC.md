@@ -1,6 +1,6 @@
 # NetPay mpesa_core — implementation specification
 
-Status: Approved scope implemented and mocked tests passing on code head `a3264063f7b3219235c4b9bc48a620bbed691730` (CI run `40780329065`). Several product payload contracts remain provisional and are explicitly gated from production pending authenticated documentation or sandbox verification.
+Status: Approved scope implemented and mocked tests passing on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3` (CI run `40780804974`). Several product payload contracts remain provisional and are explicitly gated from production pending authenticated documentation or sandbox verification.
 Repository baseline: dev at 82bae5b7c8e1704491b0aa8eec1dfa8fa948364f (observed 2026-10-28).
 Decision: Implement the complete proposed API inventory, including capabilities not exposed in the initial merchant UX. Every adapter has typed request/response handling and mocked tests; provisional provider contracts are not production-ready until verified.
 
@@ -94,7 +94,7 @@ Use sandbox.safaricom.co.ke and api.safaricom.co.ke only where the current produ
 | Ratiba / Standing Orders | POST /standingorder/v1/createStandingOrderExternal | Commercial recurring collection; requires customer authorization and product agreement/permissions. |
 | Bill Manager | POST /v1/billmanager-invoice/optin, /single-invoicing, /bulk-invoicing, /reconciliation, /cancel-single-invoice, /cancel-bulk-invoice, /change-optin-details, /change-invoice, /change-invoices | Separate invoicing/reconciliation product; endpoint family corroborated by public SDK catalogues; operation payloads require sandbox contract validation. |
 | Tax Remittance | POST /mpesa/b2b/v1/remittax | Dedicated documented KRA tax remittance product; requires prior KRA PRN integration and product/initiator permissions. |
-| Lipa na Bonga | POST /v1/lipa/na/bonga/redeem-paybill | Customer redeems Bonga points; payment settlement notification is received through the registered C2B confirmation route. Payload fields require sandbox contract validation. |
+| Lipa na Bonga | POST /v1/lipa/na/bonga/calculate-points and POST /v1/lipa/na/bonga/redeem-paybill | Calculate Bonga value and redeem points; settlement notification is received through the registered C2B confirmation route. Payload fields require sandbox contract validation. |
 
 ### Official documentation reviewed
 - Transaction Status: https://developer.safaricom.co.ke/apis/TransactionStatus
