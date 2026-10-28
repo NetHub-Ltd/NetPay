@@ -420,7 +420,7 @@ class MpesaCore:
             "QueueTimeOutURL": validate_callback_url(request.timeout_url, production=context.environment == "production"),
             "Remarks": request.remarks,
         }
-        return await self._request(context, "account_balance", "POST", "/mpesa/accountbalance/v1/query", payload, asynchronous=True)
+        return await self._request(context, "account_balance", "POST", "/mpesa/accountbalance/v1/query", payload)
 
     async def reverse_transaction(self, context: IntegrationContext, request: ReversalRequest) -> ProviderOperationResult:
         """Request a supported reversal; final outcome arrives asynchronously."""
@@ -435,7 +435,7 @@ class MpesaCore:
         }
         if request.occasion:
             payload["Occasion"] = request.occasion
-        return await self._request(context, "reversal", "POST", "/mpesa/reversal/v1/request", payload, asynchronous=True)
+        return await self._request(context, "reversal", "POST", "/mpesa/reversal/v1/request", payload)
 
     async def b2c_payment(self, context: IntegrationContext, request: B2CPaymentRequest) -> ProviderOperationResult:
         """Initiate a B2C disbursement; completion is reported asynchronously."""
@@ -450,7 +450,7 @@ class MpesaCore:
         }
         if request.occasion:
             payload["Occasion"] = request.occasion
-        return await self._request(context, "b2c", "POST", "/mpesa/b2c/v3/paymentrequest", payload, asynchronous=True)
+        return await self._request(context, "b2c", "POST", "/mpesa/b2c/v3/paymentrequest", payload)
 
     async def b2b_payment(self, context: IntegrationContext, request: B2BPaymentRequest) -> ProviderOperationResult:
         """Initiate a permitted B2B command; command permissions are provider-side."""
@@ -467,7 +467,7 @@ class MpesaCore:
             payload["AccountReference"] = request.account_reference
         if request.occasion:
             payload["Occasion"] = request.occasion
-        return await self._request(context, "b2b", "POST", "/mpesa/b2b/v1/paymentrequest", payload, asynchronous=True)
+        return await self._request(context, "b2b", "POST", "/mpesa/b2b/v1/paymentrequest", payload)
 
     async def tax_remittance(self, context: IntegrationContext, request: TaxRemittanceRequest) -> ProviderOperationResult:
         """Remit a KRA PRN using the documented B2B Tax Remittance product."""
@@ -481,7 +481,7 @@ class MpesaCore:
             "QueueTimeOutURL": validate_callback_url(request.timeout_url, production=context.environment == "production"),
             "ResultURL": validate_callback_url(request.result_url, production=context.environment == "production"),
         }
-        return await self._request(context, "tax_remittance", "POST", "/mpesa/b2b/v1/remittax", payload, asynchronous=True)
+        return await self._request(context, "tax_remittance", "POST", "/mpesa/b2b/v1/remittax", payload)
 
     async def catalogue_operation(self, context: IntegrationContext, operation: str, payload: dict[str, Any]) -> ProviderOperationResult:
         """Fail closed for proposed catalogue entries without a verified contract."""
@@ -502,7 +502,7 @@ class MpesaCore:
         payload = {"ShortCode": context.shortcode,
                    "NominatedNumber": normalize_ke_phone(request.nominated_phone_number),
                    "CallBackURL": validate_callback_url(request.callback_url, production=context.environment == "production")}
-        return await self._request(context, "pull_transactions_register", "POST", "/pulltransactions/v1/register", payload, asynchronous=True)
+        return await self._request(context, "pull_transactions_register", "POST", "/pulltransactions/v1/register", payload)
 
     async def pull_transactions(self, context: IntegrationContext, request: PullTransactionsRequest) -> ProviderOperationResult:
         """Query the Pull Transactions reconciliation endpoint."""
@@ -523,7 +523,7 @@ class MpesaCore:
                    "partnerName": request.partner_name,
                    "callbackUrl": validate_callback_url(request.callback_url, production=context.environment == "production"),
                    "requestRefID": request.request_ref_id}
-        return await self._request(context, "b2b_express_checkout", "POST", "/v1/ussdpush/get-msisdn", payload, asynchronous=True)
+        return await self._request(context, "b2b_express_checkout", "POST", "/v1/ussdpush/get-msisdn", payload)
 
     async def create_ratiba_order(self, context: IntegrationContext, request: RatibaStandingOrderRequest) -> ProviderOperationResult:
         """Create a customer-authorized M-Pesa Ratiba standing order."""
@@ -540,7 +540,7 @@ class MpesaCore:
                    "Frequency": request.frequency,
                    "StartDate": request.start_date,
                    "EndDate": request.end_date}
-        return await self._request(context, "ratiba", "POST", "/standingorder/v1/createStandingOrderExternal", payload, asynchronous=True)
+        return await self._request(context, "ratiba", "POST", "/standingorder/v1/createStandingOrderExternal", payload)
 
     async def redeem_lipa_na_bonga(self, context: IntegrationContext, request: LipaNaBongaRequest) -> ProviderOperationResult:
         """Redeem Bonga points toward a Paybill payment; settlement arrives via C2B."""
