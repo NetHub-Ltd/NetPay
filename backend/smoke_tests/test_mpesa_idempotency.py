@@ -70,8 +70,8 @@ async def test_provider_request_idempotency_key_is_unique_per_integration_operat
             await session.rollback()
 
             distinct_operation = ProviderRequest(
-                merchant_id=merchant.id,
-                integration_id=integration.id,
+                merchant_id=merchant_id,
+                integration_id=integration_id,
                 operation="transaction_status",
                 idempotency_key="merchant-payment-key-1",
                 request_hash="b" * 64,
