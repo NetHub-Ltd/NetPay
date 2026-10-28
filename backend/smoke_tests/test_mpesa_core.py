@@ -6,6 +6,10 @@ import json
 from typing import Any
 
 import httpx
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.x509.oid import NameOID
 import pytest
 from pydantic import SecretStr, ValidationError
 
@@ -552,5 +556,45 @@ async def test_bill_manager_bulk_update_and_bonga_quote_endpoints() -> None:
             "/v1/billmanager-invoice/change-invoices",
             "/v1/lipa/na/bonga/calculate-points",
         }
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_initiator_password_is_rsa_encrypted_with_environment_certificate() -> None:
+    from datetime import UTC, datetime, timedelta
+    from app.mpesa_core.schemas import DarajaCredentials
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Daraja test certificate")])
+    now = datetime.now(UTC)
+    certificate = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before((now - timedelta(days=1)).replace(tzinfo=None))
+        .not_valid_after((now + timedelta(days=30)).replace(tzinfo=None))
+        .sign(private_key, hashes.SHA256())
+    )
+    pem = certificate.public_bytes(serialization.Encoding.PEM).decode()
+    class CertificateSettings:
+        mpesa_http_timeout_seconds = 2.0
+        mpesa_sandbox_certificate_pem = SecretStr(pem)
+        mpesa_production_certificate_pem = None
+    ctx = context()
+    ctx = ctx.model_copy(update={"credentials": DarajaCredentials(
+        consumer_key=SecretStr("consumer-key-test"),
+        consumer_secret=SecretStr("consumer-secret-test"),
+        initiator_name="test-initiator",
+        initiator_password=SecretStr("initiator-password-test"),
+    )})
+    core = MpesaCore(CertificateSettings(), transport=httpx.MockTransport(handler_for({})))
+    try:
+        payload = core._initiator_payload(ctx)
+        encrypted = __import__("base64").b64decode(payload["SecurityCredential"])
+        plaintext = private_key.decrypt(encrypted, padding.PKCS1v15())
+        assert plaintext == b"initiator-password-test"
+        assert payload["Initiator"] == "test-initiator"
     finally:
         await core.aclose()
