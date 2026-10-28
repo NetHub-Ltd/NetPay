@@ -4,9 +4,8 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
-import json
 import re
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
@@ -47,7 +46,6 @@ from app.mpesa_core.schemas import (
     B2CPaymentRequest,
     C2BRegistrationRequest,
     C2BSimulationRequest,
-    DarajaCredentials,
     DynamicQRRequest,
     DynamicQRResponse,
     IntegrationContext,
@@ -67,7 +65,7 @@ from app.mpesa_core.schemas import (
     TaxRemittanceRequest,
     TransactionStatusRequest,
 )
-from app.mpesa_core.validation import normalize_ke_phone, require_capability, validate_callback_url, validate_context
+from app.mpesa_core.validation import normalize_ke_phone, validate_callback_url, validate_context
 
 
 _SANDBOX = "https://sandbox.safaricom.co.ke"
