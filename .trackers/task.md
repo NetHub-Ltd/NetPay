@@ -274,3 +274,19 @@ Do not merge or deploy without explicit approval.
 - **Verified by read-back:** `backend/app/main.py` no longer imports or registers the Core callback router; all 9 `backend/app/mpesa_core/` files and both Core-specific test files are listed as deletions in PR #214.
 - **Not verified:** repository-wide runtime reference audit and final CI conclusions. The GitHub code-search connector indexes the default branch rather than this topic branch, so it is not evidence of a complete topic-branch reference scan.
 - **Next safe action:** retrieve the workflow conclusions and review any failures; do not merge. Replacement-class design remains a separate post-merge discussion requiring the user's approval before code is written.
+ 
+
+## Approved implementation — complete mpesa_core (2026-10-29)
+
+**Status:** APPROVED; implementation may proceed on the dedicated topic branch after the API contract verification step. This is a new implementation; do not restore the deleted package from PR #214.
+
+- **Issue:** #187 — feat(mpesa): implement complete mpesa_core Daraja API layer with exhaustive tests.
+- **Branch:** feat/mpesa-core-complete, created from live dev baseline 82bae5b7c8e1704491b0aa8eec1dfa8fa948364f.
+- **Specification:** docs/MPESA_CORE_SPEC.md.
+- **Approved scope:** all 18 proposed capability groups in the spec, including OAuth, STK Push/query, C2B registration/callback parsing/simulation, Dynamic QR, Transaction Status, Pull Transactions, Account Balance, Reversal, B2C, B2B, B2B Express Checkout, Ratiba/Standing Orders, Bill Manager, Tax Remittance and Lipa na Bonga. Implement only documented current contracts; where the proposed catalogue name/path is not confirmed, verify authoritative docs and record the corrected mapping rather than inventing an endpoint.
+- **Architecture:** one application-scoped async MpesaCore instance per FastAPI process. Core owns Daraja transport/OAuth/typed provider contracts/parsing/errors/safe logs. Application owns credential persistence/decryption, merchant auth, routes, durable audit, payment state, idempotency, callback correlation/deduplication, reconciliation and outbox.
+- **Hard invariants:** provider acceptance is not payment success; callbacks are untrusted; ambiguous post-send outcomes stay unknown; no blind retries of financial mutations; no secret/token/passkey/security credential/auth header in logs; C2B registration remains opt-in; simulation is sandbox-only.
+- **Verification evidence:** live dev SHA and PR #214 merge observed through GitHub API on 2026-10-29. Official Safaricom pages reviewed for STK Push, Dynamic QR, B2C and Transaction Status; details and remaining API products are documented in docs/MPESA_CORE_SPEC.md. This is not implementation or test evidence.
+- **Current status:** specification and this tracker update only; no replacement Core code or API adapters have been implemented yet. Test suite not run for this task.
+- **Next safe action:** verify every operation's official endpoint/version, payload, permissions, callback and retry semantics; update the matrix; then implement and test in bounded groups. Reuse existing models only where they fit. Preserve all historical migrations unless a justified new migration is required.
+- **Delivery:** one PR targeting dev; no direct push to dev/main, no history rewrite, no deployment-manifest/Flux changes, and no merge without explicit user approval.
