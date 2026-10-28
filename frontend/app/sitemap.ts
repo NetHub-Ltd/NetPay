@@ -2,19 +2,17 @@ import type { MetadataRoute } from "next";
 
 export const dynamic = "force-static";
 
-/**
- * Public indexable URLs only. Dashboard is intentionally omitted (page-level noindex).
- */
+/** Public indexable URLs only. */
 export default function sitemap(): MetadataRoute.Sitemap {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
-  const lastModified = new Date("2026-10-28");
+  const lastModified = new Date();
 
-  return [
-    {
-      url: new URL("/", siteUrl).toString(),
-      lastModified,
-      changeFrequency: "weekly",
-      priority: 1,
-    },
-  ];
+  const paths = ["/", "/api-overview/", "/faq/", "/request-access/"];
+
+  return paths.map((path, i) => ({
+    url: new URL(path, siteUrl).toString(),
+    lastModified,
+    changeFrequency: path === "/" ? "weekly" : "monthly",
+    priority: path === "/" ? 1 : 0.8 - i * 0.05,
+  }));
 }
