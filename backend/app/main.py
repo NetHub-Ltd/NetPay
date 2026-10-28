@@ -20,12 +20,14 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     settings: Settings = get_settings()
     engine: AsyncEngine = create_database_engine(settings)
     redis_client: Redis | None = None
-    mpesa_core = MpesaCore(settings)
-    application.state.mpesa_core = mpesa_core
+    mpesa_core: MpesaCore | None = None
+    application.state.mpesa_core = None
     application.state.engine = engine
     application.state.session_factory = create_session_factory(engine)
     application.state.redis = None
     try:
+        mpesa_core = MpesaCore(settings)
+        application.state.mpesa_core = mpesa_core
         await check_database(engine)
         logger.info("database_connectivity=ok")
         if settings.redis_enabled:
@@ -40,11 +42,16 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
                 await candidate.aclose()
         yield
     finally:
-        if redis_client is not None:
-            await redis_client.aclose()
-        await mpesa_core.aclose()
-        application.state.mpesa_core = None
-        await engine.dispose()
+        try:
+            if redis_client is not None:
+                await redis_client.aclose()
+        finally:
+            try:
+                if mpesa_core is not None:
+                    await mpesa_core.aclose()
+            finally:
+                application.state.mpesa_core = None
+                await engine.dispose()
         application.state.engine = None
         application.state.session_factory = None
         application.state.redis = None
