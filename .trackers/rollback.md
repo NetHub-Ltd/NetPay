@@ -176,3 +176,12 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Changes so far are tracker updates and `docs/MPESA_E2E_VERIFICATION.md`; no runtime code, schema, migration, workflow, deployment manifest, or GHCR behavior changed.
 - Rollback, if needed, should be a reviewed revert commit on this topic branch. Preserve history; no reset/rebase/squash/force-push.
 - Next implementation is a major secured application API/service slice. Do not add unauthenticated endpoints; await resolution of the scope gate documented in issue #216 before expanding beyond this audit.
+
+## Issue #217 contract / #216 verification boundary (2026-10-29 23:10 UTC)
+
+- [#217](https://github.com/NetHub-Ltd/NetPay/issues/217) is a proposal-only implementation issue awaiting explicit user approval. No application runtime changes have been made for it.
+- [#216](https://github.com/NetHub-Ltd/NetPay/issues/216) is verification-only and waits for #217's reviewed implementation PR to be merged to `dev`.
+- Current audit branch `test/mpesa-e2e-verification-216` contains only audit/tracker documentation changes. Preserve history; if these changes need reversal, use a reviewed revert commit rather than reset/rebase/squash/force-push.
+- No production DB, credentials, live transactions, historical migrations, Flux/deployment manifests, or GHCR build/push behavior were changed.
+- Implementation rollback plan must be added to #217's PR before implementation is approved; prefer additive, backward-compatible schema changes and reviewed revert commits. Any destructive/backfill migration requires separate explicit approval.
+
