@@ -89,12 +89,12 @@ Use sandbox.safaricom.co.ke and api.safaricom.co.ke only where the current produ
 | Reversal | POST /mpesa/reversal/v1/request | Restricted, asynchronous; eligibility varies by transaction type. |
 | B2C | POST /mpesa/b2c/v3/paymentrequest | Restricted disbursement; initiator/security credential, product access and callback handling. |
 | B2B | POST /mpesa/b2b/v1/paymentrequest | Restricted transfer; enumerate supported command IDs and party types from docs. |
-| Pull Transactions | Current product contract required | Verify endpoint, date window, pagination and response/callback semantics. |
-| B2B Express Checkout | Current product contract required | Confirm it is a distinct current Daraja API rather than a mistaken product/flow name. |
-| Ratiba / Standing Orders | Current product contract required | Confirm current API availability, path/version and product permissions. |
-| Bill Manager | Current product contract required | Confirm operations and schema against current product documentation. |
-| Tax Remittance | Verify separate API versus documented B2B command | Implement documented operation/command, not a fabricated endpoint. |
-| Lipa na Bonga | Current product contract required | Confirm exact product, eligibility, endpoint and request fields. |
+| Pull Transactions | POST /pulltransactions/v1/register and POST /pulltransactions/v1/query | C2B missed-callback recovery; limited lookback window, nominated number and offset semantics require sandbox verification. |
+| B2B Express Checkout | POST /v1/ussdpush/get-msisdn | USSD push to the paying merchant's till operator; documented by current public SDK/OpenAPI catalogues; production permission and callback contract must be verified. |
+| Ratiba / Standing Orders | POST /standingorder/v1/createStandingOrderExternal | Commercial recurring collection; requires customer authorization and product agreement/permissions. |
+| Bill Manager | POST /v1/billmanager-invoice/optin, /single-invoicing, /bulk-invoicing, /reconciliation, /cancel-single-invoice, /cancel-bulk-invoice, /change-optin-details, /change-invoice, /change-invoices | Separate invoicing/reconciliation product; endpoint family corroborated by public SDK catalogues; operation payloads require sandbox contract validation. |
+| Tax Remittance | POST /mpesa/b2b/v1/remittax | Dedicated documented KRA tax remittance product; requires prior KRA PRN integration and product/initiator permissions. |
+| Lipa na Bonga | POST /v1/lipa/na/bonga/redeem-paybill | Customer redeems Bonga points; payment settlement notification is received through the registered C2B confirmation route. Payload fields require sandbox contract validation. |
 
 ### Official documentation reviewed
 - Transaction Status: https://developer.safaricom.co.ke/apis/TransactionStatus
@@ -102,6 +102,13 @@ Use sandbox.safaricom.co.ke and api.safaricom.co.ke only where the current produ
 - B2C: https://developer.safaricom.co.ke/apis/BusinessToCustomer
 - STK Push: https://developer.safaricom.co.ke/apis/MpesaExpressSimulate
 - Safaricom Node library (corroborating subset, not authority for complete catalogue): https://github.com/safaricom/mpesa-node-library
+- Tax Remittance: https://developer.safaricom.co.ke/apis/TaxRemittance
+- Bill Manager: https://developer.safaricom.co.ke/apis/BillManager
+- Ratiba: https://developer.safaricom.co.ke/apis/MpesaRatiba
+- B2B Express Checkout: https://developer.safaricom.co.ke/apis/B2BExpressCheckout
+- Public SDK catalogue cross-check (not official): https://laraveldaraja.com/apis/overview/
+- Pull Transactions request details (public SDK/docs cross-check, not official): https://laraveldaraja.com/apis/pull-transactions/
+- Lipa na Bonga request details (public SDK/docs cross-check, not official): https://laraveldaraja.com/apis/lipa-na-bonga/
 
 Safaricom's current portal confirms Transaction Status is asynchronous and accepts a receipt or originator conversation ID; it documents Dynamic QR and B2C endpoints. The official Node library lists a subset of established APIs, including balance, B2B, B2C, C2B registration/simulation, STK push/query, reversal and transaction status. The product owner approved the proposed inventory, not the invention of undocumented routes. A name that cannot yet be verified remains a catalogue-verification gate until authoritative documentation establishes the contract; the matrix must then record endpoint/version, roles/credentials, sandbox availability, callback schema, asynchronous semantics and test fixtures.
 
