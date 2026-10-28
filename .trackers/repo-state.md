@@ -240,7 +240,7 @@ These are historical reports, not fresh verification performed during tracker cr
 - **Fresh skill:** refreshed CORE-AI-Product-Engineering-Skill-v1.0.0.md from https://github.com/NetHub-Ltd/skills-.git. Applied inspect-before-change, evidence labels, proposal/impact/test/rollback discipline, simplest-correct architecture and no unsupported implementation claims.
 - **Important instruction reconciliation:** older AGENTS.md says work only on work/minimal-netpay-rebuild and forbids new branches, but the current user-approved task and later tracker workflow explicitly require a topic branch from dev and one PR targeting dev. For this task, use feat/mpesa-core-complete only; do not touch work/minimal-netpay-rebuild, dev or main directly.
 - **Existing models observed:** DarajaIntegration stores integration metadata and encrypted credential material; ProviderRequest supports operation/correlation/idempotency and safe request/response metadata; PaymentVerification and reconciliation records exist. Inspect their current consumers before deciding whether any schema change is required. Do not duplicate these models or edit historical migration revisions.
-- **Status:** docs/spec and issue/tracker coordination only. No Core implementation, schema migration, test run, workflow change or deployment action has occurred yet.
+- **Initial status at branch creation:** docs/spec and issue/tracker coordination only; superseded by the Implementation progress snapshot below.
 - **Next action:** verify every proposed API against current official Safaricom docs and freeze exact contracts before coding. Catalogue names not confirmed by the current docs must be mapped to a documented endpoint/command or clearly reported as unavailable rather than fabricated.
 
 
