@@ -5,6 +5,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import re
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlencode
@@ -210,6 +211,8 @@ class MpesaCore:
             raise AmbiguousOutcome("Daraja outcome is unknown; reconcile before retrying") from None
 
         try:
+            if len(response.content) > 1_000_000:
+                raise ValueError
             body = response.json()
             if not isinstance(body, dict):
                 raise ValueError
@@ -218,10 +221,10 @@ class MpesaCore:
             raise MalformedProviderResponse("Daraja returned an invalid response") from None
 
         if response.status_code < 200 or response.status_code >= 300:
-            code = _optional_str(body.get("errorCode") or body.get("ResponseCode"))
+            code = _safe_provider_code(body.get("errorCode") or body.get("ResponseCode"))
             logger.warning("daraja_http_rejection operation={} http_status={} provider_code={}", operation, response.status_code, code)
             raise ProviderRejected("Daraja rejected the request", provider_code=code)
-        code = _optional_str(body.get("ResponseCode"))
+        code = _safe_provider_code(body.get("ResponseCode"))
         if code is not None and code != "0":
             logger.info("daraja_operation_rejected operation={} provider_code={}", operation, code)
             raise ProviderRejected("Daraja rejected the operation", provider_code=code)
@@ -235,7 +238,7 @@ class MpesaCore:
         return ProviderOperationResult(
             operation=operation,
             outcome=outcome,
-            response=body,
+            response=_redact_response(body),
             provider_request_id=request_id,
             conversation_id=conversation_id,
             originator_conversation_id=originator_id,
@@ -540,6 +543,34 @@ class MpesaCore:
                    "TransactionID": request.transaction_id,
                    "Amount": request.amount_minor // 100}
         return await self._request(context, "bill_manager_reconciliation", "POST", "/v1/billmanager-invoice/reconciliation", payload)
+
+
+
+_SENSITIVE_KEY = re.compile(r"(secret|password|token|authorization|passkey|credential)", re.IGNORECASE)
+_PHONE_KEY = re.compile(r"(phone|msisdn|mobile)", re.IGNORECASE)
+_SAFE_CODE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+
+
+def _safe_provider_code(value: object) -> str | None:
+    """Keep provider codes bounded and free of arbitrary echoed payload text."""
+    candidate = _optional_str(value)
+    if candidate is None:
+        return None
+    return candidate if _SAFE_CODE.fullmatch(candidate) else "untrusted_provider_code"
+
+
+def _redact_response(value: Any, *, key: str = "") -> Any:
+    """Redact secret-like keys and mask phone-number values in returned metadata."""
+    if _SENSITIVE_KEY.search(key):
+        return "[REDACTED]"
+    if isinstance(value, dict):
+        return {str(k): _redact_response(v, key=str(k)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_response(item, key=key) for item in value]
+    if isinstance(value, str) and _PHONE_KEY.search(key):
+        digits = re.sub(r"\\D", "", value)
+        return f"***{digits[-4:]}" if len(digits) >= 4 else "[REDACTED]"
+    return value
 
 
 def _optional_str(value: object) -> str | None:
