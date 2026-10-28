@@ -262,13 +262,6 @@ class AsyncResultCallback(CoreModel):
     result: dict[str, Any] = Field(alias="Result")
 
 
-class CatalogueOperationRequest(CoreModel):
-    """Typed envelope for a product whose current portal schema is not public here."""
-
-    operation: Literal["bill_manager", "ratiba", "lipa_na_bonga", "b2b_express_checkout"]
-    payload: dict[str, Any] = Field(default_factory=dict)
-
-
 class PullTransactionsRegistrationRequest(CoreModel):
     """Register a shortcode/MSISDN and callback for transaction pull recovery."""
 
