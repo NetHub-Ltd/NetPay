@@ -1,6 +1,14 @@
 # NetPay repository state and agent handoff
 
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-29
+
+## Current active task — mpesa_core
+
+- **Branch:** `feat/mpesa-core-complete`; base `dev` at `82bae5b7c8e1704491b0aa8eec1dfa8fa948364f` when the branch was created.
+- **Issue / PR:** issue #187; draft PR #215 targets `dev`, remains unmerged.
+- **Latest verified code head:** `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`; CI run `40780804974` passed backend tests, migration, PostgreSQL/Redis, production image build without push, container startup smoke test, frontend lint/build and backend readiness.
+- **Open blocker:** verify provisional Bill Manager, Ratiba, B2B Express Checkout, Lipa na Bonga and Pull Transactions contracts with authenticated Daraja documentation/sandbox before production enablement. These capabilities are production-gated in Core.
+- **No deployment or merge:** no image was pushed; Flux/deployment manifests were not changed; PR #215 is for review only.
 
 ## Start here — mandatory handoff procedure
 
@@ -11,7 +19,7 @@ This file is the quick orientation page. A new agent must read the four rebuild 
 3. `.trackers/milestone.md` — acceptance criteria and milestone progress.
 4. `.trackers/rollback.md` — safe recovery boundaries and known rollback gaps.
 
-Then read `AGENTS.md`, `docs/REBUILD_SPEC.md`, and refresh the relevant skills from [NetHub skills](https://github.com/NetHub-Ltd/skills-.git). Check live GitHub branch refs, latest relevant workflow runs, issue #179, and PR #178 before relying on recorded state.
+Then read `AGENTS.md`, `docs/REBUILD_SPEC.md`, and refresh the relevant skills from [NetHub skills](https://github.com/NetHub-Ltd/skills-.git). Check live GitHub branch refs, latest workflow runs, issue #187 and PR #215 before relying on recorded state. Issue #179/PR #178 are historical rebuild records only.
 
 ### Handoff contract
 
@@ -250,4 +258,4 @@ These are historical reports, not fresh verification performed during tracker cr
 - Updated backend/app/main.py to create one MpesaCore per FastAPI lifespan and close it during shutdown.
 - Core uses existing httpx, Pydantic, Loguru and cryptography dependencies; no new dependency, migration, deployment manifest, Flux or GHCR workflow change.
 - API adapters are implemented for documented common Daraja APIs and the proposed product families, including Tax Remittance, Pull Transactions, B2B Express Checkout, Ratiba, Lipa na Bonga and Bill Manager operations. Unverified/ambiguous product payloads must remain flagged for sandbox validation, not advertised as production-verified.
-- CI run `40780329065` passed on code head `a3264063f7b3219235c4b9bc48a620bbed691730`: backend smoke tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness, frontend lint and frontend build passed on the same head. A tracker/spec-only commit follows, so verify the new head before review.
+- CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend smoke tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness, frontend lint and frontend build passed on the same head. A final tracker reconciliation commit follows, so verify the new head before review.

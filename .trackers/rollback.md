@@ -1,10 +1,10 @@
 # NetPay rebuild rollback notes
 
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-29
 
 ## Current change
 
-This task updates handoff/process documentation only under `.trackers/` on `work/minimal-netpay-rebuild` and adds a dated continuity note to issue #179. It does not intentionally change application code, database schema, runtime configuration, workflows, or deployment manifests.
+This task adds the `mpesa_core` package, typed schemas, adapters and tests on `feat/mpesa-core-complete`, plus the FastAPI lifespan client lifecycle. No database schema migration, deployment manifest, Flux or GHCR push workflow change was made. PR #215 targets `dev` and remains unmerged.
 
 ## Recovery approach
 
@@ -156,5 +156,5 @@ This task updates handoff/process documentation only under `.trackers/` on `work
 
 - Added new Core package files and one test module; updated backend/app/main.py only for app-scoped client lifecycle. No DB schema or migration change was made.
 - Revert these changes through reviewed revert commits on feat/mpesa-core-complete only. Do not restore the removed pre-PR-214 Core implementation.
-- CI run `40780329065` passed on code head `a3264063f7b3219235c4b9bc48a620bbed691730`: backend tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness and frontend lint/build also passed. Rerun checks after the tracker/spec-only status commit; no runtime rollback is indicated by current checks.
+- CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness and frontend lint/build also passed. Rerun checks after the tracker reconciliation commit; no runtime rollback is indicated by current checks.
 - Provisional product payload contracts are not to be treated as production-ready until validated. Disable capability use rather than sending guessed/incorrect payloads if contract validation finds a mismatch.

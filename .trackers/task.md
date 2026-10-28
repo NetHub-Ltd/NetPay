@@ -1,9 +1,11 @@
-# Task: Minimal NetPay rebuild — tracking baseline
+# Task: NetPay rebuild — mpesa_core implementation
 
-**Last updated:** 2026-10-23  
-**Branch:** `work/minimal-netpay-rebuild`  
+**Last updated:** 2026-10-29  
+**Branch:** `feat/mpesa-core-complete`  
 **Base/integration branch:** `dev`  
-**Application baseline commit:** `5bcbf865837cedc258e6a11d483b12a28f7f2ccc`
+
+**Current active task:** Implement the approved complete `mpesa_core` Daraja integration layer. Issue #187; draft PR #215 targets `dev`. Current code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3` passed CI run `40780804974` (backend tests, migrations, PostgreSQL/Redis, container build/startup, frontend lint/build, backend readiness). No merge or deployment has occurred.
+**Application baseline commit:** `82bae5b7c8e1704491b0aa8eec1dfa8fa948364f`
 
 ## Goal
 
@@ -297,5 +299,5 @@ Do not merge or deploy without explicit approval.
 - **Implemented on topic branch:** new backend/app/mpesa_core package with typed schemas, validation, typed errors/outcome classes, async HTTP/OAuth client, STK/C2B/Dynamic QR/Transaction Status/Account Balance/Reversal/B2C/B2B/Tax Remittance/Pull Transactions/B2B Express Checkout/Ratiba/Lipa na Bonga/Bill Manager adapters, callback parsers, response redaction, RSA SecurityCredential generation from environment certificate, and FastAPI lifespan lifecycle.
 - **Tests added:** backend/smoke_tests/test_mpesa_core.py includes phone/URL/schema boundaries, token concurrency and rejection, provider rejection, malformed response, transport ambiguity, capability gating, sandbox-only C2B simulation, payload/path assertions across API families, callback parsing/fingerprints, response redaction, RSA credential encryption, and parameterized rejection/malformed/timeout cases across typed operations.
 - **Important evidence boundary:** Safaricom official pages verify STK Push, Dynamic QR, Transaction Status, B2C, Tax Remittance and the existence of Bill Manager, Ratiba and B2B Express products. Several product pages render only a generic portal shell publicly. Exact Bill Manager/Ratiba/B2B Express/Lipa na Bonga/Pull Transactions payloads are cross-checked against public SDK/catalogue references, not yet verified with authenticated Daraja docs or sandbox. Do not call them production-verified until contract tests succeed with authorized sandbox credentials.
-- **Current verification:** GitHub Actions CI run `40780329065` passed on code head `a3264063f7b3219235c4b9bc48a620bbed691730`: full backend `smoke_tests`, Alembic upgrade, PostgreSQL/Redis connectivity, production image build (no push), and container startup smoke test. Backend readiness plus frontend lint/build also passed on that head. The following tracker/spec-only commit changes no runtime code; rerun checks on its new head before marking the PR ready.
-- **Remaining before ready:** validate provisional product contracts against authenticated official docs/sandbox; re-read all trackers after this status update; verify checks on the new tracker/spec-only head; then mark PR #215 ready for review. Do not merge without user approval.
+- **Current verification:** GitHub Actions CI run `40780329065` passed on code head `a3264063f7b3219235c4b9bc48a620bbed691730`: full backend `smoke_tests`, Alembic upgrade, PostgreSQL/Redis connectivity, production image build (no push), and container startup smoke test. Backend readiness plus frontend lint/build also passed on that head. A final tracker/spec reconciliation commit changes no runtime code; rerun checks on its new head before marking the PR ready.
+- **Remaining before ready:** validate provisional product contracts against authenticated official docs/sandbox; re-read all trackers after this status update; verify checks on the new tracker/spec reconciliation head; then mark PR #215 ready for review. Do not merge without user approval.
