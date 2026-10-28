@@ -28,10 +28,11 @@ class MpesaCoreError(Exception):
     code = "mpesa_core_error"
     retry_disposition = RetryDisposition.NEVER
 
-    def __init__(self, message: str, *, provider_code: str | None = None) -> None:
+    def __init__(self, message: str, *, provider_code: str | None = None, http_status: int | None = None) -> None:
         super().__init__(message)
         self.safe_message = message
         self.provider_code = provider_code
+        self.http_status = http_status
 
 
 class InvalidRequest(MpesaCoreError):
@@ -63,6 +64,11 @@ class ProviderRejected(MpesaCoreError):
     """Daraja definitively rejected an operation."""
 
     code = "provider_rejected"
+
+    def __init__(self, message: str, *, provider_code: str | None = None, http_status: int | None = None, retry_disposition: RetryDisposition | None = None) -> None:
+        super().__init__(message, provider_code=provider_code, http_status=http_status)
+        if retry_disposition is not None:
+            self.retry_disposition = retry_disposition
 
 
 class TransportFailure(MpesaCoreError):
