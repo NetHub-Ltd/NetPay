@@ -229,3 +229,16 @@ These are historical reports, not fresh verification performed during tracker cr
 - **Verified by read-back:** `backend/app/main.py` no longer imports or registers the Core callback router; all 9 `backend/app/mpesa_core/` files and both Core-specific test files are listed as deletions in PR #214.
 - **Not verified:** repository-wide runtime reference audit and final CI conclusions. The GitHub code-search connector indexes the default branch rather than this topic branch, so it is not evidence of a complete topic-branch reference scan.
 - **Next safe action:** retrieve the workflow conclusions and review any failures; do not merge. Replacement-class design remains a separate post-merge discussion requiring the user's approval before code is written.
+
+
+## Approved mpesa_core implementation — live handoff (2026-10-29)
+
+- **OBSERVED:** live dev points to 82bae5b7c8e1704491b0aa8eec1dfa8fa948364f; its merge commit records PR #214 removing the rejected Core implementation.
+- **OBSERVED:** branch feat/mpesa-core-complete was created from that exact dev SHA. Specification commit: 09e94644e6144ca8f2ef7e397dde77131c3ae5b4.
+- **Issue:** #187 updated for the newly approved full-scope implementation: https://github.com/NetHub-Ltd/NetPay/issues/187.
+- **Specification:** docs/MPESA_CORE_SPEC.md on feat/mpesa-core-complete.
+- **Fresh skill:** refreshed CORE-AI-Product-Engineering-Skill-v1.0.0.md from https://github.com/NetHub-Ltd/skills-.git. Applied inspect-before-change, evidence labels, proposal/impact/test/rollback discipline, simplest-correct architecture and no unsupported implementation claims.
+- **Important instruction reconciliation:** older AGENTS.md says work only on work/minimal-netpay-rebuild and forbids new branches, but the current user-approved task and later tracker workflow explicitly require a topic branch from dev and one PR targeting dev. For this task, use feat/mpesa-core-complete only; do not touch work/minimal-netpay-rebuild, dev or main directly.
+- **Existing models observed:** DarajaIntegration stores integration metadata and encrypted credential material; ProviderRequest supports operation/correlation/idempotency and safe request/response metadata; PaymentVerification and reconciliation records exist. Inspect their current consumers before deciding whether any schema change is required. Do not duplicate these models or edit historical migration revisions.
+- **Status:** docs/spec and issue/tracker coordination only. No Core implementation, schema migration, test run, workflow change or deployment action has occurred yet.
+- **Next action:** verify every proposed API against current official Safaricom docs and freeze exact contracts before coding. Catalogue names not confirmed by the current docs must be mapped to a documented endpoint/command or clearly reported as unavailable rather than fabricated.
