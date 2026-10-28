@@ -385,3 +385,104 @@ def test_callback_fingerprint_is_deterministic_and_payload_is_bounded() -> None:
 def test_stk_callback_rejects_malformed_envelope() -> None:
     with pytest.raises(InvalidRequest):
         parse_stk_callback({"Body": {}})
+
+
+@pytest.mark.asyncio
+async def test_pull_transactions_registration_and_query_contracts() -> None:
+    from datetime import UTC, datetime, timedelta
+    seen: list[httpx.Request] = []
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({}, seen)))
+    now = datetime.now(UTC)
+    try:
+        await core.register_pull_transactions(context(), PullTransactionsRegistrationRequest(
+            nominated_phone_number="0712345678", callback_url="https://example.test/pull",
+        ))
+        await core.pull_transactions(context(), PullTransactionsRequest(
+            start_at=now - timedelta(hours=2), end_at=now,
+        ))
+        registration = json.loads(next(r for r in seen if r.url.path == "/pulltransactions/v1/register").content)
+        query = json.loads(next(r for r in seen if r.url.path == "/pulltransactions/v1/query").content)
+        assert registration["NominatedNumber"] == "254712345678"
+        assert query["ShortCode"] == "174379"
+        assert query["OffSetValue"] == "0"
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_b2b_express_ratiba_and_bonga_use_their_documented_paths() -> None:
+    from datetime import date, timedelta
+    seen: list[httpx.Request] = []
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({}, seen)))
+    try:
+        await core.b2b_express_checkout(context(), B2BExpressCheckoutRequest(
+            primary_shortcode="600111", receiver_shortcode="174379", amount_minor=10000,
+            reference="INV-1", partner_name="NetPay", callback_url="https://example.test/express",
+            request_ref_id="netpay-express-1",
+        ))
+        await core.create_ratiba_order(context(), RatibaStandingOrderRequest(
+            standing_order_name="Subscription-1", transaction_type="Standing Order Customer Pay Bill",
+            amount_minor=50000, phone_number="0712345678", callback_url="https://example.test/ratiba",
+            account_reference="SUB-1", description="Subscription", frequency="5",
+            start_date=date.today().strftime("%Y%m%d"),
+            end_date=(date.today() + timedelta(days=365)).strftime("%Y%m%d"),
+        ))
+        await core.redeem_lipa_na_bonga(context(), LipaNaBongaRequest(
+            phone_number="0712345678", amount_minor=8000, bonga_points=400, account_reference="INV-22",
+        ))
+        assert {r.url.path for r in seen} >= {
+            "/v1/ussdpush/get-msisdn",
+            "/standingorder/v1/createStandingOrderExternal",
+            "/v1/lipa/na/bonga/redeem-paybill",
+        }
+        express = json.loads(next(r for r in seen if r.url.path == "/v1/ussdpush/get-msisdn").content)
+        assert express["requestRefID"] == "netpay-express-1"
+        ratiba = json.loads(next(r for r in seen if r.url.path == "/standingorder/v1/createStandingOrderExternal").content)
+        assert ratiba["Frequency"] == "5"
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_bill_manager_typed_operations_use_distinct_endpoints() -> None:
+    seen: list[httpx.Request] = []
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({}, seen)))
+    try:
+        await core.bill_manager_opt_in(context(), BillManagerOptInRequest(
+            email="billing@example.test", official_contact="0712345678",
+            callback_url="https://example.test/bill-manager",
+        ))
+        await core.bill_manager_single_invoice(context(), BillManagerInvoiceRequest(
+            external_reference="INV-1", billed_full_name="Test Customer",
+            billed_phone_number="0712345678", amount_minor=150000, due_date="2026-11-15",
+            account_reference="ACC-1", invoice_name="November service",
+            invoice_items=[BillManagerInvoiceItem(item_name="Service", amount_minor=150000)],
+        ))
+        await core.bill_manager_cancel_invoice(context(), BillManagerCancelInvoiceRequest(external_reference="INV-1"))
+        await core.bill_manager_reconcile_payment(context(), BillManagerReconciliationRequest(
+            external_reference="INV-1", transaction_id="QAB123", amount_minor=150000,
+        ))
+        assert {r.url.path for r in seen} >= {
+            "/v1/billmanager-invoice/optin",
+            "/v1/billmanager-invoice/single-invoicing",
+            "/v1/billmanager-invoice/cancel-single-invoice",
+            "/v1/billmanager-invoice/reconciliation",
+        }
+    finally:
+        await core.aclose()
+
+
+def test_ratiba_date_and_pull_window_validation() -> None:
+    from datetime import UTC, datetime
+    with pytest.raises(ValidationError):
+        RatibaStandingOrderRequest(
+            standing_order_name="Monthly", transaction_type="Standing Order Customer Pay Bill",
+            amount_minor=100, phone_number="0712345678", callback_url="https://example.test/cb",
+            account_reference="SUB", description="Monthly", frequency="5",
+            start_date="2026-01-01", end_date="20270101",
+        )
+    with pytest.raises(ValidationError):
+        PullTransactionsRequest(
+            start_at=datetime(2026, 1, 2, tzinfo=UTC),
+            end_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
