@@ -15,7 +15,7 @@ import httpx
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from loguru import logger
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from app.mpesa_core.errors import (
     AmbiguousOutcome,
@@ -32,6 +32,10 @@ from app.mpesa_core.errors import (
 )
 from app.mpesa_core.schemas import (
     AccountBalanceRequest,
+    AsyncOperationResponse,
+    BillManagerResponse,
+    C2BRegistrationResponse,
+    C2BSimulationResponse,
     B2BExpressCheckoutRequest,
     BillManagerBulkCancelInvoiceRequest,
     BillManagerBulkInvoiceRequest,
@@ -45,16 +49,21 @@ from app.mpesa_core.schemas import (
     C2BSimulationRequest,
     DarajaCredentials,
     DynamicQRRequest,
+    DynamicQRResponse,
     IntegrationContext,
+    LipaNaBongaResponse,
     LipaNaBongaQuoteRequest,
     LipaNaBongaRequest,
     ProviderOperationResult,
     PullTransactionsRegistrationRequest,
     PullTransactionsRequest,
+    PullTransactionsResponse,
     RatibaStandingOrderRequest,
     ReversalRequest,
     STKPushRequest,
+    STKPushResponse,
     STKQueryRequest,
+    STKQueryResponse,
     TaxRemittanceRequest,
     TransactionStatusRequest,
 )
@@ -245,8 +254,32 @@ class MpesaCore:
             logger.info("daraja_operation_rejected operation={} provider_code={}", operation, code)
             raise ProviderRejected("Daraja rejected the operation", provider_code=code, http_status=response.status_code)
 
+        if operation == "stk_push":
+            response_schema = STKPushResponse
+        elif operation == "stk_query":
+            response_schema = STKQueryResponse
+        elif operation == "c2b_registration":
+            response_schema = C2BRegistrationResponse
+        elif operation == "c2b_simulation":
+            response_schema = C2BSimulationResponse
+        elif operation == "dynamic_qr":
+            response_schema = DynamicQRResponse
+        elif operation == "pull_transactions":
+            response_schema = PullTransactionsResponse
+        elif operation.startswith("bill_manager"):
+            response_schema = BillManagerResponse
+        elif operation.startswith("lipa_na_bonga"):
+            response_schema = LipaNaBongaResponse
+        else:
+            response_schema = AsyncOperationResponse
+        try:
+            body = response_schema.model_validate(body).model_dump(by_alias=True, exclude_none=True)
+        except ValidationError:
+            logger.warning("daraja_response_schema_invalid operation={} http_status={}", operation, response.status_code)
+            raise MalformedProviderResponse("Daraja response did not match the operation schema") from None
+
         request_id, conversation_id, originator_id = self._safe_ids(body)
-        outcome = OperationOutcome.ACCEPTED if asynchronous or operation in {"stk_push", "stk_query", "dynamic_qr", "c2b_registration", "c2b_simulation"} else OperationOutcome.ACCEPTED
+        outcome = OperationOutcome.ACCEPTED
         logger.info(
             "daraja_operation_complete operation={} environment={} integration={} http_status={} outcome={}",
             operation, context.environment, context.integration_id, response.status_code, outcome.value,
