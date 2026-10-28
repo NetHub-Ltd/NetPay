@@ -370,41 +370,55 @@ async def initiate_stk(
     principal: Principal = Depends(payments_write),
     session: AsyncSession = Depends(get_session),
 ) -> PaymentView:
-    """Create a durable payment attempt before sending STK; acceptance never means paid."""
-    if not idempotency_key or not idempotency_key.strip() or len(idempotency_key) > 160:
-        raise HTTPException(status_code=400, detail="valid_idempotency_key_required")
-    try:
-        phone = normalize_ke_phone(payload.phone_number)
-    except MpesaCoreError as exc:
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.safe_message}) from None
-    integration = await session.scalar(select(DarajaIntegration).where(
-        DarajaIntegration.integration_id == payload.integration_id,
-        DarajaIntegration.merchant_id == principal.merchant_id,
-        DarajaIntegration.deleted_at.is_(None),
-    ))
-    if integration is None:
-        raise HTTPException(status_code=404, detail="integration_not_found")
-    @router.post("/api/v1/payments/stk", response_model=PaymentView, status_code=202, tags=["payments"])
-async def initiate_stk(
-    payload: STKInitiation,
-    request: Request,
-    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
-    principal: Principal = Depends(payments_write),
-    session: AsyncSession = Depends(get_session),
-) -> PaymentView:
-    """Authenticate and translate the application service result into the API contract."""
+    """Create a durable payment attempt; provider acceptance never means paid."""
     service = PaymentApplicationService(session, _core(request), principal)
     payment = await service.initiate_stk(payload, idempotency_key)
     return _payment_view(payment)
 
 
- None or integration.status != "active":
+@router.get("/api/v1/payments/{payment_id}", response_model=PaymentView, tags=["payments"])
+async def get_payment(
+    payment_id: UUID,
+    principal: Principal = Depends(payments_read),
+    session: AsyncSession = Depends(get_session),
+) -> PaymentView:
+    """Return the canonical status of a payment owned by the authenticated merchant."""
+    payment = await session.scalar(select(Payment).where(
+        Payment.id == payment_id,
+        Payment.merchant_id == principal.merchant_id,
+        Payment.deleted_at.is_(None),
+    ))
+    if payment is None:
+        raise HTTPException(status_code=404, detail="payment_not_found")
+    return _payment_view(payment)
+
+
+@router.post("/callbacks/mpesa/stk/{integration_id}", include_in_schema=False)
+async def stk_callback(
+    integration_id: str,
+    payload: dict[str, Any],
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Persist, correlate and deduplicate STK callbacks before acknowledging Daraja."""
+    integration = await session.scalar(select(DarajaIntegration).where(
+        DarajaIntegration.integration_id == integration_id,
+        DarajaIntegration.deleted_at.is_(None),
+    ))
+    if integration is None or integration.status != "active":
         raise HTTPException(status_code=404, detail="integration_not_found")
     try:
         callback = parse_stk_callback(payload)
     except MpesaCoreError as exc:
         raise HTTPException(status_code=400, detail=exc.safe_message) from None
+
     fingerprint = callback_fingerprint(payload)
+    existing = await session.scalar(select(ProviderCallback).where(
+        ProviderCallback.integration_id == integration.id,
+        ProviderCallback.dedupe_fingerprint == fingerprint,
+    ))
+    if existing is not None:
+        return {"ResultCode": 0, "ResultDesc": "Accepted"}
+
     metadata = _callback_metadata(callback)
     callback_phone = metadata.pop("PhoneNumber", None)
     if callback_phone is not None:
