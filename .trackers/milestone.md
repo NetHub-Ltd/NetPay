@@ -213,3 +213,13 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [ ] Re-fetch and reconcile trackers/issue; open one PR targeting dev; do not merge without user approval.
 
 **Acceptance note:** all proposed API families must have an implemented and tested contract. If official documentation proves a proposed product name is retired, unavailable or not a distinct endpoint, record the evidence and implement the documented equivalent only when one exists; never invent an endpoint to satisfy a label.
+
+
+### M0 progress snapshot (2026-10-29)
+- [x] Create the approved topic branch and write the implementation specification.
+- [x] Add Core package foundation, typed operation schemas, validation, errors, OAuth/HTTP transport and app lifespan.
+- [x] Add callback parsing, safe response redaction and RSA initiator-credential encryption.
+- [x] Add mocked tests across operation payloads and shared failure/security paths.
+- [ ] Confirm current-head CI is green and fix all failures.
+- [ ] Validate provisional API contracts (especially Bill Manager, Ratiba, B2B Express Checkout, Lipa na Bonga and Pull Transactions) against authenticated official docs/sandbox.
+- [ ] Finalize documentation and all tracker read-backs; open/maintain one PR targeting dev.
