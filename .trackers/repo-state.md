@@ -279,3 +279,13 @@ These are historical reports, not fresh verification performed during tracker cr
 - Source-tree evidence: `backend/app/` contains `main.py`, `core/`, `models/`, and `mpesa_core/`, but no app API/router package, M2M auth dependency, payment service or callback route handlers. Core callback functions are pure parsers only. Models/constraints are persistence primitives, not a complete payment flow.
 - README claims about implemented M2M auth, integration onboarding, STK state/callback processing, C2B confirmation and outbox delivery are not supported by the audited source tree at the current baseline; treat as stale until implementation evidence exists.
 - No runtime code changed in this task. No unauthenticated payment routes added. Issue #216 documents the scope boundary: next work requires the secured API/service slice rather than tests alone.
+
+## Current repository state — issue #217 / issue #216 sequencing (2026-10-29 23:10 UTC)
+
+- **Baseline under review:** `dev` SHA `3d77327c1d00f713b7ec088492dc91dd953d139c` at the prior audit. The app tree was observed to lack application-owned M2M authorization, payment service, STK/C2B callback routes and canonical callback state processing.
+- **Implementation contract:** [#217](https://github.com/NetHub-Ltd/NetPay/issues/217) — secured application-level M-Pesa lifecycle. Detailed proposal is recorded in the issue; status is **awaiting explicit user approval**. No runtime implementation has started.
+- **Verification gate:** [#216](https://github.com/NetHub-Ltd/NetPay/issues/216) — exhaustive verification and controlled test-environment readiness. Updated to verification-only and explicitly depends on #217 being implemented and merged to `dev`.
+- **Audit artifact:** [docs/MPESA_E2E_VERIFICATION.md](https://github.com/NetHub-Ltd/NetPay/blob/test/mpesa-e2e-verification-216/docs/MPESA_E2E_VERIFICATION.md).
+- **Branch:** `test/mpesa-e2e-verification-216`; audit/tracker-only changes so far. No runtime, schema, migration, workflow, deployment or GHCR behavior changes.
+- **Current next action:** wait for product-owner approval or requested changes on #217. On approval, inspect exact current models, constraints, Core interface, auth conventions, and Alembic graph before implementation; do not rely on stale tracker descriptions above.
+
