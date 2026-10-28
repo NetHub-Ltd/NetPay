@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from app.core.cache import check_redis, create_redis_client
 from app.core.config import Settings, get_settings
 from app.core.database import check_database, create_database_engine, create_session_factory
+from app.mpesa_core import MpesaCore
 from app import models  # noqa: F401 - register SQLModel metadata
 
 @asynccontextmanager
@@ -19,6 +20,8 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     settings: Settings = get_settings()
     engine: AsyncEngine = create_database_engine(settings)
     redis_client: Redis | None = None
+    mpesa_core = MpesaCore(settings)
+    application.state.mpesa_core = mpesa_core
     application.state.engine = engine
     application.state.session_factory = create_session_factory(engine)
     application.state.redis = None
@@ -39,6 +42,8 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     finally:
         if redis_client is not None:
             await redis_client.aclose()
+        await mpesa_core.aclose()
+        application.state.mpesa_core = None
         await engine.dispose()
         application.state.engine = None
         application.state.session_factory = None
