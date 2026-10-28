@@ -159,7 +159,7 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
                     merchant_id=first.id,
                     client_id=f"client-{uuid4().hex}",
                     secret_hash=security.hash_client_secret("first-secret"),
-                    scopes=["integrations:write", "payments:write", "payments:read"],
+                    scopes=["integrations:read", "integrations:write", "payments:write", "payments:read"],
                 )
                 second_client = M2MClient(
                     merchant_id=second.id,
@@ -210,6 +210,34 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
             assert integration["status"] == "active"
             assert "test-consumer-secret" not in integration_response.text
             assert integration["stk_callback_url"].endswith(f"/{integration['integration_id']}")
+            assert integration["credential_version"] == 1
+
+            fake_core.validation_error = OAuthError("replacement credentials invalid")
+            rejected_rotation = client.put(
+                f"/api/v1/integrations/{integration['integration_id']}/credentials",
+                headers=bearer,
+                json={
+                    "consumer_key": "new-consumer-key",
+                    "consumer_secret": "bad-secret",
+                    "passkey": "new-passkey",
+                },
+            )
+            assert rejected_rotation.status_code == 422
+            rotated = client.put(
+                f"/api/v1/integrations/{integration['integration_id']}/credentials",
+                headers=bearer,
+                json={
+                    "consumer_key": "new-consumer-key",
+                    "consumer_secret": "new-consumer-secret",
+                    "passkey": "new-passkey",
+                },
+            )
+            assert rotated.status_code == 200, rotated.text
+            assert rotated.json()["credential_version"] == 2
+            assert "new-consumer-secret" not in rotated.text
+            listed = client.get("/api/v1/integrations", headers=bearer)
+            assert listed.status_code == 200
+            assert listed.json()[0]["credential_version"] == 2
 
             request_payload = {
                 "integration_id": integration["integration_id"],
