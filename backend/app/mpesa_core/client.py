@@ -7,7 +7,6 @@ import hashlib
 import re
 from datetime import datetime
 from typing import Any
-from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -172,9 +171,6 @@ class MpesaCore:
             return token
 
     @staticmethod
-    def _operation_key(context: IntegrationContext, operation: str) -> str:
-        return f"{context.integration_id}:{operation}"
-
     def _require(self, context: IntegrationContext, capability: str) -> None:
         validate_context(context)
         if capability not in context.enabled_capabilities:
@@ -199,16 +195,11 @@ class MpesaCore:
         method: str,
         path: str,
         payload: dict[str, Any] | None = None,
-        *,
-        query: dict[str, str] | None = None,
-        asynchronous: bool = False,
     ) -> ProviderOperationResult:
         if self._closed:
             raise InvalidRequest("mpesa_core client is closed")
         token = await self._token(context)
         url = self._base_url(context) + path
-        if query:
-            url += "?" + urlencode(query)
         try:
             response = await self._client.request(
                 method,
@@ -305,7 +296,7 @@ class MpesaCore:
         password = base64.b64encode(f"{context.shortcode}{passkey}{timestamp}".encode()).decode("ascii")
         return password, timestamp
 
-    def _callback(self, context: IntegrationContext, url: str | None) -> str:
+    def _callback(self, context: IntegrationContext, url: str) -> str:
         selected = url
         if not selected:
             raise InvalidRequest("application-resolved callback URL is required")
@@ -417,7 +408,7 @@ class MpesaCore:
             payload["OriginalConversationID"] = request.original_conversation_id
         if request.occasion:
             payload["Occasion"] = request.occasion
-        return await self._request(context, "transaction_status", "POST", "/mpesa/transactionstatus/v1/query", payload, asynchronous=True)
+        return await self._request(context, "transaction_status", "POST", "/mpesa/transactionstatus/v1/query", payload)
 
     async def account_balance(self, context: IntegrationContext, request: AccountBalanceRequest) -> ProviderOperationResult:
         """Request asynchronous account balance evidence."""
@@ -491,18 +482,6 @@ class MpesaCore:
             "ResultURL": validate_callback_url(request.result_url, production=context.environment == "production"),
         }
         return await self._request(context, "tax_remittance", "POST", "/mpesa/b2b/v1/remittax", payload, asynchronous=True)
-
-    async def pull_transactions(self, context: IntegrationContext, request: PullTransactionsRequest) -> ProviderOperationResult:
-        """Fail closed until the current portal contract is verified.
-
-        A route must not be guessed. The typed date-window request is retained
-        while the exact endpoint, required fields and callback semantics are
-        verified against current product documentation.
-        """
-        self._require(context, "pull_transactions")
-        raise CatalogueContractUnavailable(
-            "Pull Transactions endpoint contract must be verified from the current Daraja portal before sending requests"
-        )
 
     async def catalogue_operation(self, context: IntegrationContext, operation: str, payload: dict[str, Any]) -> ProviderOperationResult:
         """Fail closed for proposed catalogue entries without a verified contract."""
