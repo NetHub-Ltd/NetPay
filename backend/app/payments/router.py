@@ -27,6 +27,7 @@ from app.mpesa_core import DarajaCredentials, IntegrationContext
 from app.mpesa_core.callbacks import callback_fingerprint, parse_c2b_callback, parse_stk_callback
 from app.mpesa_core.errors import (
     AmbiguousOutcome,
+    MalformedProviderResponse,
     MpesaCoreError,
     ProviderRejected,
     TransportFailure,
@@ -182,6 +183,11 @@ async def _apply_stk_callback(
             callback_row.processing_status = "rejected"
             callback_row.processing_error = "invalid_callback_amount"
             return False
+    callback_merchant_request_id = data.get("merchant_request_id")
+    if callback_merchant_request_id and payment.provider_merchant_request_id and callback_merchant_request_id != payment.provider_merchant_request_id:
+        callback_row.processing_status = "rejected"
+        callback_row.processing_error = "merchant_request_id_mismatch"
+        return False
     callback_phone = metadata.get("PhoneNumber")
     if callback_phone is not None:
         try:
@@ -546,14 +552,14 @@ async def initiate_stk(
         await session.commit()
     except MpesaCoreError as exc:
         now = datetime.now(UTC)
-        provider_request.outcome = "unknown" if isinstance(exc, (AmbiguousOutcome,)) else "not_sent" if isinstance(exc, TransportFailure) else "rejected"
+        provider_request.outcome = "unknown" if isinstance(exc, (AmbiguousOutcome, MalformedProviderResponse)) else "not_sent" if isinstance(exc, TransportFailure) else "rejected"
         provider_request.response_metadata = {"error_code": exc.code, "http_status": getattr(exc, "http_status", None)}
         provider_request.completed_at = now
         attempt.error_code = exc.code
         attempt.safe_error_code = exc.code
         attempt.safe_error_message = exc.safe_message[:500]
-        attempt.status = "unknown" if isinstance(exc, AmbiguousOutcome) else "failed"
-        if isinstance(exc, AmbiguousOutcome):
+        attempt.status = "unknown" if isinstance(exc, (AmbiguousOutcome, MalformedProviderResponse)) else "failed"
+        if isinstance(exc, (AmbiguousOutcome, MalformedProviderResponse)):
             payment.status = "unknown"
         else:
             payment.status = "failed"
@@ -561,7 +567,7 @@ async def initiate_stk(
             payment.completed_at = now
             _event(session, payment, "payment.failed")
         await session.commit()
-        if isinstance(exc, AmbiguousOutcome):
+        if isinstance(exc, (AmbiguousOutcome, MalformedProviderResponse)):
             return _payment_view(payment)
         if isinstance(exc, TransportFailure):
             raise HTTPException(status_code=502, detail={"code": exc.code, "message": "Provider connection failed before request transmission"}) from None
@@ -628,7 +634,7 @@ async def stk_callback(
         await session.flush()
     except IntegrityError:
         await session.rollback()
-        return {"ResultCode": "0", "ResultDesc": "Accepted"}
+        return {"ResultCode": 0, "ResultDesc": "Accepted"}
     await _apply_stk_callback(session, integration, row)
     await session.commit()
     return {"ResultCode": "0", "ResultDesc": "Accepted"}
@@ -646,7 +652,7 @@ async def c2b_validation(
         DarajaIntegration.deleted_at.is_(None),
     ))
     if integration is None or integration.status != "active" or not integration.c2b_enabled:
-        return {"ResultCode": "C2B0001", "ResultDesc": "Rejected"}
+        return {"ResultCode": 1, "ResultDesc": "Rejected"}
     try:
         callback = parse_c2b_callback(payload)
         amount = Decimal(callback.trans_amount)
