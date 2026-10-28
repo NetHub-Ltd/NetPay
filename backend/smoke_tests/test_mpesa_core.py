@@ -101,7 +101,7 @@ def handler_for(routes: dict[str, Any], seen: list[httpx.Request] | None = None)
     ("712345678", "254712345678"),
     ("254712345678", "254712345678"),
     ("+254712345678", "254712345678"),
-    ("01 12345678", "2541112345678"),
+    ("01 12345678", "254112345678"),
 ])
 def test_normalizes_supported_kenyan_phone_formats(phone: str, expected: str) -> None:
     assert normalize_ke_phone(phone) == expected
