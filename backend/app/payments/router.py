@@ -243,7 +243,7 @@ async def rotate_integration_credentials(
         DarajaIntegration.integration_id == integration_id,
         DarajaIntegration.merchant_id == principal.merchant_id,
         DarajaIntegration.deleted_at.is_(None),
-    ))
+    ).with_for_update())
     if integration is None:
         raise HTTPException(status_code=404, detail="integration_not_found")
     next_version = integration.credential_version + 1
@@ -318,13 +318,15 @@ async def register_c2b(
         DarajaIntegration.integration_id == integration_id,
         DarajaIntegration.merchant_id == principal.merchant_id,
         DarajaIntegration.deleted_at.is_(None),
-    ))
+    ).with_for_update())
     if integration is None:
         raise HTTPException(status_code=404, detail="integration_not_found")
     if integration.status != "active":
         raise HTTPException(status_code=409, detail="integration_not_active")
     if integration.environment == "production":
         raise HTTPException(status_code=409, detail="c2b_production_registration_gated_pending_provider_verification")
+    if integration.c2b_registration_status == "registered":
+        return {"integration_id": integration.integration_id, "registration_status": "registered", "provider_outcome": "already_registered"}
     if integration.c2b_registration_status in {"unknown", "started"}:
         raise HTTPException(status_code=409, detail="c2b_registration_outcome_requires_reconciliation")
     if "c2b_registration" not in integration.enabled_capabilities:
