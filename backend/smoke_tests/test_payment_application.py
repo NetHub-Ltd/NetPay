@@ -244,7 +244,7 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
 
             callback = {
                 "Body": {"stkCallback": {
-                    "MerchantRequestID": "mr_test",
+                    "MerchantRequestID": payment["provider_merchant_request_id"],
                     "CheckoutRequestID": payment["provider_checkout_request_id"],
                     "ResultCode": 0,
                     "ResultDesc": "The service request is processed successfully.",
@@ -281,7 +281,7 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
             payment_ids.append(UUID(invalid_payment["id"]))
             bad_callback = {
                 "Body": {"stkCallback": {
-                    "MerchantRequestID": "mr_invalid",
+                    "MerchantRequestID": invalid_payment["provider_merchant_request_id"],
                     "CheckoutRequestID": invalid_payment["provider_checkout_request_id"],
                     "ResultCode": 0,
                     "ResultDesc": "Success",
