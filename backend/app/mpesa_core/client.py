@@ -17,7 +17,6 @@ from pydantic import SecretStr, ValidationError
 
 from app.mpesa_core.errors import (
     AmbiguousOutcome,
-    CatalogueContractUnavailable,
     CapabilityDisabled,
     InvalidRequest,
     MalformedProviderResponse,
@@ -482,19 +481,6 @@ class MpesaCore:
             "ResultURL": validate_callback_url(request.result_url, production=context.environment == "production"),
         }
         return await self._request(context, "tax_remittance", "POST", "/mpesa/b2b/v1/remittax", payload)
-
-    async def catalogue_operation(self, context: IntegrationContext, operation: str, payload: dict[str, Any]) -> ProviderOperationResult:
-        """Fail closed for proposed catalogue entries without a verified contract."""
-        supported = {"bill_manager", "ratiba", "lipa_na_bonga", "b2b_express_checkout"}
-        if operation not in supported:
-            raise InvalidRequest("unknown catalogue operation")
-        self._require(context, operation)
-        # Do not send untyped arbitrary payloads to a guessed URL.
-        raise CatalogueContractUnavailable(
-            f"Daraja contract for '{operation}' is not verified; no provider request was sent"
-        )
-
-
 
     async def register_pull_transactions(self, context: IntegrationContext, request: PullTransactionsRegistrationRequest) -> ProviderOperationResult:
         """Register the shortcode for missed-C2B transaction recovery."""
