@@ -240,3 +240,16 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [ ] Update all four trackers and issue #216 with exact results; open a reviewable PR targeting `dev` only after evidence is collected.
 
 **Acceptance boundary:** No production transaction or production credential. Do not enable provisional provider product contracts. If the inspected repo lacks a safe application-level foundation and implementation scope becomes a major API/product design decision, stop and document the gap rather than inventing public contracts.
+
+
+### M1 audit checkpoint (2026-10-29)
+- [x] Issue #216 created before work; topic branch created from verified dev SHA.
+- [x] Post-merge CI, readiness, frontend lint/build conclusions checked directly.
+- [x] Refreshed shared CORE skill and read current AGENTS charter.
+- [x] Inspected source tree, application lifecycle, Core, models, and current smoke/idempotency tests.
+- [x] Added `docs/MPESA_E2E_VERIFICATION.md` with observed implementation gaps, payment invariants, and an end-to-end test matrix.
+- [x] Posted findings and scope boundary to issue #216.
+- [ ] Implement secured application path (M2M auth, STK initiation and callback state processing, then opt-in C2B) after scope gate is resolved.
+- [ ] Add actual API/service + DB integration tests and run them against PostgreSQL/Redis CI services.
+- [ ] Verify Daraja sandbox contracts with authorized credentials; do not use production credentials or real transactions.
+- [ ] Run current-branch checks and open a reviewable PR only when the selected scope is complete.
