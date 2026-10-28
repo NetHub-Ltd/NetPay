@@ -444,13 +444,13 @@ class DarajaAcknowledgement(CoreModel):
 class STKPushResponse(DarajaAcknowledgement):
     """Typed STK initiation acknowledgement; not a final payment result."""
 
-    pass
+    response_code: str = Field(alias="ResponseCode")
 
 
 class STKQueryResponse(DarajaAcknowledgement):
     """Typed STK query evidence, including optional final result code."""
 
-    pass
+    response_code: str = Field(alias="ResponseCode")
 
 
 class C2BRegistrationResponse(DarajaAcknowledgement):
@@ -462,13 +462,14 @@ class C2BRegistrationResponse(DarajaAcknowledgement):
 class C2BSimulationResponse(DarajaAcknowledgement):
     """Typed sandbox C2B simulation acknowledgement."""
 
-    pass
+    response_code: str = Field(alias="ResponseCode")
 
 
 class DynamicQRResponse(DarajaAcknowledgement):
     """Typed Dynamic QR response."""
 
-    qr_code: str | None = Field(default=None, alias="QRCode")
+    response_code: str = Field(alias="ResponseCode")
+    qr_code: str = Field(alias="QRCode")
 
 
 class AsyncOperationResponse(DarajaAcknowledgement):
