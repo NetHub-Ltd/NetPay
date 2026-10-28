@@ -18,7 +18,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_session
 from app.models.attempts import PaymentAttempt
-from app.models.events import EventOutbox
 from app.models.integrations import DarajaIntegration
 from app.models.merchants import M2MClient, Merchant
 from app.models.operations import AuditLog, ProviderRequest
@@ -54,6 +53,7 @@ from app.payments.security import (
 router = APIRouter()
 payments_read = require_scopes("payments:read")
 payments_write = require_scopes("payments:write")
+integrations_read = require_scopes("integrations:read")
 integrations_write = require_scopes("integrations:write")
 
 
@@ -261,7 +261,7 @@ async def create_integration(
 
 @router.get("/api/v1/integrations", response_model=list[IntegrationView], tags=["integrations"])
 async def list_integrations(
-    principal: Principal = Depends(integrations_write),
+    principal: Principal = Depends(integrations_read),
     session: AsyncSession = Depends(get_session),
 ) -> list[IntegrationView]:
     """List only the authenticated merchant's integrations; never return credentials."""
@@ -566,7 +566,7 @@ async def stk_callback(
     except IntegrityError:
         await session.rollback()
         return {"ResultCode": 0, "ResultDesc": "Accepted"}
-    await _apply_stk_callback(session, integration, row)
+    await PaymentApplicationService.apply_stk_callback(session, integration, row)
     await session.commit()
     return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
