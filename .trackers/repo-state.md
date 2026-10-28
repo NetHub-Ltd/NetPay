@@ -198,3 +198,14 @@ These are historical reports, not fresh verification performed during tracker cr
 - Final code commit: 18e3de35185f1219014ba183879835fd3740cefb. CI/backend readiness/frontend lint/frontend build/container startup smoke passed; backend suite reported 34 passed with one Starlette deprecation warning.
 - Audit redaction, callback-type-scoped dedupe, explicit per-environment callback host, and API-coverage caveats are included and verified by the final CI run.
 - No deployment configuration or public payment endpoint was added. dev/main have not been modified by this work.
+
+
+## User-approved cleanup — remove rejected M-Pesa Core (2026-10-28)
+
+- **User decision:** The current M-Pesa Core implementation is rejected as unnecessarily complex. Delete the existing Core package and its Core-only tests; do not implement a replacement in this change.
+- **Issue:** [#213 — Remove rejected M-Pesa Core implementation](https://github.com/NetHub-Ltd/NetPay/issues/213).
+- **Branch:** `chore/remove-rejected-mpesa-core`, created from the live `dev` ref. PR must target `dev`; do not merge.
+- **Scope:** delete `backend/app/mpesa_core/`; remove its `main.py` router import/registration; remove tests that solely import/test the deleted package; update these trackers. Keep shared application models and historical Alembic revisions unless an explicit reference audit proves removal is necessary; never delete/alter applied migration history in this cleanup.
+- **Out of scope:** replacement singleton/client, new APIs/services/routes/schemas, new migrations/dependencies, unrelated app behavior, frontend, deployment manifests, CI/GHCR workflow behavior, `dev`, and `main`.
+- **Approval boundary:** the next task after this PR is merged is to discuss the replacement class architecture and API methods with the user before writing code.
+- **Verification discipline:** inspect all references before deletion; report actual test runs and unverified behavior accurately. Preserve history; rollback through a reviewed revert commit.
