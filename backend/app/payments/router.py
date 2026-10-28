@@ -650,7 +650,7 @@ async def c2b_validation(
     if integration is None or integration.status != "active" or not integration.c2b_enabled:
         return {"ResultCode": 1, "ResultDesc": "Rejected"}
 
-    fingerprint = callback_fingerprint(payload)
+    fingerprint = hashlib.sha256(f"c2b_validation:{callback_fingerprint(payload)}".encode()).hexdigest()
     safe_payload: dict[str, Any] = {"field_names": sorted(payload.keys())}
     processing_status = "rejected"
     processing_error = "invalid_c2b_validation"
@@ -734,7 +734,7 @@ async def c2b_confirmation(
         amount_minor = int(amount * 100)
     except (MpesaCoreError, InvalidOperation, ValueError):
         return {"ResultCode": 1, "ResultDesc": "Rejected"}
-    fingerprint = callback_fingerprint(payload)
+    fingerprint = hashlib.sha256(f"c2b_confirmation:{callback_fingerprint(payload)}".encode()).hexdigest()
     existing = await session.scalar(select(Payment).where(
         Payment.integration_id == integration.id,
         Payment.provider_receipt == callback.trans_id,
