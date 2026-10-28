@@ -26,7 +26,17 @@ from app.mpesa_core.errors import (
     ProviderRejected,
     TransportFailure,
 )
-from app.mpesa_core.schemas import (\n    B2BExpressCheckoutRequest,\n    BillManagerCancelInvoiceRequest,\n    BillManagerInvoiceItem,\n    BillManagerInvoiceRequest,\n    BillManagerOptInRequest,\n    BillManagerReconciliationRequest,\n    LipaNaBongaRequest,\n    PullTransactionsRegistrationRequest,\n    PullTransactionsRequest,\n    RatibaStandingOrderRequest,
+from app.mpesa_core.schemas import (
+    B2BExpressCheckoutRequest,
+    BillManagerCancelInvoiceRequest,
+    BillManagerInvoiceItem,
+    BillManagerInvoiceRequest,
+    BillManagerOptInRequest,
+    BillManagerReconciliationRequest,
+    LipaNaBongaRequest,
+    PullTransactionsRegistrationRequest,
+    PullTransactionsRequest,
+    RatibaStandingOrderRequest,
     AccountBalanceRequest,
     B2BPaymentRequest,
     B2CPaymentRequest,
