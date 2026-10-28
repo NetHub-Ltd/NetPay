@@ -320,3 +320,14 @@ Do not merge or deploy without explicit approval.
 - Audit confirmed the current `backend/app/` tree has no API/router package, M2M auth implementation, payment application service or callback route handlers. The Core client and models exist, but the end-to-end STK/C2B path is absent from the inspected source. Existing README implementation claims are not supported by the current audited app tree.
 - No runtime code changed. Do not claim end-to-end behavior or add unprotected public payment routes.
 - **Scope gate:** implementing the secured application path requires M2M auth, route contracts, payment/idempotency/provider-operation persistence, callback correlation and atomic payment/outbox transitions. This is the next major product slice, not a test-only patch. Findings posted to issue #216; await user direction before expanding implementation.
+
+## Current handoff — application flow contract and verification gate (2026-10-29 23:10 UTC)
+
+- **OBSERVED:** Issue [#217](https://github.com/NetHub-Ltd/NetPay/issues/217) was created with a detailed application-level payment implementation contract. It is **PROPOSED / awaiting explicit product-owner approval**; runtime implementation has not started.
+- **OBSERVED:** Issue [#216](https://github.com/NetHub-Ltd/NetPay/issues/216) is now explicitly a verification-only and test-environment readiness gate, blocked on #217 implementation and merge to `dev`.
+- **Sequence:** approve #217 contract → implement the secured M2M/onboarding/STK/callback/outbox and gated C2B slice on a topic branch → review PR to `dev` (no merge without user approval) → execute #216's exhaustive test matrix against the merged baseline.
+- **Current branch:** `test/mpesa-e2e-verification-216`. Existing changes on this branch are audit/tracker documentation only; no runtime code was changed.
+- **Approval boundary:** do not implement #217 until the user explicitly approves or revises the contract. Do not let #216 absorb missing application implementation.
+- **Constraints:** preserve history and existing migrations; no direct pushes to `dev`/`main`; no Flux/deployment-manifest or GHCR build/push changes; no production credentials or real transactions.
+- **Skills refresh:** refreshed `https://github.com/NetHub-Ltd/skills-` on 2026-10-29; read current `AGENTS.md` and CORE engineering skill. Follow the shared evidence vocabulary (OBSERVED / VERIFIED / INFERRED / PROPOSED / UNKNOWN).
+
