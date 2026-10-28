@@ -155,3 +155,25 @@ Before shipping UI:
 - Full dark-mode product theme (may be a later Theme.md revision)
 - Restoring the pruned Vite SPA visual system
 - Merchant-branded white-label colours per tenant
+
+
+---
+
+## 9. Type scale & layout tokens (globals.css)
+
+All product UI sizing should come from CSS variables in `frontend/app/globals.css`:
+
+| Token | Role |
+|-------|------|
+| `--text-xs` … `--text-display` | Font sizes (`clamp` on large steps for responsiveness) |
+| `--weight-*` | Font weights |
+| `--leading-*` / `--tracking-*` | Line height / tracking |
+| `--space-page-x` / `--space-section-y` | Responsive page padding |
+
+Prefer semantic classes: `.np-display`, `.np-h1`, `.np-h2`, `.np-h3`, `.np-lead`, `.np-body`, `.np-small`, `.np-label`, `.np-chrome`, `.np-panel`, `.np-page`, `.np-section`, `.np-container`, `.np-footer`, `.np-skip-link`.
+
+**Exceptions:** `opengraph-image.tsx` and `icon.svg` require literal colors for static image generation; keep them aligned with Ledger hex values documented above.
+
+## 10. Theme lab (local only)
+
+`/theme` and `ThemeLab.tsx` are for local comparison and are **gitignored**. Do not commit them. Product default remains Ledger via `:root`.

@@ -13,13 +13,13 @@ const variants: Record<Variant, string> = {
   onNavy:
     "bg-[var(--accent)] text-[var(--on-accent)] hover:bg-[var(--accent-hover)] shadow-[var(--shadow-sm)]",
   onNavyOutline:
-    "border border-white/20 text-[var(--on-navy)] hover:border-white/50 hover:bg-white/5",
+    "border border-[var(--on-navy-border)] text-[var(--on-navy)] hover:bg-[var(--on-navy-faint)]",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "rounded-full px-4 py-2 text-sm font-semibold",
-  md: "rounded-full px-5 py-2.5 text-sm font-semibold",
-  lg: "rounded-full px-6 py-3.5 text-sm font-semibold sm:text-base",
+  sm: "rounded-full px-4 py-2 text-[length:var(--text-sm)] font-[number:var(--weight-semibold)]",
+  md: "rounded-full px-5 py-2.5 text-[length:var(--text-sm)] font-[number:var(--weight-semibold)]",
+  lg: "rounded-full px-6 py-3.5 text-[length:var(--text-sm)] sm:text-[length:var(--text-md)] font-[number:var(--weight-semibold)]",
 };
 
 type Common = {
@@ -50,7 +50,7 @@ export function Button({
   children,
   ...rest
 }: ButtonProps) {
-  const classes = `inline-flex items-center justify-center gap-2 transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] ${variants[variant]} ${sizes[size]} ${className}`;
+  const classes = `inline-flex items-center justify-center gap-2 transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`;
 
   if ("href" in rest && rest.href) {
     const { href, ...linkRest } = rest;
