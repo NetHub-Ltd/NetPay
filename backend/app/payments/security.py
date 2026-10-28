@@ -8,6 +8,7 @@ import json
 import secrets
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import Depends, Header, HTTPException, Request
@@ -158,7 +159,11 @@ def require_scopes(*required_scopes: str):
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="bearer_token_required", headers={"WWW-Authenticate": "Bearer"})
         claims = decode_access_token(authorization[7:].strip())
-        client = await session.get(M2MClient, claims["client_id"])
+        try:
+            client_uuid = UUID(claims["client_id"])
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=401, detail="invalid_bearer_token") from None
+        client = await session.get(M2MClient, client_uuid)
         if client is None or client.client_id != claims["sub"] or client.status != "active" or client.revoked_at is not None:
             raise HTTPException(status_code=401, detail="m2m_client_inactive")
         now = datetime.now(UTC)
