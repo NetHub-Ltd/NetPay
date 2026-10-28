@@ -56,7 +56,7 @@ class OAuthError(MpesaCoreError):
     """Daraja token acquisition failed or returned an invalid response."""
 
     code = "oauth_error"
-    retry_disposition = RetryDisposition.AFTER_RECONCILIATION
+    retry_disposition = RetryDisposition.SAFE
 
 
 class ProviderRejected(MpesaCoreError):
@@ -69,7 +69,7 @@ class TransportFailure(MpesaCoreError):
     """The transport failed before request transmission was possible."""
 
     code = "transport_failure"
-    retry_disposition = RetryDisposition.AFTER_RECONCILIATION
+    retry_disposition = RetryDisposition.SAFE
 
 
 class AmbiguousOutcome(MpesaCoreError):
