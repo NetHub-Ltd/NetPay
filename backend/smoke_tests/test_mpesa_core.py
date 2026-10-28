@@ -702,3 +702,75 @@ async def test_every_typed_operation_classifies_malformed_and_ambiguous_outcomes
                     await invoke(core)
             finally:
                 await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_oauth_cache_isolated_by_environment_and_credential_identity() -> None:
+    token_calls: list[str] = []
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/v1/generate":
+            token_calls.append(request.url.host)
+            return httpx.Response(200, json={"access_token": f"token-{len(token_calls)}", "expires_in": 3600})
+        return httpx.Response(200, json={"ResponseCode": "0"})
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+    base = context()
+    rotated = base.model_copy(update={"credentials": DarajaCredentials(
+        consumer_key=SecretStr("consumer-key-test"),
+        consumer_secret=SecretStr("rotated-secret"),
+        passkey=SecretStr("passkey-test"),
+        initiator_name="test-initiator",
+        security_credential=SecretStr("encrypted-security-credential-test"),
+        credential_version=2,
+    )})
+    production = context(environment="production")
+    try:
+        first = await core._token(base)
+        second = await core._token(rotated)
+        third = await core._token(production)
+        assert len({first, second, third}) == 3
+        assert token_calls.count("sandbox.safaricom.co.ke") == 2
+        assert token_calls.count("api.safaricom.co.ke") == 1
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_short_lived_oauth_token_is_not_reused_past_safety_margin() -> None:
+    token_calls = 0
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal token_calls
+        token_calls += 1
+        return httpx.Response(200, json={"access_token": f"short-token-{token_calls}", "expires_in": 1})
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+    try:
+        assert await core._token(context()) == "short-token-1"
+        assert await core._token(context()) == "short-token-2"
+        assert token_calls == 2
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_missing_passkey_or_initiator_credentials_fail_before_network_io() -> None:
+    seen: list[httpx.Request] = []
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({}, seen)))
+    no_passkey = context().model_copy(update={"credentials": DarajaCredentials(
+        consumer_key=SecretStr("consumer-key-test"), consumer_secret=SecretStr("consumer-secret-test"),
+    )})
+    no_initiator = context().model_copy(update={"credentials": DarajaCredentials(
+        consumer_key=SecretStr("consumer-key-test"), consumer_secret=SecretStr("consumer-secret-test"),
+        passkey=SecretStr("passkey-test"),
+    )})
+    try:
+        with pytest.raises(Exception, match="passkey"):
+            await core.stk_push(no_passkey, STKPushRequest(
+                phone_number="0712345678", amount_minor=100, account_reference="INV",
+                description="Sale", callback_url="https://example.test/stk",
+            ))
+        with pytest.raises(Exception, match="initiator name"):
+            await core.account_balance(no_initiator, AccountBalanceRequest(
+                result_url="https://example.test/result", timeout_url="https://example.test/timeout",
+            ))
+        assert seen == []
+    finally:
+        await core.aclose()
