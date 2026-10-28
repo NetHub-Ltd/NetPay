@@ -287,7 +287,7 @@ Do not merge or deploy without explicit approval.
 - **Architecture:** one application-scoped async MpesaCore instance per FastAPI process. Core owns Daraja transport/OAuth/typed provider contracts/parsing/errors/safe logs. Application owns credential persistence/decryption, merchant auth, routes, durable audit, payment state, idempotency, callback correlation/deduplication, reconciliation and outbox.
 - **Hard invariants:** provider acceptance is not payment success; callbacks are untrusted; ambiguous post-send outcomes stay unknown; no blind retries of financial mutations; no secret/token/passkey/security credential/auth header in logs; C2B registration remains opt-in; simulation is sandbox-only.
 - **Verification evidence:** live dev SHA and PR #214 merge observed through GitHub API on 2026-10-29. Official Safaricom pages reviewed for STK Push, Dynamic QR, B2C and Transaction Status; details and remaining API products are documented in docs/MPESA_CORE_SPEC.md. This is not implementation or test evidence.
-- **Current status:** specification and this tracker update only; no replacement Core code or API adapters have been implemented yet. Test suite not run for this task.
+- **Initial status at approval:** docs-only; superseded by the Implementation progress update below.
 - **Next safe action:** verify every operation's official endpoint/version, payload, permissions, callback and retry semantics; update the matrix; then implement and test in bounded groups. Reuse existing models only where they fit. Preserve all historical migrations unless a justified new migration is required.
 - **Delivery:** one PR targeting dev; no direct push to dev/main, no history rewrite, no deployment-manifest/Flux changes, and no merge without explicit user approval.
 
