@@ -186,3 +186,13 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - **Verification so far:** GitHub read-back confirmed the Core files and `test_mpesa_core.py` are absent; callback test deletion and `main.py` update were acknowledged by GitHub write responses. Final read-back/reference audit and CI results remain pending.
 - **Not verified yet:** test suite, import checks, frontend build, container smoke, or runtime behavior. Do not describe these as passing until evidence is retrieved.
 - **Rollback:** reviewed revert commits only; do not reset/rewrite history. Reverting this PR restores the package and its route wiring. No DB migration or deployment change was made.
+
+
+## PR handoff refresh — 2026-10-28
+
+- **PR #214:** https://github.com/NetHub-Ltd/NetPay/pull/214 — open, targeting `dev`; **not merged**. Tracking issue #213 remains open.
+- **Observed PR diff:** 16 paths: the 9-file Core package, its 2 Core-specific test files, `backend/app/main.py`, and the 4 trackers. No other paths appear in the PR changed-file list.
+- **CI status at handoff refresh:** backend readiness run [40769097112](https://github.com/NetHub-Ltd/NetPay/actions/runs/40769097112), frontend build [40769096856](https://github.com/NetHub-Ltd/NetPay/actions/runs/40769096856), frontend lint [40769097051](https://github.com/NetHub-Ltd/NetPay/actions/runs/40769097051), and CI [40769097145](https://github.com/NetHub-Ltd/NetPay/actions/runs/40769097145) were still in progress. No test outcome is claimed yet.
+- **Verified by read-back:** `backend/app/main.py` no longer imports or registers the Core callback router; all 9 `backend/app/mpesa_core/` files and both Core-specific test files are listed as deletions in PR #214.
+- **Not verified:** repository-wide runtime reference audit and final CI conclusions. The GitHub code-search connector indexes the default branch rather than this topic branch, so it is not evidence of a complete topic-branch reference scan.
+- **Next safe action:** retrieve the workflow conclusions and review any failures; do not merge. Replacement-class design remains a separate post-merge discussion requiring the user's approval before code is written.
