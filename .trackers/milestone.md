@@ -223,3 +223,19 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [x] Confirm CI is green on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3` (run `40780804974`); rerun after the tracker reconciliation commit.
 - [ ] Validate provisional API contracts (especially Bill Manager, Ratiba, B2B Express Checkout, Lipa na Bonga and Pull Transactions) against authenticated official docs/sandbox.
 - [x] Finalize documentation and tracker read-back; maintain one PR targeting dev (#215).
+
+## #217 approved implementation progress — 2026-10-29 UTC
+
+- [x] Product owner approved implementation contract.
+- [x] Created topic branch `feat/mpesa-application-flow-217` from `dev`.
+- [x] Added M2M token signing and scope checks, credential hashing/provisioning, Core-owned credential encryption, OAuth onboarding, STK request persistence/idempotency, status read, STK callback handling and transactional outbox event, and gated opt-in C2B handlers.
+- [x] Added API documentation and application-level PostgreSQL integration tests.
+- [ ] Review generated source and run/observe current branch CI.
+- [ ] Add and verify failure-path coverage for ambiguous provider outcomes, invalid/mismatched callbacks, database rollback, and scope narrowing.
+- [ ] Verify Alembic upgrade from current head and no historical migration changes.
+- [ ] Open/maintain reviewable PR targeting `dev`; all checks must pass before ready-for-review.
+- [ ] User reviews PR; no autonomous merge.
+- [ ] Only after approved merge, execute #216 exhaustive test matrix and decide controlled test-environment readiness.
+
+**Evidence discipline:** code being written is not evidence that behavior works. Current branch tests/CI are not yet verified.
+
