@@ -382,7 +382,9 @@ def test_m2m_stk_callback_idempotency_tenant_scope_and_opt_in_c2b(
                     ProviderCallback.integration_id == integration_ids[0],
                     ProviderCallback.callback_type == "stk",
                 )).all()
-                assert len(stk_callbacks) == 1
+                assert len(stk_callbacks) == 2
+                assert sum(row.processing_status == "processed" for row in stk_callbacks) == 1
+                assert sum(row.processing_status == "rejected" for row in stk_callbacks) == 1
                 session.exec(delete(EventOutbox).where(EventOutbox.merchant_id.in_(merchant_ids)))
                 session.exec(delete(ProviderCallback).where(ProviderCallback.integration_id.in_(integration_ids)))
                 session.exec(delete(ProviderRequest).where(ProviderRequest.merchant_id.in_(merchant_ids)))
