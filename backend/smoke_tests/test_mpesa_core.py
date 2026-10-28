@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 from typing import Any
 
@@ -592,9 +593,110 @@ async def test_initiator_password_is_rsa_encrypted_with_environment_certificate(
     core = MpesaCore(CertificateSettings(), transport=httpx.MockTransport(handler_for({})))
     try:
         payload = core._initiator_payload(ctx)
-        encrypted = __import__("base64").b64decode(payload["SecurityCredential"])
+        encrypted = base64.b64decode(payload["SecurityCredential"])
         plaintext = private_key.decrypt(encrypted, padding.PKCS1v15())
         assert plaintext == b"initiator-password-test"
         assert payload["Initiator"] == "test-initiator"
     finally:
         await core.aclose()
+
+
+def all_operation_calls(ctx: IntegrationContext):
+    """Build every supported typed operation for shared contract-failure tests."""
+    from datetime import UTC, datetime, timedelta
+    invoice = BillManagerInvoiceRequest(
+        external_reference="INV-X", billed_full_name="Customer", billed_phone_number="0712345678",
+        amount_minor=100, due_date="2026-11-15", account_reference="ACC-X", invoice_name="Service",
+    )
+    now = datetime.now(UTC)
+    return [
+        ("stk_push", lambda core: core.stk_push(ctx, STKPushRequest(
+            phone_number="0712345678", amount_minor=100, account_reference="INV", description="Sale",
+            callback_url="https://example.test/stk"))),
+        ("stk_query", lambda core: core.stk_query(ctx, STKQueryRequest(checkout_request_id="checkout"))),
+        ("c2b_registration", lambda core: core.register_c2b_urls(ctx, C2BRegistrationRequest(
+            validation_url="https://example.test/validate", confirmation_url="https://example.test/confirm"))),
+        ("c2b_simulation", lambda core: core.simulate_c2b(ctx, C2BSimulationRequest(
+            phone_number="0712345678", amount_minor=100, bill_reference="INV"))),
+        ("dynamic_qr", lambda core: core.dynamic_qr(ctx, DynamicQRRequest(
+            merchant_name="Shop", reference="INV", amount_minor=100, transaction_code="PB", credit_party_identifier="174379"))),
+        ("transaction_status", lambda core: core.transaction_status(ctx, TransactionStatusRequest(
+            transaction_id="QAB123", result_url="https://example.test/result", timeout_url="https://example.test/timeout"))),
+        ("account_balance", lambda core: core.account_balance(ctx, AccountBalanceRequest(
+            result_url="https://example.test/result", timeout_url="https://example.test/timeout"))),
+        ("reversal", lambda core: core.reverse_transaction(ctx, ReversalRequest(
+            transaction_id="QAB123", amount_minor=100, receiver_party="174379",
+            result_url="https://example.test/result", timeout_url="https://example.test/timeout"))),
+        ("b2c", lambda core: core.b2c_payment(ctx, B2CPaymentRequest(
+            phone_number="0712345678", amount_minor=100, originator_conversation_id="origin-1",
+            result_url="https://example.test/result", timeout_url="https://example.test/timeout"))),
+        ("b2b", lambda core: core.b2b_payment(ctx, B2BPaymentRequest(
+            party_b="600000", amount_minor=100, command_id="BusinessPayBill",
+            result_url="https://example.test/result", timeout_url="https://example.test/timeout"))),
+        ("tax_remittance", lambda core: core.tax_remittance(ctx, TaxRemittanceRequest(
+            prn="PRN-1", amount_minor=100, result_url="https://example.test/result",
+            timeout_url="https://example.test/timeout"))),
+        ("pull_register", lambda core: core.register_pull_transactions(ctx, PullTransactionsRegistrationRequest(
+            nominated_phone_number="0712345678", callback_url="https://example.test/pull"))),
+        ("pull_query", lambda core: core.pull_transactions(ctx, PullTransactionsRequest(
+            start_at=now - timedelta(hours=1), end_at=now))),
+        ("b2b_express", lambda core: core.b2b_express_checkout(ctx, B2BExpressCheckoutRequest(
+            primary_shortcode="600111", receiver_shortcode="174379", amount_minor=100,
+            reference="INV", partner_name="NetPay", callback_url="https://example.test/express",
+            request_ref_id="ref-1"))),
+        ("ratiba", lambda core: core.create_ratiba_order(ctx, RatibaStandingOrderRequest(
+            standing_order_name="Plan-1", transaction_type="Standing Order Customer Pay Bill",
+            amount_minor=100, phone_number="0712345678", callback_url="https://example.test/ratiba",
+            account_reference="PLAN", description="Plan", frequency="5", start_date="20261029", end_date="20271029"))),
+        ("bonga_quote", lambda core: core.calculate_lipa_na_bonga_value(ctx, LipaNaBongaQuoteRequest(bonga_points=400))),
+        ("bonga_redeem", lambda core: core.redeem_lipa_na_bonga(ctx, LipaNaBongaRequest(
+            phone_number="0712345678", amount_minor=100, bonga_points=5, account_reference="INV"))),
+        ("bill_optin", lambda core: core.bill_manager_opt_in(ctx, BillManagerOptInRequest(
+            email="billing@example.test", official_contact="0712345678", callback_url="https://example.test/bill"))),
+        ("bill_single", lambda core: core.bill_manager_single_invoice(ctx, invoice)),
+        ("bill_bulk", lambda core: core.bill_manager_bulk_invoices(ctx, BillManagerBulkInvoiceRequest(invoices=[invoice]))),
+        ("bill_cancel", lambda core: core.bill_manager_cancel_invoice(ctx, BillManagerCancelInvoiceRequest(external_reference="INV-X"))),
+        ("bill_cancel_bulk", lambda core: core.bill_manager_cancel_bulk_invoices(ctx, BillManagerBulkCancelInvoiceRequest(external_references=["INV-X"]))),
+        ("bill_reconcile", lambda core: core.bill_manager_reconcile_payment(ctx, BillManagerReconciliationRequest(
+            external_reference="INV-X", transaction_id="QAB123", amount_minor=100))),
+        ("bill_update_optin", lambda core: core.bill_manager_update_opt_in(ctx, BillManagerOptInRequest(
+            email="billing@example.test", official_contact="0712345678", callback_url="https://example.test/bill"))),
+        ("bill_update_single", lambda core: core.bill_manager_update_invoice(ctx, invoice)),
+        ("bill_update_bulk", lambda core: core.bill_manager_update_bulk_invoices(ctx, BillManagerBulkInvoiceRequest(invoices=[invoice]))),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_every_typed_operation_normalizes_provider_rejection() -> None:
+    ctx = context()
+    for operation, invoke in all_operation_calls(ctx):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/oauth/v1/generate":
+                return httpx.Response(200, json={"access_token": "test-token", "expires_in": 3600})
+            return httpx.Response(400, json={"ResponseCode": "1", "ResponseDescription": "rejected"})
+        core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+        try:
+            with pytest.raises(ProviderRejected), pytest.MonkeyPatch.context() as _:
+                await invoke(core)
+        finally:
+            await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_every_typed_operation_classifies_malformed_and_ambiguous_outcomes() -> None:
+    ctx = context()
+    for operation, invoke in all_operation_calls(ctx):
+        for failure_mode in ("malformed", "timeout"):
+            def handler(request: httpx.Request) -> httpx.Response:
+                if request.url.path == "/oauth/v1/generate":
+                    return httpx.Response(200, json={"access_token": "test-token", "expires_in": 3600})
+                if failure_mode == "malformed":
+                    return httpx.Response(200, content=b"not-json")
+                raise httpx.ReadTimeout("timeout", request=request)
+            core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+            try:
+                expected = MalformedProviderResponse if failure_mode == "malformed" else AmbiguousOutcome
+                with pytest.raises(expected):
+                    await invoke(core)
+            finally:
+                await core.aclose()
