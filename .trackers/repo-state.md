@@ -302,3 +302,29 @@ These are historical reports, not fresh verification performed during tracker cr
 - Code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` is verified by CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496): Alembic upgrade to revision `0003_mpesa_core_capabilities`, **65 passed, 1 warning**, PostgreSQL and Redis connectivity all passed.
 - Backend readiness [40792997409](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997409), frontend lint [40792997425](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997425), and frontend build [40792997517](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997517) passed for the same code commit.
 - The CI container job remains queued, so the full CI/image startup gate is not yet green. PR #218 remains draft/open/unmerged. Later tracker-only commits do not change application code; use live PR SHA for handoff state.
+
+
+## Parallel branch — marketing conversion theme experiment (2026-10-29)
+
+- **Branch:** `feat/theme-test-marketing-conversion`, created from live `dev` after explicit user approval to override the older branch-only rule for this isolated experiment. PR must target `dev`; no direct writes to `dev` or `main`.
+- **Scope:** noindex `/theme-test` visual comparison of two Design 1 + Design 2 marketing directions. Existing Ledger theme remains product default.
+- **Design constraints:** preserve current product truth; use existing documented capabilities only; no invented testimonials, customer metrics, uptime, certification, fees, or unsupported payment methods. Keep prototype off sitemap and disallowed in robots.
+- **Verification:** implementation, lint/typecheck/build and browser QA are pending until evidenced. The active payment-flow task and PR #218 remain separate; do not overwrite their status with this experiment.
+- **Rollback:** reviewed revert of route/CSS/robots changes; no schema/data or deployment changes.
+
+
+### Theme-test latest state — 2026-10-29 00:58 UTC
+
+- PR #219: https://github.com/NetHub-Ltd/NetPay/pull/219, draft/open/unmerged, base `dev`; current head observed as `e54e1d77e9fcc79c3d13c2fb57907b169baee875`.
+- Files changed: four trackers, `frontend/app/robots.ts`, `frontend/app/theme-test/page.tsx`, `frontend/app/theme-test/page.module.css`.
+- Older frontend lint/build checks failed for unescaped quotes/apostrophes and a plain Next.js homepage anchor. Fixes were pushed. Latest checks were queued at last observation: lint #567, build #566, CI #1120, readiness #674.
+- The new route is explicitly noindex/nofollow, excluded from sitemap, and disallowed in robots. It is a design lab only; existing Ledger and public homepage are unchanged.
+- Browser QA has not been performed. Keep PR draft until latest CI and visual QA are resolved; do not merge or deploy.
+
+
+### Final source correction — 2026-10-29 01:00 UTC
+
+- Latest source commit: `191e51f58b87267eb591a228d4251e09a204f289`. Fixed the last JSX apostrophe found by lint in the prior run.
+- Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
+- Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
+- Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.

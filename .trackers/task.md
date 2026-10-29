@@ -345,3 +345,30 @@ Do not merge or deploy without explicit approval.
 - **VERIFIED:** CI run [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496), on code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802`, completed Alembic upgrade through `0003_mpesa_core_capabilities`, then passed **65 tests, 1 warning**, and PostgreSQL/Redis connectivity.
 - **VERIFIED:** backend readiness [40792997409](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997409), frontend lint [40792997425](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997425), and frontend build [40792997517](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997517) passed on that code commit.
 - **PENDING:** CI container image/startup job is queued; full CI run has not completed. No live Daraja sandbox transaction has been performed. PR #218 remains draft/open/unmerged; no merge and no #216 execution.
+
+
+## Parallel task — marketing conversion theme experiment (2026-10-29)
+
+- **Approved scope:** User explicitly approved an isolated feature branch/PR exception to the older branch-only instruction for a design experiment. Branch: `feat/theme-test-marketing-conversion`, created from live `dev`; PR target remains `dev`. This is a prototype only and must not replace Ledger or ship without review.
+- **Goal:** Add a noindex `/theme-test` route showing two complete landing-page directions that blend Design 1 (navy/teal infrastructure confidence) with Design 2 (warm ivory/editorial human warmth), emphasizing merchant/developer conversion.
+- **Evidence:** Current `dev` uses Next.js App Router, strict TypeScript, Lucide React, Tailwind v4 and static export. `Theme.md` says Ledger remains product default and the lab is not product chrome. Existing product capabilities/limitations in README are the source of truth; avoid claims about unsupported transaction verification, guaranteed success, or security certifications.
+- **Isolation:** New route + route-scoped CSS only; add `/theme-test` to robots disallow; page metadata must be noindex/nofollow; don't add it to sitemap. No dashboard, backend, database, deployment manifest, Flux, or GHCR build/push changes.
+- **Verification status:** Pending implementation and CI/browser evidence. Do not claim rendered visual QA unless actually performed.
+- **Rollback:** Revert the theme-test route/CSS and robots disallow in a reviewed commit; no data/schema change.
+
+
+### Theme-test implementation checkpoint — 2026-10-29 00:58 UTC
+
+- **Implemented:** `frontend/app/theme-test/page.tsx` and route-scoped `page.module.css` present. The route shows two complete, responsive marketing concepts, labelled illustrative code/payment data, and links to existing API overview/request-access routes. Brand links now target the page's `#top` anchor.
+- **SEO isolation:** `robots: noindex,nofollow` in page metadata; `/theme-test` and `/theme-test/` disallowed in `frontend/app/robots.ts`; sitemap remains unchanged and does not list the route.
+- **PR:** #219 (draft/open/unmerged) targets `dev`: https://github.com/NetHub-Ltd/NetPay/pull/219.
+- **Observed verification:** Frontend lint run 563 and build run 562 failed on an earlier branch head due to unescaped display quotes/apostrophes and a plain anchor to `/`. Those issues were fixed in the subsequent source commit. Latest-head checks 567 (lint), 566 (build), 1120 (CI), and 674 (backend readiness) were queued at last check. Do not claim success until they complete.
+- **Browser visual QA:** not available/verified in this workflow. Route rendering, responsive layout and interactions remain unverified in an actual browser.
+
+
+### Final source correction — 2026-10-29 01:00 UTC
+
+- Latest source commit: `191e51f58b87267eb591a228d4251e09a204f289`. Fixed the last JSX apostrophe found by lint in the prior run.
+- Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
+- Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
+- Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.

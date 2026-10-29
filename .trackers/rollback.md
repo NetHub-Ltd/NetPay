@@ -200,3 +200,27 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 
 - Code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` passed backend migration, 65 tests (1 warning), and PostgreSQL/Redis connectivity in CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496).
 - Readiness [40792997409], frontend lint [40792997425], and frontend build [40792997517] passed. CI container startup remains pending. PR #218 is still draft and unmerged.
+
+
+## Marketing theme experiment rollback — 2026-10-29
+
+- **Branch:** `feat/theme-test-marketing-conversion`; **PR #219:** https://github.com/NetHub-Ltd/NetPay/pull/219, draft/open and unmerged, target `dev`.
+- The only intended application changes are new `frontend/app/theme-test/page.tsx`, its route-scoped `page.module.css`, and `frontend/app/robots.ts` disallow entries. The experiment uses illustrative payment/code data clearly labelled as not live.
+- No backend, database, migrations, public homepage, product theme tokens, deployment manifests, Flux, or GHCR build/push behavior are changed.
+- Roll back with a reviewed revert of the route files and robots entries. Preserve Git history; do not reset/rebase/squash/force-push. No production data or transaction changes.
+- CI workflows were observed running after PR creation; final test outcomes and browser-rendered QA are pending and must be recorded before review readiness.
+
+
+### Theme-test verification and recovery update — 2026-10-29 00:58 UTC
+
+- Latest source fix commit at last check: `e54e1d77e9fcc79c3d13c2fb57907b169baee875`. Earlier frontend lint/build runs failed due to JSX text escaping and a plain homepage anchor; both were corrected. Fresh latest-head checks were queued, not yet passed.
+- If failures remain, fix on `feat/theme-test-marketing-conversion` and re-run CI; do not weaken lint/type checks. Browser QA remains outstanding.
+- PR #219 stays draft/unmerged. Revert only via reviewed commits; no history rewrite or production/deployment rollback is involved.
+
+
+### Final source correction — 2026-10-29 01:00 UTC
+
+- Latest source commit: `191e51f58b87267eb591a228d4251e09a204f289`. Fixed the last JSX apostrophe found by lint in the prior run.
+- Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
+- Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
+- Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.

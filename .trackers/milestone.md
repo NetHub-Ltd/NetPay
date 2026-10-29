@@ -276,3 +276,37 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [x] Backend readiness [40792997409], frontend lint [40792997425], and frontend build [40792997517] passed.
 - [ ] Wait for CI container image/startup job; run [40792997496] is not complete yet.
 - [ ] Review full PR diff/provider contracts and await user review. PR #218 stays draft/unmerged; #216 remains deferred until #217 is reviewed and merged.
+
+
+## Parallel milestone — marketing conversion theme experiment
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| MT.1 | Isolated feature branch created from live `dev` after user approval | VERIFIED — branch `feat/theme-test-marketing-conversion` created |
+| MT.2 | Two distinct Design 1 + 2 landing-page directions are available at `/theme-test` | IN PROGRESS |
+| MT.3 | Claims and CTAs reflect existing NetPay capabilities and routes | PENDING REVIEW |
+| MT.4 | Route is noindex/nofollow, excluded from sitemap and disallowed in robots | PENDING |
+| MT.5 | Frontend lint, typecheck and production build pass on the final branch head | PENDING — not run here yet |
+| MT.6 | Rendered responsive/browser QA completed | PENDING — do not claim verified without browser evidence |
+| MT.7 | PR targets `dev`, remains unmerged pending user review | PENDING |
+
+
+### Theme-test milestone update — 2026-10-29 00:58 UTC
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| MT.1 | Isolated feature branch created from live `dev` after user approval | VERIFIED |
+| MT.2 | Two distinct Design 1 + 2 landing-page directions are available at `/theme-test` | IMPLEMENTED — source present; browser rendering not yet verified |
+| MT.3 | Claims and CTAs reflect existing NetPay capabilities and routes | SOURCE REVIEWED — visual copy avoids live-data claims; final review pending |
+| MT.4 | Route is noindex/nofollow, excluded from sitemap and disallowed in robots | VERIFIED by source inspection |
+| MT.5 | Frontend lint, typecheck and production build pass on final branch head | PENDING — earlier lint/build failed; fixes committed; latest checks queued |
+| MT.6 | Rendered responsive/browser QA completed | NOT VERIFIED — no browser capture performed |
+| MT.7 | PR targets `dev`, remains unmerged pending user review | VERIFIED — draft PR #219 |
+
+
+### Final source correction — 2026-10-29 01:00 UTC
+
+- Latest source commit: `191e51f58b87267eb591a228d4251e09a204f289`. Fixed the last JSX apostrophe found by lint in the prior run.
+- Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
+- Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
+- Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
