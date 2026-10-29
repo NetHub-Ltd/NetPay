@@ -248,3 +248,15 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - No live Daraja sandbox transaction has been performed. Fake-Core tests prove application behavior only, not provider interoperability.
 - #216 remains a separate verification-only readiness gate after #217's reviewed merge to `dev`.
 
+
+
+## #217 failure diagnosis and follow-up — 2026-10-29 00:15 UTC
+
+- [x] Inspect the latest failed CI output and locate the failing application-level test: [CI run 40789386571](https://github.com/NetHub-Ltd/NetPay/actions/runs/40789386571), STK initiation assertion in `test_payment_application.py:254` (HTTP 500 instead of 202).
+- [x] Trace the failure to a source-level cause: `PaymentApplicationService.initiate_stk` referenced `ProviderRequest` but `backend/app/payments/service.py` did not import it.
+- [x] Commit minimal fix `52414c1ee33c030cb08a1810ce3579e496ea105e` adding the missing import; no schema, migration, deployment or release-workflow changes.
+- [ ] Verify fixed-head CI [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), readiness [40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), frontend lint [40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), and frontend build [40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019); these were queued at last observation.
+- [ ] Review the complete PR diff, callback acknowledgement and C2B provider contracts, and migration compatibility before marking ready.
+- [ ] Obtain user review; do not merge autonomously. Execute issue #216 only after #217 is reviewed and merged to `dev`.
+
+**Evidence distinction:** the import fix is committed; its test verification is pending. The earlier PostgreSQL duplicate-key log mentioned a different idempotency key and is not attributed to this failure.
