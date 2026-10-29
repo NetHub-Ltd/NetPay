@@ -20,3 +20,4 @@ include = ["app*"]
 testpaths = ["smoke_tests"]
 addopts = "-ra"
 asyncio_mode = "auto"
+markers = ["integration: tests requiring PostgreSQL and the application runtime"]

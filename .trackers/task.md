@@ -301,3 +301,47 @@ Do not merge or deploy without explicit approval.
 - **Important evidence boundary:** Safaricom official pages verify STK Push, Dynamic QR, Transaction Status, B2C, Tax Remittance and the existence of Bill Manager, Ratiba and B2B Express products. Several product pages render only a generic portal shell publicly. Exact Bill Manager/Ratiba/B2B Express/Lipa na Bonga/Pull Transactions payloads are cross-checked against public SDK/catalogue references, not yet verified with authenticated Daraja docs or sandbox. Do not call them production-verified until contract tests succeed with authorized sandbox credentials.
 - **Current verification:** GitHub Actions CI run `40780329065` passed on code head `a3264063f7b3219235c4b9bc48a620bbed691730`: full backend `smoke_tests`, Alembic upgrade, PostgreSQL/Redis connectivity, production image build (no push), and container startup smoke test. Backend readiness plus frontend lint/build also passed on that head. Tracker/spec reconciliation commits after the tested code head change no runtime code; current-head checks must pass before marking the PR ready.
 - **Remaining before ready:** validate provisional product contracts against authenticated official docs/sandbox; re-read all trackers after this status update; verify checks on the new tracker/spec reconciliation head; then mark PR #215 ready for review. Do not merge without user approval.
+
+## Issue #217 implementation checkpoint — 2026-10-29 UTC
+
+- **Approval:** Product owner approved the #217 implementation contract as written. GitHub issue updated with approval and implementation status.
+- **Working branch:** `feat/mpesa-application-flow-217`, based on `dev` SHA `3d77327c1d00f713b7ec088492dc91dd953d139c`. CI is configured for `feat/**` branches.
+- **Runtime changes in progress:** application-owned M2M client-credentials token route and scope enforcement; Core-owned Fernet credential encryption/key IDs; integration onboarding via OAuth validation; STK initiation with durable idempotency/provider evidence; merchant-scoped status reads; STK callback correlation/deduplication and atomic outbox; sandbox-only opt-in C2B registration/handlers; one-time M2M provisioning script; API contract documentation.
+- **Tests added:** PostgreSQL-backed application lifecycle test for M2M auth, onboarding, STK idempotency, successful/duplicate callback, cross-merchant denial, C2B opt-in and event dedupe; unit tests for token tampering, secret hashing, and credential key rotation.
+- **Verification status:** NOT YET VERIFIED. GitHub-hosted CI has not yet been observed for the current branch. No local test run is possible in this session because the execution environment cannot resolve github.com to clone the repository. Do not claim tests pass until CI results are inspected and failures fixed.
+- **Schema/migrations:** no model fields or historical migrations intentionally changed; confirm migration compatibility in CI.
+- **Next:** inspect branch source for correctness, open a draft PR to `dev` to trigger CI, fix all failures, extend failure-path tests (especially ambiguous provider outcome and DB rollback), update all four trackers with exact check evidence, then mark PR ready for user review. Do not merge.
+- **#216 remains verification-only** and must run after this implementation is reviewed and merged to `dev`.
+## #217 verification checkpoint — 2026-10-29 UTC
+
+- Draft PR [#218](https://github.com/NetHub-Ltd/NetPay/pull/218) is open against `dev`; it has not been merged and remains under review.
+- **Observed CI failure and fix:** run [40787891591](https://github.com/NetHub-Ltd/NetPay/actions/runs/40787891591) failed because the test expected one STK callback row while the implementation correctly retained both the processed callback and a mismatched/rejected callback. The assertion was corrected to verify one `processed` and one `rejected` record.
+- **Observed backend test success:** run [40788087483](https://github.com/NetHub-Ltd/NetPay/actions/runs/40788087483) completed backend migration, test, PostgreSQL and Redis steps successfully; its log reported **65 passed, 1 warning**. Its container image/startup job was still in progress at observation time, so it was not yet a complete workflow success.
+- A PostgreSQL commit-failure rollback test has since been added for callback/payment/outbox atomicity. Latest code also validates production callback URL HTTPS and selects the STK transaction type from integration product type.
+- **Current-head status:** CI, backend readiness, frontend lint and frontend build have been triggered for the newer head and were still in progress at last observation. Do not mark the PR ready until the exact latest-head checks finish successfully.
+- No live Daraja sandbox transaction has been performed. Fake-Core tests prove application behavior only, not provider interoperability.
+- #216 remains a separate verification-only readiness gate after #217's reviewed merge to `dev`.
+
+
+
+## #217 latest investigation and fix — 2026-10-29 00:15 UTC
+
+- **OBSERVED:** PR #218 remains draft/open/unmerged against `dev`. Latest code commit: `52414c1ee33c030cb08a1810ce3579e496ea105e`.
+- **VERIFIED by source inspection:** failing CI run [40789386571](https://github.com/NetHub-Ltd/NetPay/actions/runs/40789386571) had 64 passed and one failure: STK initiation returned HTTP 500 at `backend/smoke_tests/test_payment_application.py:254`. `backend/app/payments/service.py` instantiated `ProviderRequest` but imported only `AuditLog` from `app.models.operations`; this unresolved name caused the application exception.
+- **FIX COMMITTED:** commit `52414c1ee33c030cb08a1810ce3579e496ea105e` adds `ProviderRequest` to that import. This is the concrete cause/fix; the earlier PostgreSQL duplicate-key log for `merchant-payment-key-1` was unrelated to the failing request's `flow-key-1` and is not treated as its cause.
+- **CI pending on fixed code head:** CI run [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), backend readiness [40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), frontend lint [40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), and frontend build [40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019) were queued when checked. Do not claim the fix is test-verified until these finish on the final branch head.
+- **Next:** inspect new CI logs, fix any further failure on this branch, rerun and reconcile all four trackers to the final tested SHA. Keep PR draft; do not merge or start #216 before #217 is reviewed and merged.
+
+
+## #217 latest CI follow-up — 2026-10-29 00:17 UTC
+
+- CI run [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066) passed the earlier STK initiation point but still failed on the duplicate C2B validation assertion at `backend/smoke_tests/test_payment_application.py:446`; the replay returned HTTP 500.
+- Source inspection found the duplicate recovery path rolls back the async session, then reads `integration.id`. The rollback expires ORM state, so recovery can fail on that access. Commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` now captures the UUID before rollback and uses the scalar value for the duplicate lookup.
+- This fix is committed but not yet test-verified. PR #218 remains draft/open/unmerged; #216 remains gated until #217 is reviewed and merged.
+
+
+## #217 latest verification — 2026-10-29 00:18 UTC
+
+- **VERIFIED:** CI run [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496), on code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802`, completed Alembic upgrade through `0003_mpesa_core_capabilities`, then passed **65 tests, 1 warning**, and PostgreSQL/Redis connectivity.
+- **VERIFIED:** backend readiness [40792997409](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997409), frontend lint [40792997425](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997425), and frontend build [40792997517](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997517) passed on that code commit.
+- **PENDING:** CI container image/startup job is queued; full CI run has not completed. No live Daraja sandbox transaction has been performed. PR #218 remains draft/open/unmerged; no merge and no #216 execution.

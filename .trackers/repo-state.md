@@ -259,3 +259,46 @@ These are historical reports, not fresh verification performed during tracker cr
 - Core uses existing httpx, Pydantic, Loguru and cryptography dependencies; no new dependency, migration, deployment manifest, Flux or GHCR workflow change.
 - API adapters are implemented for documented common Daraja APIs and the proposed product families, including Tax Remittance, Pull Transactions, B2B Express Checkout, Ratiba, Lipa na Bonga and Bill Manager operations. Unverified/ambiguous product payloads must remain flagged for sandbox validation, not advertised as production-verified.
 - CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend smoke tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness, frontend lint and frontend build passed on the same head. Tracker/spec-only commits follow the tested code head; verify current branch-tip checks before review.
+
+## Approved #217 implementation — current branch state (2026-10-29 UTC)
+
+- Contract approval recorded in [issue #217](https://github.com/NetHub-Ltd/NetPay/issues/217).
+- Working branch `feat/mpesa-application-flow-217` was created from `dev` SHA `3d77327c1d00f713b7ec088492dc91dd953d139c`.
+- Added application API modules under `backend/app/payments/`, Core credential encryption in `backend/app/mpesa_core/credentials.py`, Core OAuth validation method, M2M signing setting, one-time provisioning script, API contract documentation, and PostgreSQL-backed application integration tests.
+- Main API is registered through `backend/app/main.py`; existing model fields and Alembic revisions were reused. No historical migration was edited and no new migration is currently planned.
+- **Not yet verified:** Python import/typing/runtime correctness, DB integration test behavior, migration checks on branch tip, all CI workflows, live Daraja sandbox interoperability, callback acknowledgement contract, and C2B provider registration. CI is the next evidence gate.
+- Current work is application runtime code and tests, unlike the earlier audit-only branch. Flux/deployment manifests and GHCR build/push behavior have not been intentionally changed.
+- Issue #216 remains a verification-only gate after #217's reviewed merge to `dev`.
+## #217 verification checkpoint — 2026-10-29 UTC
+
+- Draft PR [#218](https://github.com/NetHub-Ltd/NetPay/pull/218) is open against `dev`; it has not been merged and remains under review.
+- **Observed CI failure and fix:** run [40787891591](https://github.com/NetHub-Ltd/NetPay/actions/runs/40787891591) failed because the test expected one STK callback row while the implementation correctly retained both the processed callback and a mismatched/rejected callback. The assertion was corrected to verify one `processed` and one `rejected` record.
+- **Observed backend test success:** run [40788087483](https://github.com/NetHub-Ltd/NetPay/actions/runs/40788087483) completed backend migration, test, PostgreSQL and Redis steps successfully; its log reported **65 passed, 1 warning**. Its container image/startup job was still in progress at observation time, so it was not yet a complete workflow success.
+- A PostgreSQL commit-failure rollback test has since been added for callback/payment/outbox atomicity. Latest code also validates production callback URL HTTPS and selects the STK transaction type from integration product type.
+- **Current-head status:** CI, backend readiness, frontend lint and frontend build have been triggered for the newer head and were still in progress at last observation. Do not mark the PR ready until the exact latest-head checks finish successfully.
+- No live Daraja sandbox transaction has been performed. Fake-Core tests prove application behavior only, not provider interoperability.
+- #216 remains a separate verification-only readiness gate after #217's reviewed merge to `dev`.
+
+
+
+## #217 current repository state — 2026-10-29 00:15 UTC
+
+- Working branch: `feat/mpesa-application-flow-217`; PR [#218](https://github.com/NetHub-Ltd/NetPay/pull/218) targets `dev`, is draft/open, and is unmerged.
+- Latest code fix commit: `52414c1ee33c030cb08a1810ce3579e496ea105e`. The fix imports `ProviderRequest` alongside `AuditLog` in `backend/app/payments/service.py`; the STK service used `ProviderRequest` without importing it, causing the 500 observed in CI run [40789386571](https://github.com/NetHub-Ltd/NetPay/actions/runs/40789386571).
+- The duplicate-key database log referenced `merchant-payment-key-1`, whereas the failed request used `flow-key-1`; do not conflate them. The missing Python import is the source-confirmed cause.
+- Fixed-head workflows were queued at last observation: CI [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), readiness [40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), frontend lint [40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), frontend build [40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019). These are pending evidence, not passes.
+- Preserve Git history. Do not change `dev`, `main`, Flux/deployment manifests, or GHCR build/push behavior. No live Daraja transaction was run. Issue #216 remains blocked until #217 is reviewed and merged to `dev`.
+
+
+## #217 latest CI follow-up — 2026-10-29 00:17 UTC
+
+- CI [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066) still failed after the missing `ProviderRequest` import fix, now at duplicate C2B validation replay (`backend/smoke_tests/test_payment_application.py:446`): the replay response was HTTP 500.
+- Handler source showed the duplicate recovery path rolled back and then accessed `integration.id`. Commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` captures the UUID before rollback and uses the scalar key in recovery. This follow-up is not yet test-verified.
+- PR #218 remains draft/open/unmerged against `dev`. Preserve history and leave #216 blocked until #217 is reviewed and merged.
+
+
+## #217 latest verified CI evidence — 2026-10-29 00:18 UTC
+
+- Code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` is verified by CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496): Alembic upgrade to revision `0003_mpesa_core_capabilities`, **65 passed, 1 warning**, PostgreSQL and Redis connectivity all passed.
+- Backend readiness [40792997409](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997409), frontend lint [40792997425](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997425), and frontend build [40792997517](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997517) passed for the same code commit.
+- The CI container job remains queued, so the full CI/image startup gate is not yet green. PR #218 remains draft/open/unmerged. Later tracker-only commits do not change application code; use live PR SHA for handoff state.

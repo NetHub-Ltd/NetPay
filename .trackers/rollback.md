@@ -158,3 +158,45 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Revert these changes through reviewed revert commits on feat/mpesa-core-complete only. Do not restore the removed pre-PR-214 Core implementation.
 - CI run `40780804974` passed on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3`: backend tests, migration, PostgreSQL/Redis, image build and container startup smoke. Backend readiness and frontend lint/build also passed. The branch now contains tracker/spec-only commits after the tested code head; rerun checks on the current branch tip before review. No runtime rollback is indicated by current checks.
 - Provisional product payload contracts are not to be treated as production-ready until validated. Disable capability use rather than sending guessed/incorrect payloads if contract validation finds a mismatch.
+
+## #217 implementation rollback and safety checkpoint — 2026-10-29 UTC
+
+- Product owner approved the contract; implementation is isolated on `feat/mpesa-application-flow-217`.
+- No production credentials, production DB operations, live financial transactions, Flux/deployment manifest changes, or GHCR build/push behavior changes were made.
+- No schema fields were intentionally added and no historical migration was edited. Verify the existing schema is sufficient in CI before relying on that assumption.
+- If the PR is rejected, use a reviewed revert commit or close the branch/PR; do not reset, rebase, squash, or force-push history.
+- Core OAuth onboarding is a provider call; payment initiation persists operation evidence before making the STK mutation. Ambiguous outcomes must remain unknown and must not be blindly retried.
+- C2B registration is sandbox-only and ambiguous registration outcomes block another registration attempt until reconciled. Production C2B remains gated pending provider-contract evidence.
+- **Current rollback readiness:** proposed only; runtime behavior and tests are not yet verified. Document any discovered data/schema or compatibility risks before marking PR ready.
+## #217 verification checkpoint — 2026-10-29 UTC
+
+- Draft PR [#218](https://github.com/NetHub-Ltd/NetPay/pull/218) is open against `dev`; it has not been merged and remains under review.
+- **Observed CI failure and fix:** run [40787891591](https://github.com/NetHub-Ltd/NetPay/actions/runs/40787891591) failed because the test expected one STK callback row while the implementation correctly retained both the processed callback and a mismatched/rejected callback. The assertion was corrected to verify one `processed` and one `rejected` record.
+- **Observed backend test success:** run [40788087483](https://github.com/NetHub-Ltd/NetPay/actions/runs/40788087483) completed backend migration, test, PostgreSQL and Redis steps successfully; its log reported **65 passed, 1 warning**. Its container image/startup job was still in progress at observation time, so it was not yet a complete workflow success.
+- A PostgreSQL commit-failure rollback test has since been added for callback/payment/outbox atomicity. Latest code also validates production callback URL HTTPS and selects the STK transaction type from integration product type.
+- **Current-head status:** CI, backend readiness, frontend lint and frontend build have been triggered for the newer head and were still in progress at last observation. Do not mark the PR ready until the exact latest-head checks finish successfully.
+- No live Daraja sandbox transaction has been performed. Fake-Core tests prove application behavior only, not provider interoperability.
+- #216 remains a separate verification-only readiness gate after #217's reviewed merge to `dev`.
+
+
+
+## #217 fix and rollback checkpoint — 2026-10-29 00:15 UTC
+
+- Latest fix commit: `52414c1ee33c030cb08a1810ce3579e496ea105e` on `feat/mpesa-application-flow-217`; PR [#218](https://github.com/NetHub-Ltd/NetPay/pull/218) remains draft/open/unmerged.
+- Root cause identified from source: `backend/app/payments/service.py` constructed `ProviderRequest` without importing it, causing STK initiation to return HTTP 500 in CI run [40789386571](https://github.com/NetHub-Ltd/NetPay/actions/runs/40789386571). The fix adds it to the existing operations-model import.
+- No schema/migration, database data, deployment manifest, Flux resource, `dev`/ `main`, or GHCR build/push behavior was changed by this fix. No live financial transaction was initiated.
+- CI/readiness/frontend checks for the fix commit were queued: [CI 40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), [readiness 40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), [lint 40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), [build 40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019). Verification is pending.
+- If the PR is rejected or regression is found, use a reviewed revert commit on the topic branch. Preserve history; never reset, rebase, squash, or force-push. Do not merge without user approval; do not start #216 before #217 is merged.
+
+
+## #217 second CI regression fix — 2026-10-29 00:17 UTC
+
+- Latest application fix commit: `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802`; PR #218 remains draft and unmerged.
+- CI after the import fix exposed a duplicate C2B validation replay returning HTTP 500. The recovery handler rolled back the async session and then accessed an expired ORM instance; the fix captures the integration UUID before rollback and uses it in the duplicate lookup.
+- No schema, migration, database data, deployment/Flux, `dev`/`main`, or GHCR workflow changes were made. Test verification remains pending; preserve history and do not start #216.
+
+
+## #217 status update — 2026-10-29 00:18 UTC
+
+- Code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` passed backend migration, 65 tests (1 warning), and PostgreSQL/Redis connectivity in CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496).
+- Readiness [40792997409], frontend lint [40792997425], and frontend build [40792997517] passed. CI container startup remains pending. PR #218 is still draft and unmerged.

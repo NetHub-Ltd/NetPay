@@ -223,3 +223,56 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [x] Confirm CI is green on code head `8fb5a3ba1004af8ff240ed13cc2cd07ab283b1d3` (run `40780804974`); rerun after the tracker reconciliation commit.
 - [ ] Validate provisional API contracts (especially Bill Manager, Ratiba, B2B Express Checkout, Lipa na Bonga and Pull Transactions) against authenticated official docs/sandbox.
 - [x] Finalize documentation and tracker read-back; maintain one PR targeting dev (#215).
+
+## #217 approved implementation progress — 2026-10-29 UTC
+
+- [x] Product owner approved implementation contract.
+- [x] Created topic branch `feat/mpesa-application-flow-217` from `dev`.
+- [x] Added M2M token signing and scope checks, credential hashing/provisioning, Core-owned credential encryption, OAuth onboarding, STK request persistence/idempotency, status read, STK callback handling and transactional outbox event, and gated opt-in C2B handlers.
+- [x] Added API documentation and application-level PostgreSQL integration tests.
+- [ ] Review generated source and run/observe current branch CI.
+- [ ] Add and verify failure-path coverage for ambiguous provider outcomes, invalid/mismatched callbacks, database rollback, and scope narrowing.
+- [ ] Verify Alembic upgrade from current head and no historical migration changes.
+- [ ] Open/maintain reviewable PR targeting `dev`; all checks must pass before ready-for-review.
+- [ ] User reviews PR; no autonomous merge.
+- [ ] Only after approved merge, execute #216 exhaustive test matrix and decide controlled test-environment readiness.
+
+**Evidence discipline:** code being written is not evidence that behavior works. Current branch tests/CI are not yet verified.
+## #217 verification checkpoint — 2026-10-29 UTC
+
+- Draft PR [#218](https://github.com/NetHub-Ltd/NetPay/pull/218) is open against `dev`; it has not been merged and remains under review.
+- **Observed CI failure and fix:** run [40787891591](https://github.com/NetHub-Ltd/NetPay/actions/runs/40787891591) failed because the test expected one STK callback row while the implementation correctly retained both the processed callback and a mismatched/rejected callback. The assertion was corrected to verify one `processed` and one `rejected` record.
+- **Observed backend test success:** run [40788087483](https://github.com/NetHub-Ltd/NetPay/actions/runs/40788087483) completed backend migration, test, PostgreSQL and Redis steps successfully; its log reported **65 passed, 1 warning**. Its container image/startup job was still in progress at observation time, so it was not yet a complete workflow success.
+- A PostgreSQL commit-failure rollback test has since been added for callback/payment/outbox atomicity. Latest code also validates production callback URL HTTPS and selects the STK transaction type from integration product type.
+- **Current-head status:** CI, backend readiness, frontend lint and frontend build have been triggered for the newer head and were still in progress at last observation. Do not mark the PR ready until the exact latest-head checks finish successfully.
+- No live Daraja sandbox transaction has been performed. Fake-Core tests prove application behavior only, not provider interoperability.
+- #216 remains a separate verification-only readiness gate after #217's reviewed merge to `dev`.
+
+
+
+## #217 failure diagnosis and follow-up — 2026-10-29 00:15 UTC
+
+- [x] Inspect the latest failed CI output and locate the failing application-level test: [CI run 40789386571](https://github.com/NetHub-Ltd/NetPay/actions/runs/40789386571), STK initiation assertion in `test_payment_application.py:254` (HTTP 500 instead of 202).
+- [x] Trace the failure to a source-level cause: `PaymentApplicationService.initiate_stk` referenced `ProviderRequest` but `backend/app/payments/service.py` did not import it.
+- [x] Commit minimal fix `52414c1ee33c030cb08a1810ce3579e496ea105e` adding the missing import; no schema, migration, deployment or release-workflow changes.
+- [ ] Verify fixed-head CI [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), readiness [40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), frontend lint [40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), and frontend build [40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019); these were queued at last observation.
+- [ ] Review the complete PR diff, callback acknowledgement and C2B provider contracts, and migration compatibility before marking ready.
+- [ ] Obtain user review; do not merge autonomously. Execute issue #216 only after #217 is reviewed and merged to `dev`.
+
+**Evidence distinction:** the import fix is committed; its test verification is pending. The earlier PostgreSQL duplicate-key log mentioned a different idempotency key and is not attributed to this failure.
+
+
+## #217 C2B replay recovery follow-up — 2026-10-29 00:17 UTC
+
+- [x] Re-check CI after the import fix: run [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066) progressed beyond STK initiation but failed at duplicate C2B validation replay, test line 446.
+- [x] Trace the failure to rollback-expired ORM state being accessed in duplicate recovery; commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` captures the integration UUID before rollback.
+- [ ] Verify CI, backend readiness, frontend lint/build, migration and container smoke on the updated code. No green result has yet been observed for this fix.
+- [ ] Keep PR #218 draft/unmerged until all gates pass and the user reviews it; #216 remains deferred.
+
+
+## #217 verification result — 2026-10-29 00:18 UTC
+
+- [x] Latest code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802`: CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496) passed migration upgrade through `0003_mpesa_core_capabilities`, **65 tests passed, 1 warning**, PostgreSQL/Redis connectivity.
+- [x] Backend readiness [40792997409], frontend lint [40792997425], and frontend build [40792997517] passed.
+- [ ] Wait for CI container image/startup job; run [40792997496] is not complete yet.
+- [ ] Review full PR diff/provider contracts and await user review. PR #218 stays draft/unmerged; #216 remains deferred until #217 is reviewed and merged.

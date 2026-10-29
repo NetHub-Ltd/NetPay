@@ -1,11 +1,12 @@
 """Payment attempt history and safe provider outcome metadata."""
 
+from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
 from sqlmodel import Field
 
-from app.models.base import BaseMixin
+from app.models.base import BaseMixin, utc_now
 
 
 class PaymentAttempt(BaseMixin, table=True):
@@ -22,6 +23,10 @@ class PaymentAttempt(BaseMixin, table=True):
     attempt_number: int = Field(ge=1)
     correlation_id: UUID = Field(default_factory=uuid4)
     status: str = Field(default="started", max_length=32, index=True)
+    # These columns are NOT NULL/nullable in the original migration and must be
+    # mapped explicitly so new ORM inserts cannot omit started_at.
+    started_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True), nullable=False)
+    completed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     provider_result_code: str | None = Field(default=None, max_length=32)
     error_code: str | None = Field(default=None, max_length=100)
     error_message: str | None = Field(default=None, max_length=500)

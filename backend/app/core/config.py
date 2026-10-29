@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     redis_enabled: bool = True
 
     # Daraja credential keyring is provided by secret management, never stored in PostgreSQL.
+    m2m_token_signing_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)
     mpesa_credential_encryption_keys: SecretStr | None = Field(default=None, repr=False, exclude=True)
     mpesa_credential_active_key_id: str = "v1"
     mpesa_public_base_url: str | None = None

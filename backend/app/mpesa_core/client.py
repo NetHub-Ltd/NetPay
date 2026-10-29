@@ -169,6 +169,11 @@ class MpesaCore:
             self._tokens[key] = (token, now + expires_in)
             return token
 
+    async def validate_credentials(self, context: IntegrationContext) -> None:
+        """Validate consumer credentials through OAuth without exposing the token."""
+        validate_context(context)
+        await self._token(context)
+
     def _require(self, context: IntegrationContext, *, capability: str) -> None:
         validate_context(context)
         if capability not in context.enabled_capabilities:
