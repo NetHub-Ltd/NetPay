@@ -310,3 +310,17 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
 - Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
 - Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
+
+
+## Theme-test refinement milestone — 2026-10-29 01:15 UTC
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| T.8 | Selected screenshot direction translated into a single isolated landing page | IMPLEMENTED — source committed on `feat/theme-test-selected-landing`; pending CI and review |
+| T.9 | Payment preview and code sample explicitly distinguish illustrative data from live/provider-confirmed data | IMPLEMENTED by source inspection; lint/build pending |
+| T.10 | Current capabilities and limitations represented without promising provider verification or merchant-specific validation not yet available | IMPLEMENTED by source inspection; subject to code review |
+| T.11 | Mobile/desktop rendering and keyboard interaction validated in a browser | NOT VERIFIED — browser QA not performed |
+| T.12 | PR targets `dev`, references issue #220, and remains unmerged for review | PENDING — open after implementation/trackers |
+
+- Keep `/theme-test` excluded from indexing; production Ledger/homepage remains untouched.
+- Required quality gates: frontend lint and build, plus rendered responsive QA if browser tooling is available. No result should be marked passed without evidence.
