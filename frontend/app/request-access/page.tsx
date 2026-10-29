@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicSiteFrame } from "../../components/PublicSiteFrame";
-import { Badge, Button, Card, Container, Section } from "../../components/ui";
+import { Badge, Button, Card, Section } from "../../components/ui";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 /** Update when a dedicated inbox or form backend is ready */
