@@ -302,3 +302,12 @@ These are historical reports, not fresh verification performed during tracker cr
 - Code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` is verified by CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496): Alembic upgrade to revision `0003_mpesa_core_capabilities`, **65 passed, 1 warning**, PostgreSQL and Redis connectivity all passed.
 - Backend readiness [40792997409](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997409), frontend lint [40792997425](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997425), and frontend build [40792997517](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997517) passed for the same code commit.
 - The CI container job remains queued, so the full CI/image startup gate is not yet green. PR #218 remains draft/open/unmerged. Later tracker-only commits do not change application code; use live PR SHA for handoff state.
+
+
+## Parallel branch — marketing conversion theme experiment (2026-10-29)
+
+- **Branch:** `feat/theme-test-marketing-conversion`, created from live `dev` after explicit user approval to override the older branch-only rule for this isolated experiment. PR must target `dev`; no direct writes to `dev` or `main`.
+- **Scope:** noindex `/theme-test` visual comparison of two Design 1 + Design 2 marketing directions. Existing Ledger theme remains product default.
+- **Design constraints:** preserve current product truth; use existing documented capabilities only; no invented testimonials, customer metrics, uptime, certification, fees, or unsupported payment methods. Keep prototype off sitemap and disallowed in robots.
+- **Verification:** implementation, lint/typecheck/build and browser QA are pending until evidenced. The active payment-flow task and PR #218 remain separate; do not overwrite their status with this experiment.
+- **Rollback:** reviewed revert of route/CSS/robots changes; no schema/data or deployment changes.
