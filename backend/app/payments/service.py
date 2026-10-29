@@ -16,7 +16,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.models.attempts import PaymentAttempt
 from app.models.events import EventOutbox
 from app.models.integrations import DarajaIntegration
-from app.models.operations import AuditLog
+from app.models.operations import AuditLog, ProviderRequest
 from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
 from app.mpesa_core import DarajaCredentials, IntegrationContext
 from app.mpesa_core.credentials import decrypt_credentials
