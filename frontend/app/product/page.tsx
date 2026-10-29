@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, RefreshCw, ShieldCheck, Smartphone, Webhook } from "lucide-react";
+import { ArrowRight, RefreshCw, ShieldCheck, Smartphone, Webhook } from "lucide-react";
 import { PublicSiteFrame } from "../../components/PublicSiteFrame";
 import { Badge, Button, Card, Section } from "../../components/ui";
 
