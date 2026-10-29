@@ -372,3 +372,14 @@ Do not merge or deploy without explicit approval.
 - Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
 - Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
 - Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
+
+
+## Selected landing-page refinement — 2026-10-29 01:15 UTC
+
+- **Approved target:** User selected the supplied navy/teal reference and asked to refine it into a theme test. This replaces the earlier two-direction comparison on the existing isolated `/theme-test` route.
+- **Issue:** #220 — https://github.com/NetHub-Ltd/NetPay/issues/220. **Branch:** `feat/theme-test-selected-landing`, created from current `dev` at `416c8fa9d7d625a4be9389c12d564278c7cc1878`.
+- **Implemented source changes:** `frontend/app/theme-test/page.tsx` and route-scoped `page.module.css` now present one responsive navy/teal landing page: payment activity/reconciliation-style preview, four capability blocks, illustrative code sample, business workflow section, and CTAs to existing request-access/API overview routes.
+- **Accuracy constraints:** Sample transactions are labelled illustrative; copy does not claim that STK acceptance proves payment, and explicitly notes limitations around provider transaction-status verification and merchant-specific validation rules.
+- **Isolation:** `/theme-test` remains `noindex,nofollow` and disallowed in robots.txt. Production homepage, Ledger tokens/theme, backend, database, dependencies, deployment manifests, Flux, and GHCR image build/push behavior are untouched.
+- **Verification:** Source has been committed to the feature branch via GitHub contents API. Local lint/build and rendered-browser QA have not been run in this workflow; CI is required before handoff. Do not claim a visual QA pass without browser evidence.
+- **PR:** To be opened against `dev` and kept unmerged pending review. Previous PR #219 is already merged; its earlier tracker note saying open/unmerged is historical and superseded by this checkpoint.
