@@ -295,3 +295,10 @@ These are historical reports, not fresh verification performed during tracker cr
 - CI [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066) still failed after the missing `ProviderRequest` import fix, now at duplicate C2B validation replay (`backend/smoke_tests/test_payment_application.py:446`): the replay response was HTTP 500.
 - Handler source showed the duplicate recovery path rolled back and then accessed `integration.id`. Commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` captures the UUID before rollback and uses the scalar key in recovery. This follow-up is not yet test-verified.
 - PR #218 remains draft/open/unmerged against `dev`. Preserve history and leave #216 blocked until #217 is reviewed and merged.
+
+
+## #217 latest verified CI evidence — 2026-10-29 00:18 UTC
+
+- Code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` is verified by CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496): Alembic upgrade to revision `0003_mpesa_core_capabilities`, **65 passed, 1 warning**, PostgreSQL and Redis connectivity all passed.
+- Backend readiness [40792997409](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997409), frontend lint [40792997425](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997425), and frontend build [40792997517](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997517) passed for the same code commit.
+- The CI container job remains queued, so the full CI/image startup gate is not yet green. PR #218 remains draft/open/unmerged. Later tracker-only commits do not change application code; use live PR SHA for handoff state.
