@@ -276,3 +276,16 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [x] Backend readiness [40792997409], frontend lint [40792997425], and frontend build [40792997517] passed.
 - [ ] Wait for CI container image/startup job; run [40792997496] is not complete yet.
 - [ ] Review full PR diff/provider contracts and await user review. PR #218 stays draft/unmerged; #216 remains deferred until #217 is reviewed and merged.
+
+
+## Parallel milestone — marketing conversion theme experiment
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| MT.1 | Isolated feature branch created from live `dev` after user approval | VERIFIED — branch `feat/theme-test-marketing-conversion` created |
+| MT.2 | Two distinct Design 1 + 2 landing-page directions are available at `/theme-test` | IN PROGRESS |
+| MT.3 | Claims and CTAs reflect existing NetPay capabilities and routes | PENDING REVIEW |
+| MT.4 | Route is noindex/nofollow, excluded from sitemap and disallowed in robots | PENDING |
+| MT.5 | Frontend lint, typecheck and production build pass on the final branch head | PENDING — not run here yet |
+| MT.6 | Rendered responsive/browser QA completed | PENDING — do not claim verified without browser evidence |
+| MT.7 | PR targets `dev`, remains unmerged pending user review | PENDING |
