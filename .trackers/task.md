@@ -331,3 +331,10 @@ Do not merge or deploy without explicit approval.
 - **FIX COMMITTED:** commit `52414c1ee33c030cb08a1810ce3579e496ea105e` adds `ProviderRequest` to that import. This is the concrete cause/fix; the earlier PostgreSQL duplicate-key log for `merchant-payment-key-1` was unrelated to the failing request's `flow-key-1` and is not treated as its cause.
 - **CI pending on fixed code head:** CI run [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), backend readiness [40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), frontend lint [40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), and frontend build [40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019) were queued when checked. Do not claim the fix is test-verified until these finish on the final branch head.
 - **Next:** inspect new CI logs, fix any further failure on this branch, rerun and reconcile all four trackers to the final tested SHA. Keep PR draft; do not merge or start #216 before #217 is reviewed and merged.
+
+
+## #217 latest CI follow-up — 2026-10-29 00:17 UTC
+
+- CI run [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066) passed the earlier STK initiation point but still failed on the duplicate C2B validation assertion at `backend/smoke_tests/test_payment_application.py:446`; the replay returned HTTP 500.
+- Source inspection found the duplicate recovery path rolls back the async session, then reads `integration.id`. The rollback expires ORM state, so recovery can fail on that access. Commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` now captures the UUID before rollback and uses the scalar value for the duplicate lookup.
+- This fix is committed but not yet test-verified. PR #218 remains draft/open/unmerged; #216 remains gated until #217 is reviewed and merged.
