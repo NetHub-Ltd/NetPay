@@ -322,3 +322,12 @@ Do not merge or deploy without explicit approval.
 - No live Daraja sandbox transaction has been performed. Fake-Core tests prove application behavior only, not provider interoperability.
 - #216 remains a separate verification-only readiness gate after #217's reviewed merge to `dev`.
 
+
+
+## #217 latest investigation and fix — 2026-10-29 00:15 UTC
+
+- **OBSERVED:** PR #218 remains draft/open/unmerged against `dev`. Latest code commit: `52414c1ee33c030cb08a1810ce3579e496ea105e`.
+- **VERIFIED by source inspection:** failing CI run [40789386571](https://github.com/NetHub-Ltd/NetPay/actions/runs/40789386571) had 64 passed and one failure: STK initiation returned HTTP 500 at `backend/smoke_tests/test_payment_application.py:254`. `backend/app/payments/service.py` instantiated `ProviderRequest` but imported only `AuditLog` from `app.models.operations`; this unresolved name caused the application exception.
+- **FIX COMMITTED:** commit `52414c1ee33c030cb08a1810ce3579e496ea105e` adds `ProviderRequest` to that import. This is the concrete cause/fix; the earlier PostgreSQL duplicate-key log for `merchant-payment-key-1` was unrelated to the failing request's `flow-key-1` and is not treated as its cause.
+- **CI pending on fixed code head:** CI run [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), backend readiness [40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), frontend lint [40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), and frontend build [40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019) were queued when checked. Do not claim the fix is test-verified until these finish on the final branch head.
+- **Next:** inspect new CI logs, fix any further failure on this branch, rerun and reconcile all four trackers to the final tested SHA. Keep PR draft; do not merge or start #216 before #217 is reviewed and merged.
