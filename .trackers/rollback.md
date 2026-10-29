@@ -187,3 +187,10 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - No schema/migration, database data, deployment manifest, Flux resource, `dev`/ `main`, or GHCR build/push behavior was changed by this fix. No live financial transaction was initiated.
 - CI/readiness/frontend checks for the fix commit were queued: [CI 40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), [readiness 40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), [lint 40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), [build 40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019). Verification is pending.
 - If the PR is rejected or regression is found, use a reviewed revert commit on the topic branch. Preserve history; never reset, rebase, squash, or force-push. Do not merge without user approval; do not start #216 before #217 is merged.
+
+
+## #217 second CI regression fix — 2026-10-29 00:17 UTC
+
+- Latest application fix commit: `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802`; PR #218 remains draft and unmerged.
+- CI after the import fix exposed a duplicate C2B validation replay returning HTTP 500. The recovery handler rolled back the async session and then accessed an expired ORM instance; the fix captures the integration UUID before rollback and uses it in the duplicate lookup.
+- No schema, migration, database data, deployment/Flux, `dev`/`main`, or GHCR workflow changes were made. Test verification remains pending; preserve history and do not start #216.
