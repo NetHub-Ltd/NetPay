@@ -393,3 +393,10 @@ Do not merge or deploy without explicit approval.
 - **IN PROGRESS:** frontend build, lint, backend, and start/health checks are running. Do not report them as passed until conclusions are available.
 - **NOT VERIFIED:** rendered browser QA at desktop/mobile sizes; this chat has no confirmed browser-rendered capture for the route.
 - Keep the route noindex/nofollow and excluded in robots.txt; no production change or deployment.
+
+
+### CI correction checkpoint — 2026-10-29 01:13 UTC
+
+- Latest source fix: `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729` escapes quotes in the illustrative code sample after CI reported `react/no-unescaped-entities` on the previous source commit.
+- Latest source-commit check set: GitGuardian passed. Fresh backend, build, lint, and start/health runs were queued/in progress when last checked; no passing result is claimed yet. Earlier lint failures are from the prior commit and are superseded by the quote-escape fix. A prior build attempt also hit a `next/font` loader error while fetching Google fonts; determine whether that is transient from the new build run.
+- PR #221 remains draft/open/unmerged. Browser-rendered visual QA is not available/verified in this workflow.
