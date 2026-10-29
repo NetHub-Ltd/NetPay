@@ -289,3 +289,16 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 | MT.5 | Frontend lint, typecheck and production build pass on the final branch head | PENDING — not run here yet |
 | MT.6 | Rendered responsive/browser QA completed | PENDING — do not claim verified without browser evidence |
 | MT.7 | PR targets `dev`, remains unmerged pending user review | PENDING |
+
+
+### Theme-test milestone update — 2026-10-29 00:58 UTC
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| MT.1 | Isolated feature branch created from live `dev` after user approval | VERIFIED |
+| MT.2 | Two distinct Design 1 + 2 landing-page directions are available at `/theme-test` | IMPLEMENTED — source present; browser rendering not yet verified |
+| MT.3 | Claims and CTAs reflect existing NetPay capabilities and routes | SOURCE REVIEWED — visual copy avoids live-data claims; final review pending |
+| MT.4 | Route is noindex/nofollow, excluded from sitemap and disallowed in robots | VERIFIED by source inspection |
+| MT.5 | Frontend lint, typecheck and production build pass on final branch head | PENDING — earlier lint/build failed; fixes committed; latest checks queued |
+| MT.6 | Rendered responsive/browser QA completed | NOT VERIFIED — no browser capture performed |
+| MT.7 | PR targets `dev`, remains unmerged pending user review | VERIFIED — draft PR #219 |
