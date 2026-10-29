@@ -9,9 +9,7 @@ import {
   ChevronRight,
   CircleHelp,
   Code2,
-  Copy,
   ListChecks,
-  Menu,
   RefreshCw,
   ShieldCheck,
   Smartphone,
@@ -133,7 +131,7 @@ export default function ThemeTestPage() {
             <a href="#businesses">Why NetPay <ChevronRight size={13} /></a>
           </nav>
           <div className={styles.navActions}>
-            <Link href="/request-access/">Sign in</Link>
+            <Link href="/request-access/">Request access</Link>
             <Link className={styles.navCta} href="/request-access/">Get started</Link>
           </div>
           <a className={styles.mobileNavCta} href="/request-access/" aria-label="Get started">Start <ArrowRight size={15} /></a>
