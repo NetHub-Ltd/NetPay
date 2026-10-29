@@ -288,3 +288,10 @@ These are historical reports, not fresh verification performed during tracker cr
 - The duplicate-key database log referenced `merchant-payment-key-1`, whereas the failed request used `flow-key-1`; do not conflate them. The missing Python import is the source-confirmed cause.
 - Fixed-head workflows were queued at last observation: CI [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), readiness [40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), frontend lint [40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), frontend build [40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019). These are pending evidence, not passes.
 - Preserve Git history. Do not change `dev`, `main`, Flux/deployment manifests, or GHCR build/push behavior. No live Daraja transaction was run. Issue #216 remains blocked until #217 is reviewed and merged to `dev`.
+
+
+## #217 latest CI follow-up — 2026-10-29 00:17 UTC
+
+- CI [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066) still failed after the missing `ProviderRequest` import fix, now at duplicate C2B validation replay (`backend/smoke_tests/test_payment_application.py:446`): the replay response was HTTP 500.
+- Handler source showed the duplicate recovery path rolled back and then accessed `integration.id`. Commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` captures the UUID before rollback and uses the scalar key in recovery. This follow-up is not yet test-verified.
+- PR #218 remains draft/open/unmerged against `dev`. Preserve history and leave #216 blocked until #217 is reviewed and merged.
