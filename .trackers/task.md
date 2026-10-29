@@ -383,3 +383,13 @@ Do not merge or deploy without explicit approval.
 - **Isolation:** `/theme-test` remains `noindex,nofollow` and disallowed in robots.txt. Production homepage, Ledger tokens/theme, backend, database, dependencies, deployment manifests, Flux, and GHCR image build/push behavior are untouched.
 - **Verification:** Source has been committed to the feature branch via GitHub contents API. Local lint/build and rendered-browser QA have not been run in this workflow; CI is required before handoff. Do not claim a visual QA pass without browser evidence.
 - **PR:** To be opened against `dev` and kept unmerged pending review. Previous PR #219 is already merged; its earlier tracker note saying open/unmerged is historical and superseded by this checkpoint.
+
+
+### PR and CI checkpoint — 2026-10-29 01:12 UTC
+
+- **PR #221:** https://github.com/NetHub-Ltd/NetPay/pull/221 — draft/open, targets `dev`, references issue #220. It has not been merged or deployed.
+- **Latest code commit:** `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`; subsequent tracker commits, if any, are documentation-only.
+- **VERIFIED:** GitGuardian passed on the code commit (no secrets detected).
+- **IN PROGRESS:** frontend build, lint, backend, and start/health checks are running. Do not report them as passed until conclusions are available.
+- **NOT VERIFIED:** rendered browser QA at desktop/mobile sizes; this chat has no confirmed browser-rendered capture for the route.
+- Keep the route noindex/nofollow and excluded in robots.txt; no production change or deployment.
