@@ -16,7 +16,7 @@ import {
   Webhook,
 } from "lucide-react";
 import { PublicSiteFrame } from "../components/PublicSiteFrame";
-import styles from "./theme-test/page.module.css";
+import styles from "./home.module.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 
