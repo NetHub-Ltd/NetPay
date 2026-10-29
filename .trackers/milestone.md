@@ -337,3 +337,10 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 | T.12 | PR targets `dev`, references issue #220, and remains unmerged | VERIFIED — draft PR #221 |
 
 - GitGuardian passed on source commit `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`; frontend build/lint, backend, and start/health jobs were still running.
+
+
+### CI follow-up — selected landing page — 2026-10-29 01:13 UTC
+
+- `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729` fixes the observed JSX quote-escaping lint failure.
+- Fresh checks on this source SHA were queued/in progress; GitGuardian passed. A separate build attempt failed in Next.js Google font loading before the app compiled, so the current build must be inspected before deciding whether a source/config change is warranted.
+- Keep T.11 (browser validation) NOT VERIFIED. PR #221 stays draft/open/unmerged.
