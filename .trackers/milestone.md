@@ -344,3 +344,10 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729` fixes the observed JSX quote-escaping lint failure.
 - Fresh checks on this source SHA were queued/in progress; GitGuardian passed. A separate build attempt failed in Next.js Google font loading before the app compiled, so the current build must be inspected before deciding whether a source/config change is warranted.
 - Keep T.11 (browser validation) NOT VERIFIED. PR #221 stays draft/open/unmerged.
+
+
+### Verification update — selected landing page — 2026-10-29 01:14 UTC
+
+- **VERIFIED on source SHA `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729`:** frontend lint passed, frontend production build passed, backend job passed, start/health passed, and GitGuardian passed.
+- Tracker-only commits followed; no application source changed after that tested SHA. CI reruns on the tracker-only tip were queued at the last check.
+- T.11 remains **NOT VERIFIED** because no rendered browser QA was performed. PR #221 remains draft/open/unmerged.
