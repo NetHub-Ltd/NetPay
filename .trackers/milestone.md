@@ -375,3 +375,15 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 
 - Public color tokens are scoped to .np-public-site; no dashboard-wide theme switch was made.
 - Keep /theme-test excluded from indexing. Do not merge/deploy without review.
+
+
+### PR checkpoint — public-site rollout — 2026-10-29 01:51 UTC
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| P.1–P.5 | Homepage, three static pages, shared navigation/footer, sitemap, accurate content | IMPLEMENTED in source; review/CI pending |
+| P.6 | Lint, typecheck/build, backend/start-health pass on final head | PENDING — jobs queued on PR #223 |
+| P.7 | Rendered desktop/mobile visual QA | NOT VERIFIED |
+| P.8 | PR targets dev, references issue #222, remains unmerged | VERIFIED — draft PR #223 |
+
+- PR: https://github.com/NetHub-Ltd/NetPay/pull/223
