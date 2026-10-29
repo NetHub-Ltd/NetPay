@@ -254,3 +254,10 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - **VERIFIED on application source SHA `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729`:** lint, production build, backend job, start/health and GitGuardian passed. The earlier lint error was corrected. A previous Next.js Google font loader failure did not recur on the successful build.
 - Later commits only append tracker notes; current branch tip checks were queued at last observation, with no source changes after the verified SHA.
 - Browser visual QA remains unverified. PR #221 stays draft/open/unmerged; no deployment or production changes. Rollback remains a reviewed revert of PR #221.
+
+
+### Smoke-test CI patch rollback — 2026-10-29 01:22 UTC
+
+- Diagnostic patch commit: `29f41bab5b23441b8bd41407fcdd92cee5ce8e29`, modifying only `backend/scripts/container_startup_smoke.sh` plus tracker notes.
+- If the instrumentation is rejected, revert the commit through a reviewed revert; do not rewrite history. The patch preserves readiness/health/frontend-route assertions and adds diagnostics only.
+- No deployment, DB schema, payment behavior, Flux, or GHCR image build/push changes. Keep PR #221 open until all required checks pass and the failure is explained.
