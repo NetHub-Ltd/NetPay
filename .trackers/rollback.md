@@ -209,3 +209,10 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - No backend, database, migrations, public homepage, product theme tokens, deployment manifests, Flux, or GHCR build/push behavior are changed.
 - Roll back with a reviewed revert of the route files and robots entries. Preserve Git history; do not reset/rebase/squash/force-push. No production data or transaction changes.
 - CI workflows were observed running after PR creation; final test outcomes and browser-rendered QA are pending and must be recorded before review readiness.
+
+
+### Theme-test verification and recovery update — 2026-10-29 00:58 UTC
+
+- Latest source fix commit at last check: `e54e1d77e9fcc79c3d13c2fb57907b169baee875`. Earlier frontend lint/build runs failed due to JSX text escaping and a plain homepage anchor; both were corrected. Fresh latest-head checks were queued, not yet passed.
+- If failures remain, fix on `feat/theme-test-marketing-conversion` and re-run CI; do not weaken lint/type checks. Browser QA remains outstanding.
+- PR #219 stays draft/unmerged. Revert only via reviewed commits; no history rewrite or production/deployment rollback is involved.
