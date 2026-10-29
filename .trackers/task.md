@@ -414,3 +414,14 @@ Do not merge or deploy without explicit approval.
 - User asked to fix the blocking CI failure before merge. Failed container job #40799137011 ended with exit 2 immediately after pulling Postgres/Redis, without identifying the failing command; another container run passed. The logs did not justify claiming a root cause.
 - Updated `backend/scripts/container_startup_smoke.sh` in commit `29f41bab5b23441b8bd41407fcdd92cee5ce8e29`: added an ERR trap that prints failing line/command and container state/logs, and made service-readiness timeout explicit. The checks themselves remain strict; no assertions removed or softened.
 - Fresh PR-head checks are queued/in progress. Merge remains blocked until all required checks pass; if smoke fails again, inspect the new diagnostics and fix the proven cause.
+
+
+## Public site theme rollout — 2026-10-29
+
+- Issue #222: https://github.com/NetHub-Ltd/NetPay/issues/222
+- Branch: feat/public-site-navy-teal-pages, created from dev at 15fb78ae878ff29f4e284202c5190f7cc7e78b86.
+- User approved the navy/teal reference and explicitly requested that it be wired into the actual homepage, with static Product/Developers/Why NetPay pages and a proper footer.
+- Implemented: homepage uses the approved landing composition and scoped homepage styles; public header has Product/Developers/Why NetPay/Resources navigation; shared footer is used across homepage, Product, Developers, Why NetPay, API overview, FAQ, and Request Access.
+- SEO/brand: unique metadata/canonical URLs for new pages; sitemap updated; Open Graph image, favicon, default metadata, and browser theme color align with navy/teal. /theme-test remains noindex and excluded from sitemap/robots crawl. Public color tokens are scoped to .np-public-site, not dashboard.
+- Payment UI/records are illustrative. Copy does not equate STK initiation with payment success or promise universal transaction-status verification, automated reconciliation, certifications, uptime guarantees, testimonials, or customer metrics.
+- Not yet verified: lint/typecheck/build and rendered desktop/mobile browser QA on final PR head. No merge or deployment.
