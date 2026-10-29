@@ -407,3 +407,10 @@ Do not merge or deploy without explicit approval.
 - **VERIFIED on source commit `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729`:** frontend lint passed, production build passed, backend job passed, and start/health passed; GitGuardian passed. The earlier lint failure was corrected by escaping code-sample quotes. The previous `next/font` loader failure did not reproduce on the successful source build.
 - Later commits on this branch only append tracker documentation; they do not change application source. GitHub reran checks for the tracker-only head and those reruns were queued at last observation.
 - **NOT VERIFIED:** rendered-browser visual QA at desktop/mobile sizes. PR #221 remains draft/open/unmerged; no deployment.
+
+
+### CI smoke-test fix — 2026-10-29 01:22 UTC
+
+- User asked to fix the blocking CI failure before merge. Failed container job #40799137011 ended with exit 2 immediately after pulling Postgres/Redis, without identifying the failing command; another container run passed. The logs did not justify claiming a root cause.
+- Updated `backend/scripts/container_startup_smoke.sh` in commit `29f41bab5b23441b8bd41407fcdd92cee5ce8e29`: added an ERR trap that prints failing line/command and container state/logs, and made service-readiness timeout explicit. The checks themselves remain strict; no assertions removed or softened.
+- Fresh PR-head checks are queued/in progress. Merge remains blocked until all required checks pass; if smoke fails again, inspect the new diagnostics and fix the proven cause.
