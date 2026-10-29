@@ -364,3 +364,11 @@ Do not merge or deploy without explicit approval.
 - **PR:** #219 (draft/open/unmerged) targets `dev`: https://github.com/NetHub-Ltd/NetPay/pull/219.
 - **Observed verification:** Frontend lint run 563 and build run 562 failed on an earlier branch head due to unescaped display quotes/apostrophes and a plain anchor to `/`. Those issues were fixed in the subsequent source commit. Latest-head checks 567 (lint), 566 (build), 1120 (CI), and 674 (backend readiness) were queued at last check. Do not claim success until they complete.
 - **Browser visual QA:** not available/verified in this workflow. Route rendering, responsive layout and interactions remain unverified in an actual browser.
+
+
+### Final source correction — 2026-10-29 01:00 UTC
+
+- Latest source commit: `191e51f58b87267eb591a228d4251e09a204f289`. Fixed the last JSX apostrophe found by lint in the prior run.
+- Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
+- Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
+- Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
