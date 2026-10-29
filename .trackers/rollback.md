@@ -240,3 +240,10 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Draft PR #221 targets `dev` and addresses issue #220: https://github.com/NetHub-Ltd/NetPay/pull/221.
 - Latest source commit at PR creation: `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`; GitGuardian passed. Frontend build/lint, backend, and start/health checks were in progress; rendered browser QA is not verified.
 - Rollback remains a reviewed revert of PR #221. No deployment, database change, backend behavior change, or production theme change has occurred.
+
+
+### CI correction checkpoint — 2026-10-29 01:13 UTC
+
+- Source commit `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729` fixes the JSX quote-escaping issue detected by lint on the previous source SHA.
+- Fresh lint/build/backend/start-and-health checks were still queued or in progress at the last check; GitGuardian passed. A prior build failed at Next.js Google font loading before app compilation; inspect the fresh result to determine if retry is enough.
+- Browser visual QA remains unverified. PR #221 remains draft/open/unmerged. Rollback remains a reviewed revert; no deployment or production changes.
