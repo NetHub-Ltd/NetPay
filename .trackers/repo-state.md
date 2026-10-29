@@ -360,3 +360,10 @@ These are historical reports, not fresh verification performed during tracker cr
 - **VERIFIED on application source commit `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729`:** frontend lint, frontend production build, backend job, start/health and GitGuardian all passed. The lint issue from the previous source commit was fixed. A prior Google font loader error was transient relative to the successful build on the corrected source commit.
 - Subsequent branch commits only update trackers. Checks for the tracker-only tip were queued at last observation; application code did not change after the verified source commit.
 - Browser-rendered desktop/mobile QA remains unverified. Draft PR #221 is open against `dev`; no deployment occurred.
+
+
+### CI smoke-test diagnostic patch — 2026-10-29 01:22 UTC
+
+- PR #221 latest source commit `29f41bab5b23441b8bd41407fcdd92cee5ce8e29` includes a diagnostic improvement to `backend/scripts/container_startup_smoke.sh` after an unexplained exit code 2 immediately after service image pulls.
+- Adds ERR trap with exact failing line/command and logs/state for any started containers; gives readiness timeout an explicit message. Does not weaken/remove smoke assertions.
+- Checks on the new PR head are in progress. Do not merge until required CI is green. If failure reproduces, use the new diagnostics to identify root cause before further edits.
