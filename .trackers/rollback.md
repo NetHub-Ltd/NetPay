@@ -233,3 +233,10 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - **Rollback:** Use a reviewed revert of the PR for issue #220. If the change is rejected, restore the prior versions of the two route files from the pre-implementation base (`dev` commit above) in a follow-up commit. Do not reset or rewrite history. Keep the route's robots exclusion and noindex metadata unless the route is intentionally removed.
 - No schema/data, backend, deployment, Flux, or GHCR change exists to roll back. No deployment has been performed.
 - **Verification caveat:** CI and browser QA are pending/not verified at this checkpoint.
+
+
+### Selected theme PR checkpoint — 2026-10-29 01:12 UTC
+
+- Draft PR #221 targets `dev` and addresses issue #220: https://github.com/NetHub-Ltd/NetPay/pull/221.
+- Latest source commit at PR creation: `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`; GitGuardian passed. Frontend build/lint, backend, and start/health checks were in progress; rendered browser QA is not verified.
+- Rollback remains a reviewed revert of PR #221. No deployment, database change, backend behavior change, or production theme change has occurred.
