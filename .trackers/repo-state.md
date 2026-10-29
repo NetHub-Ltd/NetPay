@@ -328,3 +328,13 @@ These are historical reports, not fresh verification performed during tracker cr
 - Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
 - Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
 - Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
+
+
+## Parallel task — selected marketing theme refinement (2026-10-29 01:15 UTC)
+
+- **Current task:** Issue #220, branch `feat/theme-test-selected-landing`, base `dev` commit `416c8fa9d7d625a4be9389c12d564278c7cc1878`.
+- PR #219 merged to `dev` at merge commit `416c8fa9d7d625a4be9389c12d564278c7cc1878`; it introduced the original two-concept `/theme-test`. Its old open/draft status notes are historical only.
+- The new branch refines that route into the user's selected navy/teal reference direction. Changed files: `frontend/app/theme-test/page.tsx`, `frontend/app/theme-test/page.module.css`. The robots exclusion and metadata noindex/nofollow are preserved.
+- Source commits: `740dccd51aba77f7f2f8832c256e88ca15758e6c` (page) and `08bbb54cbfe2a74b767756e64bea5c104b9fd012` (styles). Latest feature branch head will advance as trackers/PR metadata are committed.
+- No local runtime, lint/build, or browser visual QA evidence is available yet. Check CI on the final PR head; report rendered-browser QA as not verified unless actually performed.
+- No production changes, deployment, backend/API behavior changes, dependencies, Flux, or GHCR changes.
