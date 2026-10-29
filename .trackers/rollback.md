@@ -178,3 +178,12 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - No live Daraja sandbox transaction has been performed. Fake-Core tests prove application behavior only, not provider interoperability.
 - #216 remains a separate verification-only readiness gate after #217's reviewed merge to `dev`.
 
+
+
+## #217 fix and rollback checkpoint — 2026-10-29 00:15 UTC
+
+- Latest fix commit: `52414c1ee33c030cb08a1810ce3579e496ea105e` on `feat/mpesa-application-flow-217`; PR [#218](https://github.com/NetHub-Ltd/NetPay/pull/218) remains draft/open/unmerged.
+- Root cause identified from source: `backend/app/payments/service.py` constructed `ProviderRequest` without importing it, causing STK initiation to return HTTP 500 in CI run [40789386571](https://github.com/NetHub-Ltd/NetPay/actions/runs/40789386571). The fix adds it to the existing operations-model import.
+- No schema/migration, database data, deployment manifest, Flux resource, `dev`/ `main`, or GHCR build/push behavior was changed by this fix. No live financial transaction was initiated.
+- CI/readiness/frontend checks for the fix commit were queued: [CI 40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), [readiness 40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), [lint 40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), [build 40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019). Verification is pending.
+- If the PR is rejected or regression is found, use a reviewed revert commit on the topic branch. Preserve history; never reset, rebase, squash, or force-push. Do not merge without user approval; do not start #216 before #217 is merged.
