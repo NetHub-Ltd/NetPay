@@ -355,3 +355,12 @@ Do not merge or deploy without explicit approval.
 - **Isolation:** New route + route-scoped CSS only; add `/theme-test` to robots disallow; page metadata must be noindex/nofollow; don't add it to sitemap. No dashboard, backend, database, deployment manifest, Flux, or GHCR build/push changes.
 - **Verification status:** Pending implementation and CI/browser evidence. Do not claim rendered visual QA unless actually performed.
 - **Rollback:** Revert the theme-test route/CSS and robots disallow in a reviewed commit; no data/schema change.
+
+
+### Theme-test implementation checkpoint — 2026-10-29 00:58 UTC
+
+- **Implemented:** `frontend/app/theme-test/page.tsx` and route-scoped `page.module.css` present. The route shows two complete, responsive marketing concepts, labelled illustrative code/payment data, and links to existing API overview/request-access routes. Brand links now target the page's `#top` anchor.
+- **SEO isolation:** `robots: noindex,nofollow` in page metadata; `/theme-test` and `/theme-test/` disallowed in `frontend/app/robots.ts`; sitemap remains unchanged and does not list the route.
+- **PR:** #219 (draft/open/unmerged) targets `dev`: https://github.com/NetHub-Ltd/NetPay/pull/219.
+- **Observed verification:** Frontend lint run 563 and build run 562 failed on an earlier branch head due to unescaped display quotes/apostrophes and a plain anchor to `/`. Those issues were fixed in the subsequent source commit. Latest-head checks 567 (lint), 566 (build), 1120 (CI), and 674 (backend readiness) were queued at last check. Do not claim success until they complete.
+- **Browser visual QA:** not available/verified in this workflow. Route rendering, responsive layout and interactions remain unverified in an actual browser.
