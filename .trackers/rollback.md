@@ -271,3 +271,10 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Rollback: use a reviewed revert of the eventual PR; preserve history. Presentation/content only; no backend, schema, payment behavior, dependency, deployment, Flux, or GHCR changes.
 - Keep /theme-test noindex/disallowed until preview is intentionally removed. Dashboard styling should remain unaffected by scoped .np-public-site tokens.
 - CI/browser QA status pending; no merge or deployment.
+
+
+### PR checkpoint — 2026-10-29 01:51 UTC
+
+- Draft PR #223 targets dev and closes issue #222: https://github.com/NetHub-Ltd/NetPay/pull/223.
+- Backend, start/health, frontend build, and lint checks were queued at the latest check. Browser QA is not verified.
+- No deployment or merge. Rollback remains a reviewed PR revert with history preserved.
