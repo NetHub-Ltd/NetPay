@@ -194,3 +194,9 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Latest application fix commit: `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802`; PR #218 remains draft and unmerged.
 - CI after the import fix exposed a duplicate C2B validation replay returning HTTP 500. The recovery handler rolled back the async session and then accessed an expired ORM instance; the fix captures the integration UUID before rollback and uses it in the duplicate lookup.
 - No schema, migration, database data, deployment/Flux, `dev`/`main`, or GHCR workflow changes were made. Test verification remains pending; preserve history and do not start #216.
+
+
+## #217 status update — 2026-10-29 00:18 UTC
+
+- Code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` passed backend migration, 65 tests (1 warning), and PostgreSQL/Redis connectivity in CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496).
+- Readiness [40792997409], frontend lint [40792997425], and frontend build [40792997517] passed. CI container startup remains pending. PR #218 is still draft and unmerged.
