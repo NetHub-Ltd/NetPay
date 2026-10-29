@@ -279,3 +279,12 @@ These are historical reports, not fresh verification performed during tracker cr
 - No live Daraja sandbox transaction has been performed. Fake-Core tests prove application behavior only, not provider interoperability.
 - #216 remains a separate verification-only readiness gate after #217's reviewed merge to `dev`.
 
+
+
+## #217 current repository state — 2026-10-29 00:15 UTC
+
+- Working branch: `feat/mpesa-application-flow-217`; PR [#218](https://github.com/NetHub-Ltd/NetPay/pull/218) targets `dev`, is draft/open, and is unmerged.
+- Latest code fix commit: `52414c1ee33c030cb08a1810ce3579e496ea105e`. The fix imports `ProviderRequest` alongside `AuditLog` in `backend/app/payments/service.py`; the STK service used `ProviderRequest` without importing it, causing the 500 observed in CI run [40789386571](https://github.com/NetHub-Ltd/NetPay/actions/runs/40789386571).
+- The duplicate-key database log referenced `merchant-payment-key-1`, whereas the failed request used `flow-key-1`; do not conflate them. The missing Python import is the source-confirmed cause.
+- Fixed-head workflows were queued at last observation: CI [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066), readiness [40792832026](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832026), frontend lint [40792832015](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832015), frontend build [40792832019](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832019). These are pending evidence, not passes.
+- Preserve Git history. Do not change `dev`, `main`, Flux/deployment manifests, or GHCR build/push behavior. No live Daraja transaction was run. Issue #216 remains blocked until #217 is reviewed and merged to `dev`.
