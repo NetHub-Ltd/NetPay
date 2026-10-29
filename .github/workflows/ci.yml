@@ -1,79 +1,87 @@
 name: CI
-
-# Test, lint, and frontend build on PRs and branch pushes.
-# Container images and GitHub Releases are handled by release.yml (main only).
-
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, "work/minimal-netpay-rebuild"]
   push:
-    branches: [main, dev, "work/**", "chore/**"]
-
+    branches: [main, dev, "work/**", "chore/**", "fix/**", "feat/**"]
 permissions:
   contents: read
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: netpay, POSTGRES_PASSWORD: netpay, POSTGRES_DB: netpay }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U netpay -d netpay"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      ENVIRONMENT: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: netpay
+      DB_USER: netpay
+      DB_SSL_MODE: disable
+      DB_POOL_SIZE: 1
+      DB_MAX_OVERFLOW: 0
+      REDIS_URL: redis://localhost:6379/0
     defaults:
-      run:
-        working-directory: backend
+      run: { working-directory: backend }
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend and tests
+        run: python -m pip install -e ".[dev]"
+      - name: Apply initial schema migration
+        run: alembic upgrade head
+      - name: Test configuration and schema foundation
+        run: pytest -q smoke_tests
+      - name: Verify PostgreSQL and Redis connectivity
         run: |
-          pip install -U pip
-          pip install -e ".[dev]"
-
-      - name: Pytest
-        env:
-          DATABASE_URL: sqlite+aiosqlite:///./data/test.db
-          REDIS_REQUIRED: "false"
-          SECRET_KEY: test-secret
-          ENVIRONMENT: test
-        run: |
-          mkdir -p data static
-          pytest -q
-
-  frontend:
+          python - <<'PY'
+          import asyncio
+          from app.core.config import get_settings
+          from app.core.cache import check_redis, create_redis_client
+          from app.core.database import check_database, create_database_engine
+          async def main():
+              settings = get_settings()
+              engine = create_database_engine(settings)
+              redis = create_redis_client(settings)
+              try:
+                  await check_database(engine)
+                  await check_redis(redis)
+                  print("PostgreSQL and Redis connectivity verified")
+              finally:
+                  await redis.aclose()
+                  await engine.dispose()
+          asyncio.run(main())
+          PY
+  container:
+    needs: [backend]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build production image for startup smoke test (no push)
+        uses: docker/build-push-action@v6
         with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install
-        env:
-          npm_config_registry: https://registry.npmjs.org/
-        run: |
-          npm config set registry https://registry.npmjs.org/
-          npm ci --prefer-offline=false
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
-
-      - name: Static path check
-        run: |
-          test -f dist/index.html
-          mkdir -p ../backend/static
-          cp -R dist/. ../backend/static/
-          test -f ../backend/static/index.html
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ghcr.io/nethub-ltd/netpay:ci
+      - name: Run image startup smoke test
+        run: bash backend/scripts/container_startup_smoke.sh

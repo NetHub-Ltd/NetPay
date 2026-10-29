@@ -1,17 +1,38 @@
-from app.models.user import User
-from app.models.tenant import Tenant
-from app.models.integration import Integration, Credential
-from app.models.oauth_client import OAuthClient
-from app.models.webhook import Webhook, WebhookDelivery
-from app.models.payment_intent import PaymentIntent
-from app.models.event import GatewayEvent
-from app.models.ledger import LedgerEntry
-from app.models.inbound_event import InboundEvent
-from app.models.reconciliation import ReconciliationException
+"""Register the complete NetPay SQLModel schema for runtime and Alembic."""
+
+from app.models.attempts import PaymentAttempt
+from app.models.base import BaseMixin
+from app.models.delivery import EventDeliveryAttempt
+from app.models.events import EventOutbox
+from app.models.integrations import DarajaIntegration
+from app.models.merchants import M2MClient, Merchant
+from app.models.operations import (
+    AuditLog,
+    EventDelivery,
+    PaymentVerification,
+    ProviderRequest,
+    ReconciliationItem,
+    ReconciliationRun,
+    WebhookEndpoint,
+)
+from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
 
 __all__ = [
-    "User", "Tenant", "Integration", "Credential", "OAuthClient",
-    "Webhook", "WebhookDelivery", "PaymentIntent", "GatewayEvent", "LedgerEntry", "InboundEvent", "ReconciliationException",
+    "AuditLog",
+    "BaseMixin",
+    "DarajaIntegration",
+    "EventDelivery",
+    "EventDeliveryAttempt",
+    "EventOutbox",
+    "IdempotencyRecord",
+    "M2MClient",
+    "Merchant",
+    "Payment",
+    "PaymentAttempt",
+    "PaymentVerification",
+    "ProviderCallback",
+    "ProviderRequest",
+    "ReconciliationItem",
+    "ReconciliationRun",
+    "WebhookEndpoint",
 ]
-
-from app.models.outbound_request import OutboundRequest  # noqa: F401

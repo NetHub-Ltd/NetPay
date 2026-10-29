@@ -12,18 +12,48 @@ spec:
     spec:
       containers:
         - name: api
-          image: nethub/payment-gateway:1.1.0
+          image: ghcr.io/nethub-ltd/netpay:latest
+          imagePullPolicy: Always
           ports: [{ containerPort: 8000 }]
           envFrom: [{ secretRef: { name: nethub-gateway-secrets } }]
           env:
             - { name: ENVIRONMENT, value: production }
-            - { name: REDIS_REQUIRED, value: "true" }
+            - { name: STATIC_DIR, value: /app/static }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
           readinessProbe:
-            httpGet: { path: /health, port: 8000 }
-            initialDelaySeconds: 15
+            httpGet: { path: /health/ready, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health, port: 8000 }
-            initialDelaySeconds: 30
+            httpGet: { path: /health/live, port: 8000 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nethub-gateway-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: nethub-gateway-worker }
+  template:
+    metadata:
+      labels: { app: nethub-gateway-worker }
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/nethub-ltd/netpay:latest
+          imagePullPolicy: Always
+          command: ["python", "-m", "app.worker"]
+          envFrom: [{ secretRef: { name: nethub-gateway-secrets } }]
+          env:
+            - { name: ENVIRONMENT, value: production }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 384Mi }
 ---
 apiVersion: v1
 kind: Service

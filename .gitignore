@@ -18,3 +18,7 @@ frontend/dist/
 *.log
 logs/
 backend/logs/
+
+# Local-only theme lab (do not publish)
+frontend/app/theme/
+frontend/components/ThemeLab.tsx

@@ -1,139 +1,179 @@
-"""Settings — one DATABASE_URL drives async app + sync Alembic."""
-from __future__ import annotations
+"""Validated settings shared by FastAPI and Alembic.
+
+Database credentials are configured independently. URLs are constructed only
+inside this module so driver-specific URLs stay consistent and passwords with
+reserved URL characters are encoded safely.
+"""
 from functools import lru_cache
-from typing import Literal, Optional
-from pydantic import Field, field_validator
+from typing import Any, Literal
+
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL, make_url
 
-def to_sync_url(async_url: str) -> str:
-    """Convert async DATABASE_URL to a sync SQLAlchemy URL for Alembic.
+SSLMode = Literal["disable", "allow", "prefer", "require", "verify-ca", "verify-full"]
 
-    Always pin Postgres to the psycopg2 driver (``postgresql+psycopg2://``).
-    Plain ``postgresql://`` can resolve to the psycopg3 dialect on newer
-    SQLAlchemy builds, which requires the separate ``psycopg`` package.
-    """
-    u = async_url.strip()
-    if u.startswith("sqlite+aiosqlite://"):
-        return "sqlite://" + u.removeprefix("sqlite+aiosqlite://")
-    if u.startswith("postgresql+asyncpg://"):
-        return "postgresql+psycopg2://" + u.removeprefix("postgresql+asyncpg://")
-    if u.startswith("postgresql+psycopg://"):
-        return "postgresql+psycopg2://" + u.removeprefix("postgresql+psycopg://")
-    if u.startswith("postgresql://"):
-        return "postgresql+psycopg2://" + u.removeprefix("postgresql://")
-    if u.startswith("postgres://"):
-        return "postgresql+psycopg2://" + u.removeprefix("postgres://")
-    return u
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
-    app_name: str = "NetHub Payment Gateway"
-    environment: Literal["development", "test", "production"] = "development"
-    secret_key: str = "dev-secret-change-me"
-    app_version: str = "1.1.0"
-    admin_email: str = "admin@nethub.test"
-    # Comma-separated extra emails treated as platform admin (optional)
-    admin_emails: str = Field(default="", alias="ADMIN_EMAILS")
-    internal_api_key: str = "change-me-internal-worker-secret"
-    database_url: str = Field(default="sqlite+aiosqlite:///./data/gateway.db", alias="DATABASE_URL")
-    redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
-    redis_required: bool = Field(default=False, alias="REDIS_REQUIRED")
-    access_token_expire_minutes: int = 720
-    # Machine (client_credentials) tokens use a shorter default TTL than human sessions.
-    machine_token_expire_minutes: int = Field(default=60, alias="MACHINE_TOKEN_EXPIRE_MINUTES")
-    machine_token_audience: str = Field(default="netpay", alias="MACHINE_TOKEN_AUDIENCE")
-    # Rate limits (requests per window). 0 disables.
-    rate_limit_token_per_minute: int = Field(default=30, alias="RATE_LIMIT_TOKEN_PER_MINUTE")
-    rate_limit_payment_per_minute: int = Field(default=60, alias="RATE_LIMIT_PAYMENT_PER_MINUTE")
-    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS")
-    # OpenAPI /docs — disabled automatically in production unless explicitly enabled.
-    openapi_enabled: Optional[bool] = Field(default=None, alias="OPENAPI_ENABLED")
-    cors_origins: str = "*"
+    """Centralized, validated runtime settings with secret-safe representations."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+        hide_input_in_errors=True,
+    )
+
+    environment: Literal["development", "test", "staging", "production"] = "development"
+    host: str = "0.0.0.0"
+    port: int = 8000
     log_level: str = "INFO"
-    webhook_timeout_seconds: float = 8.0
-    stk_timeout_seconds: float = Field(default=120.0, alias="STK_TIMEOUT_SECONDS")
-    inbound_event_max_attempts: int = Field(default=5, alias="INBOUND_EVENT_MAX_ATTEMPTS")
-    max_webhooks_per_tenant: int = 3
-    # Public M-Pesa edge base (no trailing slash). Used for Daraja callback URLs shown in UI.
-    edge_public_base_url: str = Field(
-        default="https://gateway.nethub.co.ke",
-        alias="EDGE_PUBLIC_BASE_URL",
-    )
-    # Path under edge host for provider callbacks. Must NOT contain the substring "mpesa"
-    # (Safaricom rejects callback URLs that include that word).
-    edge_callback_path_prefix: str = Field(
-        default="/cb",
-        alias="EDGE_CALLBACK_PATH_PREFIX",
-    )
 
-    # NetHub API — identity only. NetPay forwards Bearer tokens to NetHub and
-    # never decodes JWTs or stores user credentials. See docs/auth-model.md.
-    nethub_api_base_url: str = Field(default="", alias="NETHUB_API_BASE_URL")
-    nethub_api_timeout_seconds: float = Field(default=8.0, alias="NETHUB_API_TIMEOUT_SECONDS")
+    # Temporary bridge for existing deployment secrets/manifests. New environments
+    # should provide DB_* fields; explicit non-local DB_HOST takes precedence.
+    database_url: SecretStr | None = Field(default=None, repr=False, exclude=True)
 
-    # SPA OIDC (public client / PKCE). Served at GET /config.json so the same
-    # image works on GHCR, Render, and k3s without rebuilding the frontend.
-    # Optional VITE_* bake at image build remains a local-dev fallback only.
-    oidc_issuer: str = Field(default="", alias="OIDC_ISSUER")
-    oidc_client_id: str = Field(default="", alias="OIDC_CLIENT_ID")
-    oidc_redirect_uri: str = Field(default="", alias="OIDC_REDIRECT_URI")
-    oidc_scopes: str = Field(
-        default="openid profile email offline_access",
-        alias="OIDC_SCOPES",
-    )
+    db_host: str = "localhost"
+    db_port: int = 5432
+    db_name: str = "netpay"
+    db_user: SecretStr = SecretStr("netpay")
+    db_password: SecretStr = SecretStr("netpay")
+    db_ssl_mode: SSLMode = "prefer"
 
-    @field_validator("openapi_enabled", mode="before")
+    # Conservative defaults for a small Render/Aiven test service. Each process
+    # owns a separate pool, so total connections scale with workers and instances.
+    db_pool_size: int = 1
+    db_max_overflow: int = 0
+    db_pool_timeout: float = 10.0
+    db_pool_recycle: int = 1800
+
+    redis_url: SecretStr = SecretStr("redis://localhost:6379/0")
+    redis_enabled: bool = True
+
+    # Daraja credential keyring is provided by secret management, never stored in PostgreSQL.
+    m2m_token_signing_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)
+    mpesa_credential_encryption_keys: SecretStr | None = Field(default=None, repr=False, exclude=True)
+    mpesa_credential_active_key_id: str = "v1"
+    mpesa_public_base_url: str | None = None
+    mpesa_http_timeout_seconds: float = 10.0
+    mpesa_sandbox_certificate_pem: SecretStr | None = Field(default=None, repr=False, exclude=True)
+    mpesa_production_certificate_pem: SecretStr | None = Field(default=None, repr=False, exclude=True)
+
+    @model_validator(mode="before")
     @classmethod
-    def _coerce_optional_bool(cls, v):  # noqa: ANN001
-        if v is None or v == "":
-            return None
-        if isinstance(v, bool):
-            return v
-        if isinstance(v, str):
-            low = v.strip().lower()
-            if low in ("1", "true", "yes", "on"):
-                return True
-            if low in ("0", "false", "no", "off"):
-                return False
-        return v
+    def bridge_legacy_database_url(cls, values: Any) -> Any:
+        """Read an existing DATABASE_URL only when split settings are not specific.
 
-    @property
+        This keeps current deployment secrets working during the environment
+        variable migration. A configured non-local DB_HOST always wins.
+        """
+        if not isinstance(values, dict):
+            return values
+        legacy_value = values.get("database_url")
+        if legacy_value is None:
+            return values
+        raw_url = legacy_value.get_secret_value() if isinstance(legacy_value, SecretStr) else str(legacy_value)
+        parsed = make_url(raw_url)
+        if parsed.drivername not in {"postgresql+asyncpg", "postgresql+psycopg", "postgresql"}:
+            raise ValueError("DATABASE_URL must use PostgreSQL")
+        configured_host = values.get("db_host")
+        # A localhost default from a copied .env.example must not mask a URL
+        # injected by existing Compose/cluster deployment configuration.
+        if configured_host not in (None, "", "localhost") and configured_host != parsed.host:
+            return values
+        values["db_host"] = parsed.host or "localhost"
+        values["db_port"] = parsed.port or 5432
+        values["db_name"] = parsed.database or "netpay"
+        if parsed.username is not None:
+            values["db_user"] = parsed.username
+        if parsed.password is not None:
+            values["db_password"] = parsed.password
+        if "sslmode" in parsed.query:
+            values["db_ssl_mode"] = parsed.query["sslmode"]
+        return values
+
+    @field_validator("db_port")
+    @classmethod
+    def validate_db_port(cls, value: int) -> int:
+        """Require a valid TCP port."""
+        if not 1 <= value <= 65535:
+            raise ValueError("DB_PORT must be between 1 and 65535")
+        return value
+
+    @field_validator("db_pool_size")
+    @classmethod
+    def validate_pool_size(cls, value: int) -> int:
+        """Disallow a pool with no capacity."""
+        if value < 1:
+            raise ValueError("DB_POOL_SIZE must be at least 1")
+        return value
+
+    @field_validator("db_max_overflow")
+    @classmethod
+    def validate_max_overflow(cls, value: int) -> int:
+        """Disallow negative overflow limits."""
+        if value < 0:
+            raise ValueError("DB_MAX_OVERFLOW cannot be negative")
+        return value
+
+    @field_validator("db_pool_timeout")
+    @classmethod
+    def validate_pool_timeout(cls, value: float) -> float:
+        """Require a positive checkout timeout."""
+        if value <= 0:
+            raise ValueError("DB_POOL_TIMEOUT must be positive")
+        return value
+
+    @field_validator("db_pool_recycle")
+    @classmethod
+    def validate_pool_recycle(cls, value: int) -> int:
+        """Require a positive connection recycle interval."""
+        if value <= 0:
+            raise ValueError("DB_POOL_RECYCLE must be positive")
+        return value
+
+    @field_validator("mpesa_http_timeout_seconds")
+    @classmethod
+    def validate_mpesa_http_timeout(cls, value: float) -> float:
+        """Require a bounded positive timeout for external Daraja calls."""
+        if value <= 0 or value > 60:
+            raise ValueError("MPESA_HTTP_TIMEOUT_SECONDS must be between 0 and 60")
+        return value
+
+    @field_validator("redis_url")
+    @classmethod
+    def validate_redis_url(cls, value: SecretStr) -> SecretStr:
+        """Reject unsupported Redis URL schemes."""
+        if not value.get_secret_value().startswith(("redis://", "rediss://", "unix://")):
+            raise ValueError("REDIS_URL must use a Redis URL scheme")
+        return value
+
+    def _database_url(self, drivername: str) -> str:
+        """Build a driver-specific URL without manual credential escaping."""
+        # asyncpg expects the `ssl` keyword; psycopg uses `sslmode`.
+        ssl_parameter = "ssl" if drivername.endswith("+asyncpg") else "sslmode"
+        url = URL.create(
+            drivername=drivername,
+            username=self.db_user.get_secret_value(),
+            password=self.db_password.get_secret_value(),
+            host=self.db_host,
+            port=self.db_port,
+            database=self.db_name,
+            query={ssl_parameter: self.db_ssl_mode},
+        )
+        return url.render_as_string(hide_password=False)
+
     def async_database_url(self) -> str:
-        return self.database_url
+        """Return the asyncpg URL used by the FastAPI engine."""
+        return self._database_url("postgresql+asyncpg")
 
-    @property
-    def sync_database_url(self) -> str:
-        return to_sync_url(self.database_url)
+    def alembic_database_url(self) -> str:
+        """Return the synchronous psycopg URL used by Alembic."""
+        return self._database_url("postgresql+psycopg")
 
-    @property
-    def cors_origin_list(self) -> list[str]:
-        if self.cors_origins.strip() == "*":
-            return ["*"]
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
-    @property
-    def openapi_enabled_effective(self) -> bool:
-        """OpenAPI UI enabled unless production (or explicit false)."""
-        if self.openapi_enabled is not None:
-            return bool(self.openapi_enabled)
-        return self.environment != "production"
-
-    def assert_production_secrets(self) -> None:
-        """Fail closed when unsafe defaults are used in production."""
-        if self.environment != "production":
-            return
-        if self.secret_key in ("", "dev-secret-change-me", "change-me"):
-            raise RuntimeError(
-                "SECRET_KEY must be set to a strong value in production "
-                "(refusing default dev secret)"
-            )
-        if self.internal_api_key in ("", "change-me-internal-worker-secret", "change-me"):
-            raise RuntimeError(
-                "INTERNAL_API_KEY must be set to a strong value in production"
-            )
-
-@lru_cache
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    """Return cached, validated settings."""
     return Settings()
-
-settings = get_settings()

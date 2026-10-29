@@ -1,2 +1,1 @@
-"""NetHub Payment Gateway."""
-__version__ = "1.1.0"
+"""NetPay backend application package."""
