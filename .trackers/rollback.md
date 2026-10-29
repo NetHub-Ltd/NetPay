@@ -224,3 +224,12 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
 - Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
 - Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
+
+
+## Selected marketing theme refinement — rollback — 2026-10-29 01:15 UTC
+
+- **Pre-change base:** `dev` at `416c8fa9d7d625a4be9389c12d564278c7cc1878` (includes the merged initial theme-test PR #219).
+- **Current scope:** Replace the two-direction comparison on `/theme-test` with one screenshot-aligned concept. Files changed: `frontend/app/theme-test/page.tsx` and `frontend/app/theme-test/page.module.css`; tracker updates are documentation only.
+- **Rollback:** Use a reviewed revert of the PR for issue #220. If the change is rejected, restore the prior versions of the two route files from the pre-implementation base (`dev` commit above) in a follow-up commit. Do not reset or rewrite history. Keep the route's robots exclusion and noindex metadata unless the route is intentionally removed.
+- No schema/data, backend, deployment, Flux, or GHCR change exists to roll back. No deployment has been performed.
+- **Verification caveat:** CI and browser QA are pending/not verified at this checkpoint.
