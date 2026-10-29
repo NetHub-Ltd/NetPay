@@ -268,3 +268,11 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [x] Trace the failure to rollback-expired ORM state being accessed in duplicate recovery; commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` captures the integration UUID before rollback.
 - [ ] Verify CI, backend readiness, frontend lint/build, migration and container smoke on the updated code. No green result has yet been observed for this fix.
 - [ ] Keep PR #218 draft/unmerged until all gates pass and the user reviews it; #216 remains deferred.
+
+
+## #217 verification result — 2026-10-29 00:18 UTC
+
+- [x] Latest code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802`: CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496) passed migration upgrade through `0003_mpesa_core_capabilities`, **65 tests passed, 1 warning**, PostgreSQL/Redis connectivity.
+- [x] Backend readiness [40792997409], frontend lint [40792997425], and frontend build [40792997517] passed.
+- [ ] Wait for CI container image/startup job; run [40792997496] is not complete yet.
+- [ ] Review full PR diff/provider contracts and await user review. PR #218 stays draft/unmerged; #216 remains deferred until #217 is reviewed and merged.
