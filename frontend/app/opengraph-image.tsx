@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "NetPay — M-Pesa payment API for business software";
+export const alt = "NetPay — M-Pesa payments without the integration headache";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const dynamic = "force-static";
@@ -17,8 +17,8 @@ export default function OpenGraphImage() {
           width: "100%",
           height: "100%",
           padding: "68px",
-          backgroundColor: "#1e1b4b",
-          color: "#f5f3ff",
+          backgroundColor: "#071e32",
+          color: "#f7fbff",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
@@ -30,8 +30,8 @@ export default function OpenGraphImage() {
               width: "62px",
               height: "62px",
               borderRadius: "16px",
-              backgroundColor: "#3b82f6",
-              color: "#ffffff",
+              backgroundColor: "#53e0cb",
+              color: "#06283b",
               fontSize: "38px",
               fontWeight: 800,
             }}
@@ -50,14 +50,13 @@ export default function OpenGraphImage() {
               maxWidth: "900px",
             }}
           >
-            M-Pesa payment API for business software
+            M-Pesa payments, without the integration headache
           </div>
-          <div style={{ fontSize: "24px", color: "#c4b5fd", maxWidth: "820px", lineHeight: 1.4 }}>
-            Merchant-owned Daraja integrations, STK Push, and payment events grounded in provider
-            results.
+          <div style={{ fontSize: "24px", color: "#c1d4de", maxWidth: "820px", lineHeight: 1.4 }}>
+            Merchant-aware integrations, callback-backed payment outcomes, and clear payment records.
           </div>
         </div>
-        <div style={{ display: "flex", fontSize: "20px", color: "#c4b5fd" }}>
+        <div style={{ display: "flex", fontSize: "20px", color: "#c1d4de" }}>
           pay.nethub.co.ke
         </div>
       </div>
