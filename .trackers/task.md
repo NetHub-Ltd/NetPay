@@ -425,3 +425,10 @@ Do not merge or deploy without explicit approval.
 - SEO/brand: unique metadata/canonical URLs for new pages; sitemap updated; Open Graph image, favicon, default metadata, and browser theme color align with navy/teal. /theme-test remains noindex and excluded from sitemap/robots crawl. Public color tokens are scoped to .np-public-site, not dashboard.
 - Payment UI/records are illustrative. Copy does not equate STK initiation with payment success or promise universal transaction-status verification, automated reconciliation, certifications, uptime guarantees, testimonials, or customer metrics.
 - Not yet verified: lint/typecheck/build and rendered desktop/mobile browser QA on final PR head. No merge or deployment.
+
+
+### PR checkpoint — 2026-10-29 01:51 UTC
+
+- Draft PR #223: https://github.com/NetHub-Ltd/NetPay/pull/223, targets dev and closes issue #222.
+- PR head at opening: ce8b5a32e3afc041306375842ab6ae8e300f7cae. Fresh backend, start-and-health, build, and lint jobs were queued when checked.
+- Keep the PR draft/open and do not merge or deploy until required checks pass and the source is reviewed. Rendered desktop/mobile browser QA remains unverified.
