@@ -261,3 +261,20 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Diagnostic patch commit: `29f41bab5b23441b8bd41407fcdd92cee5ce8e29`, modifying only `backend/scripts/container_startup_smoke.sh` plus tracker notes.
 - If the instrumentation is rejected, revert the commit through a reviewed revert; do not rewrite history. The patch preserves readiness/health/frontend-route assertions and adds diagnostics only.
 - No deployment, DB schema, payment behavior, Flux, or GHCR image build/push changes. Keep PR #221 open until all required checks pass and the failure is explained.
+
+
+## Public site theme rollout — rollback — 2026-10-29
+
+- Base commit: dev at 15fb78ae878ff29f4e284202c5190f7cc7e78b86.
+- Issue #222; branch feat/public-site-navy-teal-pages.
+- Changed scope: public homepage; shared public frame/header/footer; scoped public theme tokens; Product, Developers, Why NetPay pages; metadata, social preview, favicon, sitemap; shared frame adoption by API overview, FAQ, and request-access pages; trackers.
+- Rollback: use a reviewed revert of the eventual PR; preserve history. Presentation/content only; no backend, schema, payment behavior, dependency, deployment, Flux, or GHCR changes.
+- Keep /theme-test noindex/disallowed until preview is intentionally removed. Dashboard styling should remain unaffected by scoped .np-public-site tokens.
+- CI/browser QA status pending; no merge or deployment.
+
+
+### PR checkpoint — 2026-10-29 01:51 UTC
+
+- Draft PR #223 targets dev and closes issue #222: https://github.com/NetHub-Ltd/NetPay/pull/223.
+- Backend, start/health, frontend build, and lint checks were queued at the latest check. Browser QA is not verified.
+- No deployment or merge. Rollback remains a reviewed PR revert with history preserved.

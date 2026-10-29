@@ -367,3 +367,19 @@ These are historical reports, not fresh verification performed during tracker cr
 - PR #221 latest source commit `29f41bab5b23441b8bd41407fcdd92cee5ce8e29` includes a diagnostic improvement to `backend/scripts/container_startup_smoke.sh` after an unexplained exit code 2 immediately after service image pulls.
 - Adds ERR trap with exact failing line/command and logs/state for any started containers; gives readiness timeout an explicit message. Does not weaken/remove smoke assertions.
 - Checks on the new PR head are in progress. Do not merge until required CI is green. If failure reproduces, use the new diagnostics to identify root cause before further edits.
+
+
+## Public-site navy/teal rollout — 2026-10-29
+
+- Current work: issue #222, branch feat/public-site-navy-teal-pages, base dev SHA 15fb78ae878ff29f4e284202c5190f7cc7e78b86.
+- The previous theme-test PR #221 is now merged into dev; this task promotes the approved direction to the actual homepage and adds three indexable static routes: /product/, /developers/, /why-netpay/.
+- Shared PublicSiteFrame and SiteFooter cover public marketing routes; navigation links updated. Public theme tokens are scoped under .np-public-site so authenticated/dashboard styles are not changed globally.
+- Sitemap, homepage metadata/structured data, default metadata, OG image, favicon, and theme-color updated. Robots exclusion for the private theme test remains.
+- CI and browser visual QA have not yet been confirmed for this branch. Keep PR unmerged and do not deploy.
+
+
+### PR and checks — 2026-10-29 01:51 UTC
+
+- Draft PR #223: https://github.com/NetHub-Ltd/NetPay/pull/223 targets dev; issue #222 is the scope/acceptance contract.
+- PR opening head: ce8b5a32e3afc041306375842ab6ae8e300f7cae. Backend, start/health, frontend build, and lint were queued at the latest check.
+- No merge/deployment. Browser visual QA has not been performed.

@@ -1,39 +1,44 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
+  ArrowDownLeft,
   ArrowRight,
+  ArrowUpRight,
+  Check,
   CheckCircle2,
+  CircleHelp,
   Code2,
+  ListChecks,
+  RefreshCw,
   ShieldCheck,
   Smartphone,
-  Workflow,
+  Wallet,
+  Webhook,
 } from "lucide-react";
-import { SiteHeader } from "../components/SiteHeader";
-import { Badge, Button, Card, Container, Section } from "../components/ui";
+import { PublicSiteFrame } from "../components/PublicSiteFrame";
+import styles from "./home.module.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 
 export const metadata: Metadata = {
-  title: "M-Pesa payment API for business software",
+  title: "M-Pesa payments without the integration headache",
   description:
-    "Connect business software to M-Pesa with merchant-owned Daraja integrations, STK Push, and payment events grounded in provider results.",
+    "Connect business software to M-Pesa with merchant-owned Daraja integrations, STK Push, callback-backed payment outcomes, and durable payment events.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "en_KE",
     url: siteUrl,
-    title: "NetPay | M-Pesa payment API for business software",
+    title: "NetPay | M-Pesa payments without the integration headache",
     description:
-      "A consistent M-Pesa payments API for merchants, POS systems, and business applications.",
+      "A practical M-Pesa payment gateway for collecting payments, tracking outcomes, and keeping transaction records in order.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "NetPay | M-Pesa payment API for business software",
-    description: "Merchant-owned Daraja integrations and payment events for business software.",
+    title: "NetPay | M-Pesa payments without the integration headache",
+    description: "Merchant-aware M-Pesa integrations and callback-backed payment outcomes for business software.",
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 };
 
 const structuredData = {
@@ -41,252 +46,169 @@ const structuredData = {
   "@graph": [
     {
       "@type": "Organization",
-      "@id": `${siteUrl}/#organization`,
+      "@id": siteUrl + "/#organization",
       name: "NetHub",
       url: "https://nethub.co.ke",
-      logo: `${siteUrl}/opengraph-image`,
+      logo: siteUrl + "/opengraph-image",
     },
     {
       "@type": "WebSite",
-      "@id": `${siteUrl}/#website`,
+      "@id": siteUrl + "/#website",
       url: siteUrl,
       name: "NetPay",
-      publisher: { "@id": `${siteUrl}/#organization` },
+      publisher: { "@id": siteUrl + "/#organization" },
       inLanguage: "en-KE",
     },
     {
       "@type": "SoftwareApplication",
-      "@id": `${siteUrl}/#software`,
+      "@id": siteUrl + "/#software",
       name: "NetPay",
       url: siteUrl,
       applicationCategory: "FinanceApplication",
       operatingSystem: "Web",
-      description:
-        "An M-Pesa payments gateway for merchant-owned Daraja integrations, STK Push, and provider-informed payment status.",
-      publisher: { "@id": `${siteUrl}/#organization` },
+      description: "An M-Pesa Daraja gateway for merchant-owned integrations, STK Push, and provider-informed payment status.",
+      publisher: { "@id": siteUrl + "/#organization" },
     },
   ],
 };
 
 const capabilities = [
-  {
-    icon: Smartphone,
-    title: "M-Pesa checkout",
-    description:
-      "Send a payment prompt to a customer’s phone and track the provider-confirmed result.",
-  },
-  {
-    icon: Workflow,
-    title: "One API, many merchants",
-    description:
-      "Keep each merchant’s Daraja integration isolated while your product uses one consistent API.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Built for dependable state",
-    description:
-      "Idempotency, callback deduplication, and durable payment events help your systems recover safely.",
-  },
-  {
-    icon: Code2,
-    title: "Made for software teams",
-    description:
-      "Integrate from a website, POS, or business application using documented API contracts.",
-  },
+  { icon: Smartphone, title: "STK Push", text: "Initiate an M-Pesa payment request from your application and track its reported outcome." },
+  { icon: ArrowDownLeft, title: "C2B callbacks", text: "Receive supported customer-to-business callbacks for a connected merchant when C2B is configured." },
+  { icon: ShieldCheck, title: "Clear payment states", text: "Distinguish an accepted request from a payment outcome supported by provider evidence." },
+  { icon: ListChecks, title: "Payment records", text: "Use callback and payment-event records to support your own reconciliation workflow." },
 ];
 
-const steps = [
-  "Onboard a merchant with their own Daraja credentials",
-  "Initiate STK Push from your application via the NetPay API",
-  "Receive a durable payment event when provider evidence changes state",
+const sampleRows = [
+  { date: "28 Oct · 10:44", amount: "KES 1,000", state: "Example", kind: "matched" },
+  { date: "28 Oct · 09:21", amount: "KES 2,500", state: "Example", kind: "matched" },
+  { date: "27 Oct · 16:32", amount: "KES 980", state: "Example", kind: "matched" },
+  { date: "27 Oct · 11:07", amount: "KES 3,200", state: "Review", kind: "review" },
 ];
+
+function PaymentPanel() {
+  return (
+    <div className={styles.dashboard} aria-label="Illustrative payment interface preview">
+      <section className={styles.paymentCard}>
+        <div className={styles.panelHeading}>
+          <div><span className={styles.panelEyebrow}>PAYMENT</span><h3>STK Push</h3></div>
+          <span className={styles.pending}>Illustration</span>
+        </div>
+        <div className={styles.paymentDetails}>
+          <div><span>Amount</span><strong>KES 1,000</strong></div>
+          <div><span>Phone number</span><strong>254 7XX XXX XXX</strong></div>
+        </div>
+        <ol className={styles.timeline}>
+          <li><span className={styles.timelineIcon}><Smartphone size={13} /></span><div><strong>Payment request sent</strong><small>Waiting for provider response</small></div></li>
+          <li><span className={styles.timelineIcon}><Check size={13} /></span><div><strong>Provider callback</strong><small>Example state · not live</small></div></li>
+          <li><span className={styles.timelineIcon}><Check size={13} /></span><div><strong>Payment status updated</strong><small>Based on available provider evidence</small></div></li>
+        </ol>
+        <p className={styles.sampleNote}>Sample interface only — no live payment is shown.</p>
+      </section>
+      <div className={styles.sidePanels}>
+        <section className={styles.reconciliationCard}>
+          <div className={styles.smallPanelHeading}><h3>Payment records</h3><span>Preview</span></div>
+          <div className={styles.tableHeader}><span>Date</span><span>Amount</span><span>State</span></div>
+          {sampleRows.map((row) => (
+            <div className={styles.tableRow} key={row.date}>
+              <span>{row.date}</span><span>{row.amount}</span><span className={row.kind === "matched" ? styles.matched : styles.review}>{row.state}</span>
+            </div>
+          ))}
+          <p className={styles.sampleNote}>Illustrative records, not connected data.</p>
+        </section>
+        <section className={styles.callbackCard}>
+          <div className={styles.callbackIcon}><Webhook size={17} /></div>
+          <div><strong>Callback visibility</strong><small>Understand the provider event your integration received</small></div>
+          <ArrowRight size={17} />
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function CodeExample() {
+  return (
+    <div className={styles.codeWindow}>
+      <div className={styles.codeBar}>
+        <span className={styles.windowDots}><i /><i /><i /></span>
+        <span>request-example.py</span>
+        <span className={styles.exampleLabel}>ILLUSTRATIVE</span>
+      </div>
+      <pre><code><span className={styles.codeMuted}># Request shape only — check the current API docs</span>{"\n"}response = requests.post({"\n"}    api_url,{"\n"}    json={"{"}{"\n"}        <span className={styles.codeKey}>&quot;amount_minor&quot;</span>: <span className={styles.codeNumber}>250000</span>,{"\n"}        <span className={styles.codeKey}>&quot;phone_number&quot;</span>: <span className={styles.codeString}>&quot;07XXXXXXXX&quot;</span>,{"\n"}        <span className={styles.codeKey}>&quot;client_reference&quot;</span>: <span className={styles.codeString}>&quot;ORDER-1048&quot;</span>,{"\n"}    {"}"},{"\n"}    headers=auth_headers,{"\n"})</code></pre>
+      <div className={styles.codeFooter}><Code2 size={14} /> Conceptual example — follow the API overview for the current contract.</div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   return (
-    <>
-      <a
-        href="#main-content"
-        className="np-skip-link"
-      >
-        Skip to content
-      </a>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-
-      <SiteHeader />
-
-      <main id="main-content" tabIndex={-1}>
-        {/* Hero */}
-        <section className="relative overflow-hidden bg-[var(--navy)] text-[var(--on-navy)]">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-24 -top-24 size-[28rem] rounded-full border border-[var(--on-navy-faint)]"
-          />
-          <Container className="relative grid gap-12 py-16 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:py-24">
-            <div>
-              <Badge tone="onNavy">M-Pesa infrastructure for software</Badge>
-              <h1 className="np-display np-on-navy mt-6 max-w-3xl">
-                Collect M-Pesa payments with state you can trust.
-              </h1>
-              <p className="np-lead np-on-navy-muted mt-6 max-w-2xl">
-                NetPay connects your product to merchant-owned Daraja integrations. Initiate STK Push,
-                host callbacks, and publish durable payment events—without treating initiation as proof
-                of payment.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Button href="/api-overview/" variant="onNavy" size="lg" rightIcon={<ArrowRight size={17} aria-hidden />}>
-                  API overview
-                </Button>
-                <Button href="/request-access/" variant="onNavyOutline" size="lg">
-                  Request access
-                </Button>
+    <PublicSiteFrame>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <main id="main-content" className={styles.page} tabIndex={-1}>
+        <section className={styles.heroShell}>
+          <div className={styles.hero}>
+            <div className={styles.heroCopy}>
+              <p className={styles.eyebrow}><span /> M-PESA PAYMENTS FOR BUSINESS SOFTWARE</p>
+              <h1>M-Pesa payments, <em>without the integration headache.</em></h1>
+              <p className={styles.heroDescription}>A practical payment gateway for collecting payments, tracking outcomes, and keeping transaction records in order.</p>
+              <div className={styles.heroActions}>
+                <Link className={styles.primaryCta} href="/request-access/">Get started <ArrowRight size={17} /></Link>
+                <Link className={styles.secondaryCta} href="/api-overview/">Explore the API <ArrowUpRight size={16} /></Link>
               </div>
-              <p className="mt-4 text-sm text-[var(--on-navy-muted)]">
-                <a href="#how-it-works" className="underline-offset-2 hover:underline">How it works</a>
-                {" · "}
-                <a href="#capabilities" className="underline-offset-2 hover:underline">Capabilities</a>
-                {" · "}
-                <a href="/faq/" className="underline-offset-2 hover:underline">FAQ</a>
-              </p>
+              <div className={styles.heroProof}>
+                <span><CheckCircle2 size={15} /> Merchant-aware integrations</span>
+                <span><CheckCircle2 size={15} /> Callback-backed outcomes</span>
+              </div>
             </div>
-            <Card
-              elevated
-              className="border-[var(--header-border)] bg-[var(--navy-soft)] p-6 text-[var(--on-navy)] sm:p-8"
-            >
-              <p className="text-sm font-bold uppercase tracking-[0.14em] text-[var(--teal)]">
-                Payment truth
-              </p>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight">One clear source of truth</h2>
-              <ul className="mt-6 space-y-4">
-                {[
-                  "Provider-confirmed results drive status—not guesses",
-                  "Idempotent STK initiation and callback deduplication",
-                  "Optional signed webhooks when your workflow needs them",
-                ].map((item) => (
-                  <li key={item} className="flex gap-3 text-sm leading-6 text-[var(--on-navy-muted)]">
-                    <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-[var(--teal)]" aria-hidden />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          </Container>
+            <PaymentPanel />
+          </div>
+          <p className={styles.heroFootnote}>Payment examples are illustrative only <span>·</span> Current capabilities and limitations are documented</p>
         </section>
 
-        <Section id="capabilities" className="bg-[var(--bg)]">
-          <Badge>Capabilities</Badge>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-            The payment API is only the beginning.
-          </h2>
-          <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
-            A consistent surface for software teams: merchant isolation, reliable state, and contracts
-            you can build against.
-          </p>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {capabilities.map(({ icon: Icon, title, description }) => (
-              <Card key={title} elevated className="h-full">
-                <span className="grid size-12 place-items-center rounded-2xl bg-[var(--teal-soft)] text-[var(--teal-dark)]">
-                  <Icon size={22} aria-hidden />
-                </span>
-                <h3 className="mt-5 text-lg font-bold tracking-tight">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{description}</p>
-              </Card>
+        <section className={styles.capabilities} id="capabilities">
+          <div className={styles.sectionIntro}>
+            <p className={styles.sectionEyebrow}>WHAT YOU CAN DO</p>
+            <h2>Everything you need to connect M-Pesa payments to your product.</h2>
+          </div>
+          <div className={styles.capabilityGrid}>
+            {capabilities.map(({ icon: Icon, title, text }) => (
+              <article className={styles.capability} key={title}>
+                <span className={styles.capabilityIcon}><Icon size={23} strokeWidth={1.8} /></span>
+                <h3>{title}</h3><p>{text}</p>
+              </article>
             ))}
           </div>
-        </Section>
+          <p className={styles.capabilityNote}><CircleHelp size={14} /> Some Daraja capabilities require extra configuration. Check the API overview for current support and limits.</p>
+        </section>
 
-        <Section id="how-it-works" className="bg-[var(--surface)]">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
-            <div>
-              <Badge>How it works</Badge>
-              <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-                Connect once. Know what happened.
-              </h2>
-              <p className="mt-5 text-lg leading-8 text-[var(--muted)]">
-                Use the merchant’s Daraja credentials, initiate a payment from your application, and
-                listen for a durable event when provider evidence changes its state.
-              </p>
-              <ol className="mt-8 space-y-5">
-                {steps.map((step, index) => (
-                  <li key={step} className="flex gap-4">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--ink)] text-sm font-bold text-[var(--on-navy)]">
-                      {index + 1}
-                    </span>
-                    <p className="pt-1 font-semibold text-[var(--ink)]">{step}</p>
-                  </li>
-                ))}
-              </ol>
-            </div>
-            <div
-              id="developers"
-              className="overflow-hidden rounded-[var(--radius-xl)] bg-[var(--navy)] p-6 text-[var(--on-navy)] shadow-[var(--shadow-lg)] sm:p-8"
-            >
-              <div className="flex items-center justify-between border-b border-[var(--header-border)] pb-4">
-                <p className="font-bold">Example request</p>
-                <Badge tone="onNavy">HTTP</Badge>
-              </div>
-              <pre className="mt-6 overflow-x-auto font-mono text-sm leading-7 text-[var(--on-navy-muted)]">
-                <code>{`POST /api/v1/payments/stk-push
-Authorization: Bearer <access-token>
-Idempotency-Key: order-123-attempt-1
-Content-Type: application/json
-
-{
-  "integration_id": "<merchant-integration-id>",
-  "client_reference": "order-123",
-  "amount_minor": 250000,
-  "currency": "KES",
-  "phone_number": "0712345678",
-  "description": "Order payment"
-}`}</code>
-              </pre>
-              <div className="mt-6 rounded-[var(--radius)] border border-[var(--teal)]/30 bg-[var(--teal)]/10 p-4 text-sm leading-6 text-[var(--teal-soft)]">
-                NetPay returns a payment resource. It never treats the STK initiation acknowledgement as
-                proof of payment.
-              </div>
-            </div>
+        <section className={styles.developerSection} id="developers">
+          <div className={styles.developerCopy}>
+            <p className={styles.sectionEyebrow}>FOR DEVELOPERS</p>
+            <h2>Clean integration. Clearer payment outcomes.</h2>
+            <p>Build M-Pesa payment flows around a documented request, a merchant integration, and callback-backed status updates.</p>
+            <Link className={styles.outlineCta} href="/developers/">Explore developer resources <ArrowRight size={16} /></Link>
           </div>
-        </Section>
+          <CodeExample />
+        </section>
 
-        <Section className="bg-[var(--bg)] py-16 lg:py-20">
-          <div className="flex flex-col gap-8 rounded-[var(--radius-xl)] bg-[var(--ink)] px-7 py-10 text-[var(--on-navy)] sm:px-10 md:flex-row md:items-center md:justify-between lg:px-14 lg:py-12">
-            <div className="max-w-2xl">
-              <Badge tone="onNavy">For builders and businesses</Badge>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                Make payments a reliable part of your product.
-              </h2>
-              <p className="mt-4 leading-7 text-[var(--on-navy-muted)]">
-                Start with the API and add optional event delivery when your workflow needs it.
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-col gap-3 sm:items-end">
-              <Button
-                href="/api-overview/"
-                variant="onNavy"
-                size="lg"
-                rightIcon={<ArrowRight size={17} aria-hidden />}
-              >
-                API overview
-              </Button>
-              <Button href="/request-access/" variant="onNavyOutline" size="md">
-                Request access
-              </Button>
-              <a href="/dashboard/" className="text-center text-sm text-[var(--on-navy-muted)] hover:text-[var(--on-navy)]">
-                Dashboard preview
-              </a>
-            </div>
+        <section className={styles.businessSection} id="businesses">
+          <div>
+            <p className={styles.sectionEyebrow}>BUILT FOR REAL WORKFLOWS</p>
+            <h2>Practical payment infrastructure for Kenyan businesses.</h2>
+            <p>Whether you are building a shop system, pharmacy POS, restaurant platform or online store, NetPay is designed to connect merchant M-Pesa integrations to the software your business runs on.</p>
           </div>
-        </Section>
+          <div className={styles.businessPoints}>
+            <div><span><RefreshCw size={20} /></span><p><strong>Know what happened</strong><small>Separate request acceptance from callback-backed outcomes.</small></p></div>
+            <div><span><Webhook size={20} /></span><p><strong>Work with payment events</strong><small>Use callback and event records to support your own workflows.</small></p></div>
+            <div><span><Wallet size={20} /></span><p><strong>Built around merchant integrations</strong><small>Each connected merchant supplies their own Daraja credentials.</small></p></div>
+          </div>
+        </section>
+
+        <section className={styles.finalCta}>
+          <div><p className={styles.sectionEyebrow}>YOUR NEXT STEP</p><h2>Have an M-Pesa use case in mind?</h2><p>Explore the current API or tell us what you are building.</p></div>
+          <div><Link className={styles.primaryCta} href="/request-access/">Get started <ArrowRight size={16} /></Link><Link className={styles.finalLink} href="/why-netpay/">Why NetPay <ArrowUpRight size={15} /></Link></div>
+        </section>
       </main>
-
-      <footer className="border-t border-[var(--line)] bg-[var(--panel)]">
-        <Container className="flex flex-col gap-4 py-8 text-sm text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} NetPay by NetHub.</p>
-          <p>Payment state you can build on.</p>
-        </Container>
-      </footer>
-    </>
+    </PublicSiteFrame>
   );
 }

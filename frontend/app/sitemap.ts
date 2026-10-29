@@ -7,12 +7,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
   const lastModified = new Date();
 
-  const paths = ["/", "/api-overview/", "/faq/", "/request-access/"];
+  const paths = ["/", "/product/", "/developers/", "/why-netpay/", "/api-overview/", "/faq/", "/request-access/"];
 
   return paths.map((path, i) => ({
     url: new URL(path, siteUrl).toString(),
     lastModified,
     changeFrequency: path === "/" ? "weekly" : "monthly",
-    priority: path === "/" ? 1 : 0.8 - i * 0.05,
+    priority: path === "/" ? 1 : ["/product/", "/developers/", "/why-netpay/"].includes(path) ? 0.85 : 0.7 - i * 0.03,
   }));
 }

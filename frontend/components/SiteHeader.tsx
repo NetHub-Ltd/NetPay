@@ -6,9 +6,10 @@ import { Menu, X } from "lucide-react";
 import { Button } from "./ui";
 
 const links = [
-  { href: "/api-overview/", label: "API overview" },
-  { href: "/#how-it-works", label: "How it works" },
-  { href: "/faq/", label: "FAQ" },
+  { href: "/product/", label: "Product" },
+  { href: "/developers/", label: "Developers" },
+  { href: "/why-netpay/", label: "Why NetPay" },
+  { href: "/api-overview/", label: "Resources" },
 ];
 
 /** Solid navy public header with mobile menu. */
@@ -37,8 +38,8 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button href="/api-overview/" variant="onNavy" size="sm" className="hidden sm:inline-flex">
-            API overview
+          <Button href="/request-access/" variant="onNavy" size="sm" className="hidden sm:inline-flex">
+            Get started
           </Button>
           <button
             type="button"

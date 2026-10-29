@@ -25,11 +25,11 @@ const themeInitScript = `(function(){try{var k='netpay_theme';var t=localStorage
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "NetPay | M-Pesa payment API for business software",
+    default: "NetPay | M-Pesa payments without the integration headache",
     template: "%s | NetPay",
   },
   description:
-    "Connect business software to M-Pesa with merchant-owned Daraja integrations, STK Push, and payment events grounded in provider results.",
+    "A practical M-Pesa payment gateway for collecting payments, tracking outcomes, and keeping transaction records in order.",
   applicationName: "NetPay",
   robots: {
     index: true,
@@ -45,9 +45,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "NetPay",
-    title: "NetPay | M-Pesa payment API for business software",
+    title: "NetPay | M-Pesa payments without the integration headache",
     description:
-      "A consistent M-Pesa payments API for merchants, POS systems, and business applications.",
+      "Merchant-aware M-Pesa integrations and callback-backed payment outcomes for business software.",
   },
   twitter: {
     card: "summary_large_image",
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1e1b4b",
+  themeColor: "#071e32",
   colorScheme: "light",
 };
 

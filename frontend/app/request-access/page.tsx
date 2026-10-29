@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SiteHeader } from "../../components/SiteHeader";
-import { Badge, Button, Card, Container, Section } from "../../components/ui";
+import { PublicSiteFrame } from "../../components/PublicSiteFrame";
+import { Badge, Button, Card, Section } from "../../components/ui";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 /** Update when a dedicated inbox or form backend is ready */
@@ -24,8 +24,7 @@ export const metadata: Metadata = {
 
 export default function RequestAccessPage() {
   return (
-    <>
-      <SiteHeader />
+    <PublicSiteFrame>
       <main id="main-content">
         <Section className="bg-[var(--bg)] pt-12 lg:pt-16">
           <Badge>Get started</Badge>
@@ -70,11 +69,6 @@ export default function RequestAccessPage() {
           </p>
         </Section>
       </main>
-      <footer className="border-t border-[var(--line)] bg-[var(--panel)]">
-        <Container className="py-8 text-sm text-[var(--muted)]">
-          © {new Date().getFullYear()} NetPay by NetHub.
-        </Container>
-      </footer>
-    </>
+    </PublicSiteFrame>
   );
 }

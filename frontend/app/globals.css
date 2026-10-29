@@ -440,3 +440,41 @@ kbd {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Approved navy/teal marketing palette, scoped to public pages only. */
+.np-public-site {
+  --navy: #071e32;
+  --navy-soft: #0b2b43;
+  --navy-muted: #14384e;
+  --accent: #53e0cb;
+  --accent-hover: #26b9a8;
+  --accent-soft: #dff8f3;
+  --ink: #10283e;
+  --muted: #526578;
+  --on-navy: #f7fbff;
+  --on-navy-muted: #c1d4de;
+  --on-accent: #06283b;
+  --bg: #fbfcfd;
+  --panel: #ffffff;
+  --surface: #eff6f8;
+  --line: #dbe5e9;
+  --line-strong: #b9cbd3;
+  --focus-ring: #168e88;
+  --teal: #53e0cb;
+  --teal-dark: #168e88;
+  --teal-soft: #dff8f3;
+  --header-border: rgb(247 251 255 / 14%);
+  --on-navy-border: rgb(247 251 255 / 18%);
+  --on-navy-faint: rgb(247 251 255 / 6%);
+  --shadow-sm: 0 1px 2px rgb(7 30 50 / 6%);
+  --shadow: 0 1px 3px rgb(7 30 50 / 6%), 0 12px 28px rgb(7 30 50 / 10%);
+  --shadow-lg: 0 28px 64px -24px rgb(7 30 50 / 32%);
+  color: var(--ink);
+  background: var(--bg);
+}
+.np-public-site a { text-underline-offset: 0.2em; }
+.np-public-site header a:focus-visible,
+.np-public-site footer a:focus-visible {
+  outline-color: var(--accent);
+}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SiteHeader } from "../../components/SiteHeader";
-import { Badge, Button, Card, Container, Section } from "../../components/ui";
+import { PublicSiteFrame } from "../../components/PublicSiteFrame";
+import { Badge, Button, Card, Section } from "../../components/ui";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 
@@ -66,12 +66,11 @@ const faqJsonLd = {
 
 export default function FaqPage() {
   return (
-    <>
+    <PublicSiteFrame>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <SiteHeader />
       <main id="main-content">
         <Section className="bg-[var(--bg)] pt-12 lg:pt-16">
           <Badge>FAQ</Badge>
@@ -102,11 +101,6 @@ export default function FaqPage() {
           </div>
         </Section>
       </main>
-      <footer className="border-t border-[var(--line)] bg-[var(--panel)]">
-        <Container className="py-8 text-sm text-[var(--muted)]">
-          © {new Date().getFullYear()} NetPay by NetHub.
-        </Container>
-      </footer>
-    </>
+    </PublicSiteFrame>
   );
 }
