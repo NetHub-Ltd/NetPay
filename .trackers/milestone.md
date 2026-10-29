@@ -324,3 +324,16 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 
 - Keep `/theme-test` excluded from indexing; production Ledger/homepage remains untouched.
 - Required quality gates: frontend lint and build, plus rendered responsive QA if browser tooling is available. No result should be marked passed without evidence.
+
+
+### Selected landing theme PR checkpoint — 2026-10-29 01:12 UTC
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| T.8 | Selected screenshot direction translated into one isolated landing page | IMPLEMENTED — PR #221 draft/open |
+| T.9 | Payment preview and code sample labelled illustrative | IMPLEMENTED by source inspection; CI in progress |
+| T.10 | Capability language reflects known limitations | IMPLEMENTED by source inspection; review still required |
+| T.11 | Desktop/mobile rendering and keyboard interaction validated in a browser | NOT VERIFIED — no browser QA evidence |
+| T.12 | PR targets `dev`, references issue #220, and remains unmerged | VERIFIED — draft PR #221 |
+
+- GitGuardian passed on source commit `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`; frontend build/lint, backend, and start/health jobs were still running.
