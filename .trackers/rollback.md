@@ -216,3 +216,11 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Latest source fix commit at last check: `e54e1d77e9fcc79c3d13c2fb57907b169baee875`. Earlier frontend lint/build runs failed due to JSX text escaping and a plain homepage anchor; both were corrected. Fresh latest-head checks were queued, not yet passed.
 - If failures remain, fix on `feat/theme-test-marketing-conversion` and re-run CI; do not weaken lint/type checks. Browser QA remains outstanding.
 - PR #219 stays draft/unmerged. Revert only via reviewed commits; no history rewrite or production/deployment rollback is involved.
+
+
+### Final source correction — 2026-10-29 01:00 UTC
+
+- Latest source commit: `191e51f58b87267eb591a228d4251e09a204f289`. Fixed the last JSX apostrophe found by lint in the prior run.
+- Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
+- Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
+- Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
