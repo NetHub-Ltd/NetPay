@@ -466,6 +466,7 @@ async def c2b_validation(
     ))
     if integration is None or integration.status != "active" or not integration.c2b_enabled:
         return {"ResultCode": 1, "ResultDesc": "Rejected"}
+    integration_pk = integration.id
 
     fingerprint = hashlib.sha256(f"c2b_validation:{callback_fingerprint(payload)}".encode()).hexdigest()
     safe_payload: dict[str, Any] = {"field_names": sorted(payload.keys())}
@@ -516,7 +517,7 @@ async def c2b_validation(
     except IntegrityError:
         await session.rollback()
         existing = await session.scalar(select(ProviderCallback).where(
-            ProviderCallback.integration_id == integration.id,
+            ProviderCallback.integration_id == integration_pk,
             ProviderCallback.dedupe_fingerprint == fingerprint,
         ))
         accepted = existing is not None and existing.processing_status == "processed"
