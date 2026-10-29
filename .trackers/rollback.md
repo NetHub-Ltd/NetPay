@@ -200,3 +200,12 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 
 - Code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` passed backend migration, 65 tests (1 warning), and PostgreSQL/Redis connectivity in CI [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496).
 - Readiness [40792997409], frontend lint [40792997425], and frontend build [40792997517] passed. CI container startup remains pending. PR #218 is still draft and unmerged.
+
+
+## Marketing theme experiment rollback — 2026-10-29
+
+- **Branch:** `feat/theme-test-marketing-conversion`; **PR #219:** https://github.com/NetHub-Ltd/NetPay/pull/219, draft/open and unmerged, target `dev`.
+- The only intended application changes are new `frontend/app/theme-test/page.tsx`, its route-scoped `page.module.css`, and `frontend/app/robots.ts` disallow entries. The experiment uses illustrative payment/code data clearly labelled as not live.
+- No backend, database, migrations, public homepage, product theme tokens, deployment manifests, Flux, or GHCR build/push behavior are changed.
+- Roll back with a reviewed revert of the route files and robots entries. Preserve Git history; do not reset/rebase/squash/force-push. No production data or transaction changes.
+- CI workflows were observed running after PR creation; final test outcomes and browser-rendered QA are pending and must be recorded before review readiness.
