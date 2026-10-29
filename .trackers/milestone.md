@@ -260,3 +260,11 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - [ ] Obtain user review; do not merge autonomously. Execute issue #216 only after #217 is reviewed and merged to `dev`.
 
 **Evidence distinction:** the import fix is committed; its test verification is pending. The earlier PostgreSQL duplicate-key log mentioned a different idempotency key and is not attributed to this failure.
+
+
+## #217 C2B replay recovery follow-up — 2026-10-29 00:17 UTC
+
+- [x] Re-check CI after the import fix: run [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066) progressed beyond STK initiation but failed at duplicate C2B validation replay, test line 446.
+- [x] Trace the failure to rollback-expired ORM state being accessed in duplicate recovery; commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` captures the integration UUID before rollback.
+- [ ] Verify CI, backend readiness, frontend lint/build, migration and container smoke on the updated code. No green result has yet been observed for this fix.
+- [ ] Keep PR #218 draft/unmerged until all gates pass and the user reviews it; #216 remains deferred.
