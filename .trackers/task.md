@@ -338,3 +338,10 @@ Do not merge or deploy without explicit approval.
 - CI run [40792832066](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792832066) passed the earlier STK initiation point but still failed on the duplicate C2B validation assertion at `backend/smoke_tests/test_payment_application.py:446`; the replay returned HTTP 500.
 - Source inspection found the duplicate recovery path rolls back the async session, then reads `integration.id`. The rollback expires ORM state, so recovery can fail on that access. Commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802` now captures the UUID before rollback and uses the scalar value for the duplicate lookup.
 - This fix is committed but not yet test-verified. PR #218 remains draft/open/unmerged; #216 remains gated until #217 is reviewed and merged.
+
+
+## #217 latest verification — 2026-10-29 00:18 UTC
+
+- **VERIFIED:** CI run [40792997496](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997496), on code commit `3237a9a6e9298ae9f7f383f09b3a3f5b19b52802`, completed Alembic upgrade through `0003_mpesa_core_capabilities`, then passed **65 tests, 1 warning**, and PostgreSQL/Redis connectivity.
+- **VERIFIED:** backend readiness [40792997409](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997409), frontend lint [40792997425](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997425), and frontend build [40792997517](https://github.com/NetHub-Ltd/NetPay/actions/runs/40792997517) passed on that code commit.
+- **PENDING:** CI container image/startup job is queued; full CI run has not completed. No live Daraja sandbox transaction has been performed. PR #218 remains draft/open/unmerged; no merge and no #216 execution.
