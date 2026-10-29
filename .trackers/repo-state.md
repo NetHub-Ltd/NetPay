@@ -376,3 +376,10 @@ These are historical reports, not fresh verification performed during tracker cr
 - Shared PublicSiteFrame and SiteFooter cover public marketing routes; navigation links updated. Public theme tokens are scoped under .np-public-site so authenticated/dashboard styles are not changed globally.
 - Sitemap, homepage metadata/structured data, default metadata, OG image, favicon, and theme-color updated. Robots exclusion for the private theme test remains.
 - CI and browser visual QA have not yet been confirmed for this branch. Keep PR unmerged and do not deploy.
+
+
+### PR and checks — 2026-10-29 01:51 UTC
+
+- Draft PR #223: https://github.com/NetHub-Ltd/NetPay/pull/223 targets dev; issue #222 is the scope/acceptance contract.
+- PR opening head: ce8b5a32e3afc041306375842ab6ae8e300f7cae. Backend, start/health, frontend build, and lint were queued at the latest check.
+- No merge/deployment. Browser visual QA has not been performed.
