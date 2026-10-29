@@ -320,3 +320,11 @@ These are historical reports, not fresh verification performed during tracker cr
 - Older frontend lint/build checks failed for unescaped quotes/apostrophes and a plain Next.js homepage anchor. Fixes were pushed. Latest checks were queued at last observation: lint #567, build #566, CI #1120, readiness #674.
 - The new route is explicitly noindex/nofollow, excluded from sitemap, and disallowed in robots. It is a design lab only; existing Ledger and public homepage are unchanged.
 - Browser QA has not been performed. Keep PR draft until latest CI and visual QA are resolved; do not merge or deploy.
+
+
+### Final source correction — 2026-10-29 01:00 UTC
+
+- Latest source commit: `191e51f58b87267eb591a228d4251e09a204f289`. Fixed the last JSX apostrophe found by lint in the prior run.
+- Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
+- Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
+- Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
