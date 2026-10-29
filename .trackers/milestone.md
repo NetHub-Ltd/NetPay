@@ -351,3 +351,10 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - **VERIFIED on source SHA `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729`:** frontend lint passed, frontend production build passed, backend job passed, start/health passed, and GitGuardian passed.
 - Tracker-only commits followed; no application source changed after that tested SHA. CI reruns on the tracker-only tip were queued at the last check.
 - T.11 remains **NOT VERIFIED** because no rendered browser QA was performed. PR #221 remains draft/open/unmerged.
+
+
+### Smoke-test failure follow-up — 2026-10-29 01:22 UTC
+
+- CI acceptance gate: diagnose and resolve the intermittent container startup smoke failure before merge.
+- Commit `29f41bab5b23441b8bd41407fcdd92cee5ce8e29` adds failure diagnostics and explicit service-readiness timeout without weakening checks. This is an instrumentation/robustness fix, not yet proof of the original root cause.
+- New PR-head lint/build/backend/start-health checks are running. Re-evaluate the container job result and its diagnostics; only mark resolved when the new run passes or a reproduced root cause is fixed.
