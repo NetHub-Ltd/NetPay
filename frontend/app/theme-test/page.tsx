@@ -113,7 +113,7 @@ function CodeExample() {
         <span>request-example.py</span>
         <span className={styles.exampleLabel}>ILLUSTRATIVE</span>
       </div>
-      <pre><code><span className={styles.codeMuted}># Request shape only — check the current API docs</span>{"\n"}response = requests.post({"\n"}    api_url,{"\n"}    json={"{"}{"\n"}        <span className={styles.codeKey}>"amount"</span>: <span className={styles.codeNumber}>1000</span>,{"\n"}        <span className={styles.codeKey}>"phone_number"</span>: <span className={styles.codeString}>"2547XXXXXXXX"</span>,{"\n"}        <span className={styles.codeKey}>"account_reference"</span>: <span className={styles.codeString}>"ORDER-1048"</span>,{"\n"}    {"}"},{"\n"}    headers={"{"}<span className={styles.codeKey}>"Authorization"</span>: bearer_token{"}"},{"\n"})</code></pre>
+      <pre><code><span className={styles.codeMuted}># Request shape only — check the current API docs</span>{"\n"}response = requests.post({"\n"}    api_url,{"\n"}    json={"{"}{"\n"}        <span className={styles.codeKey}>&quot;amount&quot;</span>: <span className={styles.codeNumber}>1000</span>,{"\n"}        <span className={styles.codeKey}>&quot;phone_number&quot;</span>: <span className={styles.codeString}>&quot;2547XXXXXXXX&quot;</span>,{"\n"}        <span className={styles.codeKey}>&quot;account_reference&quot;</span>: <span className={styles.codeString}>&quot;ORDER-1048&quot;</span>,{"\n"}    {"}"},{"\n"}    headers={"{"}<span className={styles.codeKey}>&quot;Authorization&quot;</span>: bearer_token{"}"},{"\n"})</code></pre>
       <div className={styles.codeFooter}><Code2 size={14} /> A conceptual example, not a copy-paste integration.</div>
     </div>
   );
