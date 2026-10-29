@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SiteHeader } from "../../components/SiteHeader";
+import { PublicSiteFrame } from "../../components/PublicSiteFrame";
 import { Badge, Button, Card, Container, Section } from "../../components/ui";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
@@ -21,8 +21,7 @@ export const metadata: Metadata = {
 
 export default function ApiOverviewPage() {
   return (
-    <>
-      <SiteHeader />
+    <PublicSiteFrame>
       <main id="main-content">
         <Section className="bg-[var(--bg)] pt-12 lg:pt-16">
           <Badge>For integrators</Badge>
@@ -111,11 +110,6 @@ Content-Type: application/json
           </div>
         </Section>
       </main>
-      <footer className="border-t border-[var(--line)] bg-[var(--panel)]">
-        <Container className="py-8 text-sm text-[var(--muted)]">
-          © {new Date().getFullYear()} NetPay by NetHub.
-        </Container>
-      </footer>
-    </>
+    </PublicSiteFrame>
   );
 }
