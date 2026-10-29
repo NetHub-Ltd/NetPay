@@ -338,3 +338,11 @@ These are historical reports, not fresh verification performed during tracker cr
 - Source commits: `740dccd51aba77f7f2f8832c256e88ca15758e6c` (page) and `08bbb54cbfe2a74b767756e64bea5c104b9fd012` (styles). Latest feature branch head will advance as trackers/PR metadata are committed.
 - No local runtime, lint/build, or browser visual QA evidence is available yet. Check CI on the final PR head; report rendered-browser QA as not verified unless actually performed.
 - No production changes, deployment, backend/API behavior changes, dependencies, Flux, or GHCR changes.
+
+
+### Selected landing refinement — PR checkpoint — 2026-10-29 01:12 UTC
+
+- Issue #220 is implemented on `feat/theme-test-selected-landing`; draft PR #221 targets `dev`: https://github.com/NetHub-Ltd/NetPay/pull/221.
+- Latest source commit at PR creation: `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`. Four tracker files record scope, acceptance and rollback; their latest updates are documentation-only.
+- GitGuardian check on the source commit passed. Frontend build, lint, backend and start/health checks were still in progress at the latest observation.
+- Browser-rendered visual QA remains unverified. PR stays draft/open/unmerged; no deployment occurred.
