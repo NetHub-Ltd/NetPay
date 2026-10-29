@@ -358,3 +358,20 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - CI acceptance gate: diagnose and resolve the intermittent container startup smoke failure before merge.
 - Commit `29f41bab5b23441b8bd41407fcdd92cee5ce8e29` adds failure diagnostics and explicit service-readiness timeout without weakening checks. This is an instrumentation/robustness fix, not yet proof of the original root cause.
 - New PR-head lint/build/backend/start-health checks are running. Re-evaluate the container job result and its diagnostics; only mark resolved when the new run passes or a reproduced root cause is fixed.
+
+
+## Public site rollout milestone — 2026-10-29
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| P.1 | Approved navy/teal design is applied to actual homepage | IMPLEMENTED in source; CI pending |
+| P.2 | Product, Developers, Why NetPay static pages with unique metadata | IMPLEMENTED in source; CI pending |
+| P.3 | Shared accessible navigation and useful footer across public pages | IMPLEMENTED in source; CI pending |
+| P.4 | Sitemap includes public pages and excludes preview/private routes | IMPLEMENTED in source; build/route checks pending |
+| P.5 | Claims remain grounded in current capabilities | SOURCE REVIEWED; CI/review pending |
+| P.6 | Lint, typecheck, build, backend/start-health checks pass on final PR head | PENDING |
+| P.7 | Rendered desktop/mobile visual QA | NOT VERIFIED |
+| P.8 | PR targets dev, references issue #222, remains unmerged pending approval | PENDING |
+
+- Public color tokens are scoped to .np-public-site; no dashboard-wide theme switch was made.
+- Keep /theme-test excluded from indexing. Do not merge/deploy without review.
