@@ -310,3 +310,51 @@ Gate: do not mark any item VERIFIED without a concrete test, source, or workflow
 - Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
 - Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
 - Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
+
+
+## Theme-test refinement milestone — 2026-10-29 01:15 UTC
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| T.8 | Selected screenshot direction translated into a single isolated landing page | IMPLEMENTED — source committed on `feat/theme-test-selected-landing`; pending CI and review |
+| T.9 | Payment preview and code sample explicitly distinguish illustrative data from live/provider-confirmed data | IMPLEMENTED by source inspection; lint/build pending |
+| T.10 | Current capabilities and limitations represented without promising provider verification or merchant-specific validation not yet available | IMPLEMENTED by source inspection; subject to code review |
+| T.11 | Mobile/desktop rendering and keyboard interaction validated in a browser | NOT VERIFIED — browser QA not performed |
+| T.12 | PR targets `dev`, references issue #220, and remains unmerged for review | PENDING — open after implementation/trackers |
+
+- Keep `/theme-test` excluded from indexing; production Ledger/homepage remains untouched.
+- Required quality gates: frontend lint and build, plus rendered responsive QA if browser tooling is available. No result should be marked passed without evidence.
+
+
+### Selected landing theme PR checkpoint — 2026-10-29 01:12 UTC
+
+| ID | Acceptance criterion | Status |
+|---|---|---|
+| T.8 | Selected screenshot direction translated into one isolated landing page | IMPLEMENTED — PR #221 draft/open |
+| T.9 | Payment preview and code sample labelled illustrative | IMPLEMENTED by source inspection; CI in progress |
+| T.10 | Capability language reflects known limitations | IMPLEMENTED by source inspection; review still required |
+| T.11 | Desktop/mobile rendering and keyboard interaction validated in a browser | NOT VERIFIED — no browser QA evidence |
+| T.12 | PR targets `dev`, references issue #220, and remains unmerged | VERIFIED — draft PR #221 |
+
+- GitGuardian passed on source commit `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`; frontend build/lint, backend, and start/health jobs were still running.
+
+
+### CI follow-up — selected landing page — 2026-10-29 01:13 UTC
+
+- `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729` fixes the observed JSX quote-escaping lint failure.
+- Fresh checks on this source SHA were queued/in progress; GitGuardian passed. A separate build attempt failed in Next.js Google font loading before the app compiled, so the current build must be inspected before deciding whether a source/config change is warranted.
+- Keep T.11 (browser validation) NOT VERIFIED. PR #221 stays draft/open/unmerged.
+
+
+### Verification update — selected landing page — 2026-10-29 01:14 UTC
+
+- **VERIFIED on source SHA `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729`:** frontend lint passed, frontend production build passed, backend job passed, start/health passed, and GitGuardian passed.
+- Tracker-only commits followed; no application source changed after that tested SHA. CI reruns on the tracker-only tip were queued at the last check.
+- T.11 remains **NOT VERIFIED** because no rendered browser QA was performed. PR #221 remains draft/open/unmerged.
+
+
+### Smoke-test failure follow-up — 2026-10-29 01:22 UTC
+
+- CI acceptance gate: diagnose and resolve the intermittent container startup smoke failure before merge.
+- Commit `29f41bab5b23441b8bd41407fcdd92cee5ce8e29` adds failure diagnostics and explicit service-readiness timeout without weakening checks. This is an instrumentation/robustness fix, not yet proof of the original root cause.
+- New PR-head lint/build/backend/start-health checks are running. Re-evaluate the container job result and its diagnostics; only mark resolved when the new run passes or a reproduced root cause is fixed.

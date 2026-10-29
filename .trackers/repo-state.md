@@ -328,3 +328,42 @@ These are historical reports, not fresh verification performed during tracker cr
 - Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
 - Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
 - Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
+
+
+## Parallel task — selected marketing theme refinement (2026-10-29 01:15 UTC)
+
+- **Current task:** Issue #220, branch `feat/theme-test-selected-landing`, base `dev` commit `416c8fa9d7d625a4be9389c12d564278c7cc1878`.
+- PR #219 merged to `dev` at merge commit `416c8fa9d7d625a4be9389c12d564278c7cc1878`; it introduced the original two-concept `/theme-test`. Its old open/draft status notes are historical only.
+- The new branch refines that route into the user's selected navy/teal reference direction. Changed files: `frontend/app/theme-test/page.tsx`, `frontend/app/theme-test/page.module.css`. The robots exclusion and metadata noindex/nofollow are preserved.
+- Source commits: `740dccd51aba77f7f2f8832c256e88ca15758e6c` (page) and `08bbb54cbfe2a74b767756e64bea5c104b9fd012` (styles). Latest feature branch head will advance as trackers/PR metadata are committed.
+- No local runtime, lint/build, or browser visual QA evidence is available yet. Check CI on the final PR head; report rendered-browser QA as not verified unless actually performed.
+- No production changes, deployment, backend/API behavior changes, dependencies, Flux, or GHCR changes.
+
+
+### Selected landing refinement — PR checkpoint — 2026-10-29 01:12 UTC
+
+- Issue #220 is implemented on `feat/theme-test-selected-landing`; draft PR #221 targets `dev`: https://github.com/NetHub-Ltd/NetPay/pull/221.
+- Latest source commit at PR creation: `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`. Four tracker files record scope, acceptance and rollback; their latest updates are documentation-only.
+- GitGuardian check on the source commit passed. Frontend build, lint, backend and start/health checks were still in progress at the latest observation.
+- Browser-rendered visual QA remains unverified. PR stays draft/open/unmerged; no deployment occurred.
+
+
+### Latest source correction and checks — 2026-10-29 01:13 UTC
+
+- Source commit `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729` fixes the quote-escaping lint errors found on `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`.
+- Latest CI set on the fixed source SHA: GitGuardian success; backend, frontend lint, frontend build, and start/health were queued or in progress at the last check. Earlier lint failures belong to the prior SHA. A prior build run failed in Next.js `next/font` Google loader before compilation; a fresh build must establish whether this is transient or reproducible.
+- PR #221 remains draft/open/unmerged, targeting `dev`; no deployment. Browser QA remains unverified.
+
+
+### Source verification result — 2026-10-29 01:14 UTC
+
+- **VERIFIED on application source commit `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729`:** frontend lint, frontend production build, backend job, start/health and GitGuardian all passed. The lint issue from the previous source commit was fixed. A prior Google font loader error was transient relative to the successful build on the corrected source commit.
+- Subsequent branch commits only update trackers. Checks for the tracker-only tip were queued at last observation; application code did not change after the verified source commit.
+- Browser-rendered desktop/mobile QA remains unverified. Draft PR #221 is open against `dev`; no deployment occurred.
+
+
+### CI smoke-test diagnostic patch — 2026-10-29 01:22 UTC
+
+- PR #221 latest source commit `29f41bab5b23441b8bd41407fcdd92cee5ce8e29` includes a diagnostic improvement to `backend/scripts/container_startup_smoke.sh` after an unexplained exit code 2 immediately after service image pulls.
+- Adds ERR trap with exact failing line/command and logs/state for any started containers; gives readiness timeout an explicit message. Does not weaken/remove smoke assertions.
+- Checks on the new PR head are in progress. Do not merge until required CI is green. If failure reproduces, use the new diagnostics to identify root cause before further edits.

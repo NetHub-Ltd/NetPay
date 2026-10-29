@@ -372,3 +372,45 @@ Do not merge or deploy without explicit approval.
 - Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
 - Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
 - Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
+
+
+## Selected landing-page refinement — 2026-10-29 01:15 UTC
+
+- **Approved target:** User selected the supplied navy/teal reference and asked to refine it into a theme test. This replaces the earlier two-direction comparison on the existing isolated `/theme-test` route.
+- **Issue:** #220 — https://github.com/NetHub-Ltd/NetPay/issues/220. **Branch:** `feat/theme-test-selected-landing`, created from current `dev` at `416c8fa9d7d625a4be9389c12d564278c7cc1878`.
+- **Implemented source changes:** `frontend/app/theme-test/page.tsx` and route-scoped `page.module.css` now present one responsive navy/teal landing page: payment activity/reconciliation-style preview, four capability blocks, illustrative code sample, business workflow section, and CTAs to existing request-access/API overview routes.
+- **Accuracy constraints:** Sample transactions are labelled illustrative; copy does not claim that STK acceptance proves payment, and explicitly notes limitations around provider transaction-status verification and merchant-specific validation rules.
+- **Isolation:** `/theme-test` remains `noindex,nofollow` and disallowed in robots.txt. Production homepage, Ledger tokens/theme, backend, database, dependencies, deployment manifests, Flux, and GHCR image build/push behavior are untouched.
+- **Verification:** Source has been committed to the feature branch via GitHub contents API. Local lint/build and rendered-browser QA have not been run in this workflow; CI is required before handoff. Do not claim a visual QA pass without browser evidence.
+- **PR:** To be opened against `dev` and kept unmerged pending review. Previous PR #219 is already merged; its earlier tracker note saying open/unmerged is historical and superseded by this checkpoint.
+
+
+### PR and CI checkpoint — 2026-10-29 01:12 UTC
+
+- **PR #221:** https://github.com/NetHub-Ltd/NetPay/pull/221 — draft/open, targets `dev`, references issue #220. It has not been merged or deployed.
+- **Latest code commit:** `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`; subsequent tracker commits, if any, are documentation-only.
+- **VERIFIED:** GitGuardian passed on the code commit (no secrets detected).
+- **IN PROGRESS:** frontend build, lint, backend, and start/health checks are running. Do not report them as passed until conclusions are available.
+- **NOT VERIFIED:** rendered browser QA at desktop/mobile sizes; this chat has no confirmed browser-rendered capture for the route.
+- Keep the route noindex/nofollow and excluded in robots.txt; no production change or deployment.
+
+
+### CI correction checkpoint — 2026-10-29 01:13 UTC
+
+- Latest source fix: `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729` escapes quotes in the illustrative code sample after CI reported `react/no-unescaped-entities` on the previous source commit.
+- Latest source-commit check set: GitGuardian passed. Fresh backend, build, lint, and start/health runs were queued/in progress when last checked; no passing result is claimed yet. Earlier lint failures are from the prior commit and are superseded by the quote-escape fix. A prior build attempt also hit a `next/font` loader error while fetching Google fonts; determine whether that is transient from the new build run.
+- PR #221 remains draft/open/unmerged. Browser-rendered visual QA is not available/verified in this workflow.
+
+
+### Source verification result — 2026-10-29 01:14 UTC
+
+- **VERIFIED on source commit `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729`:** frontend lint passed, production build passed, backend job passed, and start/health passed; GitGuardian passed. The earlier lint failure was corrected by escaping code-sample quotes. The previous `next/font` loader failure did not reproduce on the successful source build.
+- Later commits on this branch only append tracker documentation; they do not change application source. GitHub reran checks for the tracker-only head and those reruns were queued at last observation.
+- **NOT VERIFIED:** rendered-browser visual QA at desktop/mobile sizes. PR #221 remains draft/open/unmerged; no deployment.
+
+
+### CI smoke-test fix — 2026-10-29 01:22 UTC
+
+- User asked to fix the blocking CI failure before merge. Failed container job #40799137011 ended with exit 2 immediately after pulling Postgres/Redis, without identifying the failing command; another container run passed. The logs did not justify claiming a root cause.
+- Updated `backend/scripts/container_startup_smoke.sh` in commit `29f41bab5b23441b8bd41407fcdd92cee5ce8e29`: added an ERR trap that prints failing line/command and container state/logs, and made service-readiness timeout explicit. The checks themselves remain strict; no assertions removed or softened.
+- Fresh PR-head checks are queued/in progress. Merge remains blocked until all required checks pass; if smoke fails again, inspect the new diagnostics and fix the proven cause.

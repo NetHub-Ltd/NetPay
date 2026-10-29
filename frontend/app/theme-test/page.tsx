@@ -1,35 +1,211 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, CheckCircle2, Code2, Layers3, LockKeyhole, Menu, Smartphone, Sparkles, Workflow, Zap } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  CircleHelp,
+  Code2,
+  ListChecks,
+  RefreshCw,
+  ShieldCheck,
+  Smartphone,
+  Wallet,
+  Webhook,
+} from "lucide-react";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
-  title: "Theme test — marketing directions",
-  description: "Private design comparison for NetPay's proposed marketing direction.",
+  title: "NetPay — M-Pesa payments without the integration headache",
+  description:
+    "Explore NetPay's proposed M-Pesa payment gateway experience for businesses and developers. Private design preview, not the production homepage.",
   robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
 };
 
 const capabilities = [
-  { icon: Smartphone, title: "M-Pesa checkout", text: "Initiate STK Push requests and follow payment outcomes as provider evidence arrives." },
-  { icon: Workflow, title: "Multi-merchant by design", text: "Connect merchant-owned Daraja integrations through one consistent application interface." },
-  { icon: Code2, title: "Built for product teams", text: "Give your POS, website or business application a clear path to M-Pesa integration." },
+  {
+    icon: Smartphone,
+    title: "STK Push",
+    text: "Initiate an M-Pesa payment request from your application and track its reported outcome.",
+  },
+  {
+    icon: ArrowDownLeft,
+    title: "C2B payments",
+    text: "Receive supported M-Pesa customer-to-business callbacks for a connected merchant.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Clear payment states",
+    text: "Distinguish a request being accepted from a payment confirmed by a callback.",
+  },
+  {
+    icon: ListChecks,
+    title: "Payment records",
+    text: "Keep callback and payment events available to support your own reconciliation workflow.",
+  },
 ];
 
-function Brand({ light = false }: { light?: boolean }) {
-  return <a className={light ? styles.brand + " " + styles.brandLight : styles.brand} href="#top" aria-label="NetPay home"><span className={styles.brandMark}><Layers3 size={18} /></span><span>netpay<span className={styles.brandDot}>.</span></span></a>;
+const sampleRows = [
+  { date: "28 Oct · 10:44", amount: "KES 1,000", state: "Matched", kind: "matched" },
+  { date: "28 Oct · 09:21", amount: "KES 2,500", state: "Matched", kind: "matched" },
+  { date: "27 Oct · 16:32", amount: "KES 980", state: "Matched", kind: "matched" },
+  { date: "27 Oct · 11:07", amount: "KES 3,200", state: "Review", kind: "review" },
+];
+
+function Brand() {
+  return (
+    <Link className={styles.brand} href="#top" aria-label="NetPay theme preview home">
+      <span className={styles.brandMark}><Wallet size={20} strokeWidth={2.5} /></span>
+      <span>NetPay</span>
+    </Link>
+  );
 }
-function CodePreview() {
-  return <div className={styles.codeCard}><div className={styles.codeTop}><span className={styles.windowDots}>● ● ●</span><span>payments.ts</span><span className={styles.codeStatus}>● example</span></div><pre><code><span className={styles.codePurple}>const</span> payment = netpay.payments.<span className={styles.codeGreen}>create</span>({"{\n"}  amount: <span className={styles.codeOrange}>1500</span>,{"\n"}  currency: <span className={styles.codeGreen}>&quot;KES&quot;</span>,{"\n"}  phoneNumber: <span className={styles.codeGreen}>&quot;2547••••••••&quot;</span>{"\n"}{"}"});</code></pre><div className={styles.codeFoot}>Illustrative example · TypeScript</div></div>;
+
+function PaymentPanel() {
+  return (
+    <div className={styles.dashboard} aria-label="Illustrative payment interface preview">
+      <section className={styles.paymentCard}>
+        <div className={styles.panelHeading}>
+          <div><span className={styles.panelEyebrow}>PAYMENT</span><h3>STK Push</h3></div>
+          <span className={styles.pending}>Illustration</span>
+        </div>
+        <div className={styles.paymentDetails}>
+          <div><span>Amount</span><strong>KES 1,000</strong></div>
+          <div><span>Phone number</span><strong>254 712 345 678</strong></div>
+        </div>
+        <ol className={styles.timeline}>
+          <li><span className={styles.timelineIcon}><Smartphone size={13} /></span><div><strong>Payment request sent</strong><small>Waiting for provider response</small></div></li>
+          <li><span className={styles.timelineIcon}><Check size={13} /></span><div><strong>Customer response</strong><small>Example state · not live</small></div></li>
+          <li><span className={styles.timelineIcon}><Check size={13} /></span><div><strong>Callback received</strong><small>Final state depends on provider result</small></div></li>
+        </ol>
+        <p className={styles.sampleNote}>Sample interface only — no live payment is shown.</p>
+      </section>
+
+      <div className={styles.sidePanels}>
+        <section className={styles.reconciliationCard}>
+          <div className={styles.smallPanelHeading}><h3>Payment records</h3><span>Preview</span></div>
+          <div className={styles.tableHeader}><span>Date</span><span>Amount</span><span>Review</span></div>
+          {sampleRows.map((row) => (
+            <div className={styles.tableRow} key={row.date}>
+              <span>{row.date}</span><span>{row.amount}</span><span className={row.kind === "matched" ? styles.matched : styles.review}>{row.state}</span>
+            </div>
+          ))}
+          <p className={styles.sampleNote}>Illustrative records, not connected data.</p>
+        </section>
+        <section className={styles.callbackCard}>
+          <div className={styles.callbackIcon}><Webhook size={17} /></div>
+          <div><strong>Callback visibility</strong><small>Inspect the event received by your application</small></div>
+          <ChevronRight size={17} />
+        </section>
+      </div>
+    </div>
+  );
 }
-function PaymentPreview() {
-  return <div className={styles.paymentCard}><div className={styles.paymentHeader}><div><small>PAYMENT ACTIVITY</small><h3>Recent payments</h3></div><span className={styles.livePill}>● Preview</span></div><div className={styles.metric}><small>Example volume</small><strong>KSh 24,500</strong><span>Illustrative data</span></div>{[["Checkout payment","STK Push · Today","+ KSh 1,500","Received*"],["Order #1048","STK Push · Today","KSh 800","Pending*"],["Checkout payment","STK Push · Yesterday","+ KSh 2,200","Received*"]].map((item) => <div className={styles.paymentLine} key={item[1]+item[2]}><span className={styles.mpesa}>M</span><span><b>{item[0]}</b><small>{item[1]}</small></span><strong>{item[2]}</strong><em>{item[3]}</em></div>)}<p className={styles.previewNote}>*Illustrative interface only — not live transaction data.</p></div>;
+
+function CodeExample() {
+  return (
+    <div className={styles.codeWindow}>
+      <div className={styles.codeBar}>
+        <span className={styles.windowDots}><i /><i /><i /></span>
+        <span>request-example.py</span>
+        <span className={styles.exampleLabel}>ILLUSTRATIVE</span>
+      </div>
+      <pre><code><span className={styles.codeMuted}># Request shape only — check the current API docs</span>{"\n"}response = requests.post({"\n"}    api_url,{"\n"}    json={"{"}{"\n"}        <span className={styles.codeKey}>&quot;amount&quot;</span>: <span className={styles.codeNumber}>1000</span>,{"\n"}        <span className={styles.codeKey}>&quot;phone_number&quot;</span>: <span className={styles.codeString}>&quot;2547XXXXXXXX&quot;</span>,{"\n"}        <span className={styles.codeKey}>&quot;account_reference&quot;</span>: <span className={styles.codeString}>&quot;ORDER-1048&quot;</span>,{"\n"}    {"}"},{"\n"}    headers={"{"}<span className={styles.codeKey}>&quot;Authorization&quot;</span>: bearer_token{"}"},{"\n"})</code></pre>
+      <div className={styles.codeFooter}><Code2 size={14} /> A conceptual example, not a copy-paste integration.</div>
+    </div>
+  );
 }
-function DirectionA() {
-  return <article className={styles.direction} id="direction-a"><div className={styles.directionLabel}><span>01</span><div><strong>Trusted infrastructure</strong><small>Design 1 structure + Design 2 warmth</small></div><em>STRONG ALL-ROUNDER</em></div><div className={styles.aCanvas}><header className={styles.aNav}><Brand light/><nav><a href="#a-features">Capabilities</a><a href="#a-how">How it works</a><a href="/api-overview/">Developers</a></nav><a className={styles.aNavCta} href="/request-access/">Get started <ArrowRight size={14}/></a><Menu className={styles.mobileMenu}/></header><section className={styles.aHero}><div><small className={styles.aEyebrow}>● M-PESA PAYMENTS FOR BUSINESS SOFTWARE</small><h2>Payments that fit the way <i>you build.</i></h2><p>Connect your product to M-Pesa with a practical API built around merchant integrations, payment status and the events your software needs.</p><div className={styles.actions}><a className={styles.aPrimary} href="/request-access/">Get started <ArrowRight size={15}/></a><a className={styles.aSecondary} href="/api-overview/">Explore the API <ArrowUpRight size={14}/></a></div><div className={styles.proof}><span><CheckCircle2 size={13}/> Merchant-owned integrations</span><span><CheckCircle2 size={13}/> Clear payment states</span></div></div><PaymentPreview/><div className={styles.heroFoot}>BUILT FOR THE WORK BEHIND EVERY PAYMENT <span>Merchants · POS teams · Developers</span></div></section><section className={styles.aFeatures} id="a-features"><div className={styles.sectionIntro}><small>LESS GLUE CODE. CLEARER FLOWS.</small><h3>Your payment flow, without the guesswork.</h3><p>Bring merchant setup and payment handling into one coherent integration path.</p></div><div className={styles.featureGrid}>{capabilities.map(({icon: Icon,title,text})=><div className={styles.feature} key={title}><span><Icon size={20}/></span><h4>{title}</h4><p>{text}</p><a href="/api-overview/">See how it works <ArrowRight size={13}/></a></div>)}</div></section><section className={styles.aHow} id="a-how"><div><small>A CLEARER STARTING POINT</small><h3>From merchant credentials to payment events.</h3><p>Start with the M-Pesa capabilities NetPay supports today, and keep your integration understandable as your product grows.</p></div><div className={styles.steps}>{["Connect a merchant|Configure the merchant&apos;s Daraja integration.","Initiate checkout|Send an STK Push request from your application.","Handle the result|Use callback-backed payment state and events."].map((s,i)=><div key={s}><b>0{i+1}</b><span><strong>{s.split("|")[0]}</strong><small>{s.split("|")[1]}</small></span></div>)}</div></section><footer className={styles.aFooter}><Brand light/><span>Practical M-Pesa infrastructure from NetHub.</span><a href="/request-access/">Talk to us <ArrowRight size={13}/></a></footer></div><div className={styles.takeaway}><Sparkles size={15}/><p><b>Conversion idea:</b> Lead with a clear product outcome, show a realistic interface immediately, then offer one primary action and a lower-commitment API exploration path.</p></div></article>;
-}
-function DirectionB() {
-  return <article className={styles.direction} id="direction-b"><div className={styles.directionLabel}><span>02</span><div><strong>Business-first, human feel</strong><small>Design 2 warmth + Design 1 technical confidence</small></div><em>WARMER BRAND</em></div><div className={styles.bCanvas}><header className={styles.bNav}><Brand/><nav><a href="#b-value">Why NetPay</a><a href="#b-steps">Getting started</a><a href="/api-overview/">For developers</a></nav><a className={styles.bNavCta} href="/request-access/">Let&apos;s talk <ArrowRight size={14}/></a><Menu className={styles.mobileMenu}/></header><section className={styles.bHero}><div className={styles.bHeroCopy}><small className={styles.bEyebrow}>● FOR BUSINESSES BUILDING WITH M-PESA</small><h2>Make paying feel like the <i>easy part.</i></h2><p>Your customers know M-Pesa. Give your software a clearer way to connect checkout, merchant integrations and payment updates.</p><div className={styles.actions}><a className={styles.bPrimary} href="/request-access/">Start a conversation <ArrowRight size={15}/></a><a className={styles.bSecondary} href="/api-overview/">See how it works</a></div><div className={styles.bTrust}><LockKeyhole size={18}/><span><b>Designed for real workflows</b><small>Merchant-aware setup. Clear payment states. Practical integration.</small></span></div></div><div className={styles.bVisual}><div className={styles.visualNote}><Zap size={16}/><span><b>Less integration friction</b><small>A clearer route from checkout to callback.</small></span></div><CodePreview/><div className={styles.floatCard}><CheckCircle2 size={16}/><span><b>Payment update received</b><small>Example event · not live</small></span></div></div></section><section className={styles.bValue} id="b-value"><div className={styles.sectionIntro}><small>THE PRACTICAL DIFFERENCE</small><h3>Built around what your team needs to do next.</h3><p>Payment infrastructure should make the next step clearer—not add another puzzle to solve.</p></div><div className={styles.featureGrid}>{[{icon:Smartphone,title:"A direct path to checkout",text:"Initiate M-Pesa STK Push from your business application with a defined API flow."},{icon:Workflow,title:"Merchant setup that fits",text:"Keep each merchant's Daraja integration associated with the right business."},{icon:LockKeyhole,title:"States you can reason about",text:"Distinguish an accepted request from a confirmed payment outcome."}].map(({icon:Icon,title,text})=><div className={styles.bFeature} key={title}><span><Icon size={20}/></span><h4>{title}</h4><p>{text}</p></div>)}</div></section><section className={styles.bSteps} id="b-steps"><div><small>GETTING STARTED</small><h3>Start with one clear next step.</h3><p>Bring your use case. We can establish whether NetPay&apos;s current M-Pesa capabilities fit your workflow.</p><a className={styles.bPrimary} href="/request-access/">Discuss your integration <ArrowRight size={15}/></a></div><div className={styles.steps}>{["Tell us what you're building|POS, ecommerce, business software or another use case.","Review the integration path|Understand merchant setup, API requests and callback handling.","Move forward with clarity|Use documented capabilities and known limitations to plan."].map((s,i)=><div key={s}><b>0{i+1}</b><span><strong>{s.split("|")[0]}</strong><small>{s.split("|")[1]}</small></span></div>)}</div></section><section className={styles.developer}><div><Code2 size={19}/><span><b>Prefer to explore technical details first?</b><small>Read the API overview before you start a conversation.</small></span></div><a href="/api-overview/">Explore the API <ArrowUpRight size={14}/></a></section><footer className={styles.bFooter}><Brand/><span>Payments should move your business forward.</span><a href="/request-access/">Get in touch <ArrowRight size={13}/></a></footer></div><div className={styles.takeaway}><Sparkles size={15}/><p><b>Conversion idea:</b> Start with the business outcome and a low-pressure conversation CTA; support it with technical evidence for developers who need proof before engaging.</p></div></article>;
-}
+
 export default function ThemeTestPage() {
-  return <main id="top" className={styles.page}><header className={styles.labHeader}><div><small>NETPAY · DESIGN LAB</small><h1>Two directions. One clearer promise.</h1><p>Compare two proposed blends of technical confidence and human warmth. These are concepts—not the live product.</p></div><nav><a href="#direction-a">01 Infrastructure</a><a href="#direction-b">02 Business-first</a><Link href="/">Current homepage <ArrowUpRight size={13}/></Link></nav></header><div className={styles.notice}><Sparkles size={16}/><p><b>What to compare:</b> audience clarity, first-screen message, trust signals, CTA commitment and how quickly a merchant or developer can find their next step.</p></div><DirectionA/><DirectionB/><footer className={styles.labEnd}><small>DESIGN REVIEW ONLY · NOT INDEXED</small><p>Pick the stronger direction—or combine the best parts of both—before applying changes to the public site.</p><a href="/api-overview/">Review current capabilities <ArrowRight size={14}/></a></footer></main>;
+  return (
+    <main id="top" className={styles.page}>
+      <section className={styles.heroShell}>
+        <header className={styles.nav}>
+          <Brand />
+          <nav aria-label="Main navigation">
+            <a href="#capabilities">Product <ChevronRight size={13} /></a>
+            <a href="#developers">Developers <ChevronRight size={13} /></a>
+            <a href="#businesses">Why NetPay <ChevronRight size={13} /></a>
+          </nav>
+          <div className={styles.navActions}>
+            <Link href="/request-access/">Request access</Link>
+            <Link className={styles.navCta} href="/request-access/">Get started</Link>
+          </div>
+          <a className={styles.mobileNavCta} href="/request-access/" aria-label="Get started">Start <ArrowRight size={15} /></a>
+        </header>
+
+        <div className={styles.hero}>
+          <div className={styles.heroCopy}>
+            <p className={styles.eyebrow}><span /> M-PESA PAYMENTS FOR BUSINESS SOFTWARE</p>
+            <h1>M-Pesa payments, <em>without the integration headache.</em></h1>
+            <p className={styles.heroDescription}>A practical payment gateway for collecting payments, tracking outcomes, and keeping transaction records in order.</p>
+            <div className={styles.heroActions}>
+              <Link className={styles.primaryCta} href="/request-access/">Get started <ArrowRight size={17} /></Link>
+              <Link className={styles.secondaryCta} href="/api-overview/">Explore the API <ArrowUpRight size={16} /></Link>
+            </div>
+            <div className={styles.heroProof}>
+              <span><CheckCircle2 size={15} /> Merchant-aware integrations</span>
+              <span><CheckCircle2 size={15} /> Callback-backed outcomes</span>
+            </div>
+          </div>
+          <PaymentPanel />
+        </div>
+        <p className={styles.heroFootnote}>A proposed NetPay marketing direction <span>·</span> Payment examples are illustrative only</p>
+      </section>
+
+      <section className={styles.capabilities} id="capabilities">
+        <div className={styles.sectionIntro}>
+          <p className={styles.sectionEyebrow}>WHAT YOU CAN DO</p>
+          <h2>Everything you need to connect M-Pesa payments to your product.</h2>
+        </div>
+        <div className={styles.capabilityGrid}>
+          {capabilities.map(({ icon: Icon, title, text }) => (
+            <article className={styles.capability} key={title}>
+              <span className={styles.capabilityIcon}><Icon size={23} strokeWidth={1.8} /></span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+        <p className={styles.capabilityNote}><CircleHelp size={14} /> Provider transaction-status verification and merchant-specific validation rules may require additional configuration or remain unavailable. Check the current docs before relying on them.</p>
+      </section>
+
+      <section className={styles.developerSection} id="developers">
+        <div className={styles.developerCopy}>
+          <p className={styles.sectionEyebrow}>FOR DEVELOPERS</p>
+          <h2>Clean integration. Clearer payment outcomes.</h2>
+          <p>Build M-Pesa payment flows around a documented request, a merchant integration, and callback-backed status updates.</p>
+          <Link className={styles.outlineCta} href="/api-overview/">View documentation <ArrowRight size={16} /></Link>
+        </div>
+        <CodeExample />
+      </section>
+
+      <section className={styles.businessSection} id="businesses">
+        <div>
+          <p className={styles.sectionEyebrow}>BUILT FOR REAL WORKFLOWS</p>
+          <h2>Practical payment infrastructure for Kenyan businesses.</h2>
+          <p>Whether you are building a shop system, pharmacy POS, restaurant platform or online store, NetPay is designed to help connect merchant M-Pesa integrations to the software your business runs on.</p>
+        </div>
+        <div className={styles.businessPoints}>
+          <div><span><RefreshCw size={20} /></span><p><strong>Know what happened</strong><small>Separate request acceptance from callback-confirmed outcomes.</small></p></div>
+          <div><span><Webhook size={20} /></span><p><strong>Work with payment events</strong><small>Use callback and event records to support your own workflows.</small></p></div>
+          <div><span><ShieldCheck size={20} /></span><p><strong>Keep the integration understandable</strong><small>Start with current M-Pesa capabilities and documented limitations.</small></p></div>
+        </div>
+      </section>
+
+      <section className={styles.finalCta}>
+        <div><p className={styles.sectionEyebrow}>YOUR NEXT STEP</p><h2>Have an M-Pesa use case in mind?</h2><p>Explore the current API or tell us what you are building.</p></div>
+        <div><Link className={styles.primaryCta} href="/request-access/">Get started <ArrowRight size={16} /></Link><Link className={styles.finalLink} href="/api-overview/">Explore the API <ArrowUpRight size={15} /></Link></div>
+      </section>
+
+      <footer className={styles.footer}>
+        <Brand />
+        <p>Practical M-Pesa infrastructure from NetHub.</p>
+        <span>Theme test · Not the live homepage</span>
+      </footer>
+    </main>
+  );
 }

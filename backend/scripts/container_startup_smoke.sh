@@ -1,5 +1,21 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+
+on_error() {
+  local status=$?
+  echo "ERROR: container startup smoke test failed at line ${BASH_LINENO[0]} (exit ${status}): ${BASH_COMMAND}" >&2
+  for container in "${api:-}" "${postgres:-}" "${redis:-}"; do
+    [[ -n "$container" ]] || continue
+    if docker container inspect "$container" >/dev/null 2>&1; then
+      echo "--- docker inspect: $container ---" >&2
+      docker inspect --format 'state={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}}' "$container" >&2 || true
+      echo "--- docker logs: $container ---" >&2
+      docker logs --tail 100 "$container" >&2 || true
+    fi
+  done
+  exit "$status"
+}
+trap on_error ERR
 
 network="netpay-smoke-network"
 postgres="netpay-smoke-postgres"

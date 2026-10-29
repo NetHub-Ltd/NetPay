@@ -224,3 +224,40 @@ This task adds the `mpesa_core` package, typed schemas, adapters and tests on `f
 - Fresh latest-head checks: frontend lint #575 and backend readiness #682 were in progress; frontend build #574 and CI #1128 were queued at last observation. Results are pending.
 - Earlier lint/build failures belong to prior commits and must not be treated as latest-head results. No successful latest-head result is claimed yet.
 - Browser-rendered QA remains not performed. PR #219 remains draft/open/unmerged against `dev`.
+
+
+## Selected marketing theme refinement — rollback — 2026-10-29 01:15 UTC
+
+- **Pre-change base:** `dev` at `416c8fa9d7d625a4be9389c12d564278c7cc1878` (includes the merged initial theme-test PR #219).
+- **Current scope:** Replace the two-direction comparison on `/theme-test` with one screenshot-aligned concept. Files changed: `frontend/app/theme-test/page.tsx` and `frontend/app/theme-test/page.module.css`; tracker updates are documentation only.
+- **Rollback:** Use a reviewed revert of the PR for issue #220. If the change is rejected, restore the prior versions of the two route files from the pre-implementation base (`dev` commit above) in a follow-up commit. Do not reset or rewrite history. Keep the route's robots exclusion and noindex metadata unless the route is intentionally removed.
+- No schema/data, backend, deployment, Flux, or GHCR change exists to roll back. No deployment has been performed.
+- **Verification caveat:** CI and browser QA are pending/not verified at this checkpoint.
+
+
+### Selected theme PR checkpoint — 2026-10-29 01:12 UTC
+
+- Draft PR #221 targets `dev` and addresses issue #220: https://github.com/NetHub-Ltd/NetPay/pull/221.
+- Latest source commit at PR creation: `81f60ab4f3e2dda765ba8719d2e8fe4caf599069`; GitGuardian passed. Frontend build/lint, backend, and start/health checks were in progress; rendered browser QA is not verified.
+- Rollback remains a reviewed revert of PR #221. No deployment, database change, backend behavior change, or production theme change has occurred.
+
+
+### CI correction checkpoint — 2026-10-29 01:13 UTC
+
+- Source commit `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729` fixes the JSX quote-escaping issue detected by lint on the previous source SHA.
+- Fresh lint/build/backend/start-and-health checks were still queued or in progress at the last check; GitGuardian passed. A prior build failed at Next.js Google font loading before app compilation; inspect the fresh result to determine if retry is enough.
+- Browser visual QA remains unverified. PR #221 remains draft/open/unmerged. Rollback remains a reviewed revert; no deployment or production changes.
+
+
+### Verification update — selected theme — 2026-10-29 01:14 UTC
+
+- **VERIFIED on application source SHA `9bfcf6668c26dc7c27ad2dc01e42dbd2ae143729`:** lint, production build, backend job, start/health and GitGuardian passed. The earlier lint error was corrected. A previous Next.js Google font loader failure did not recur on the successful build.
+- Later commits only append tracker notes; current branch tip checks were queued at last observation, with no source changes after the verified SHA.
+- Browser visual QA remains unverified. PR #221 stays draft/open/unmerged; no deployment or production changes. Rollback remains a reviewed revert of PR #221.
+
+
+### Smoke-test CI patch rollback — 2026-10-29 01:22 UTC
+
+- Diagnostic patch commit: `29f41bab5b23441b8bd41407fcdd92cee5ce8e29`, modifying only `backend/scripts/container_startup_smoke.sh` plus tracker notes.
+- If the instrumentation is rejected, revert the commit through a reviewed revert; do not rewrite history. The patch preserves readiness/health/frontend-route assertions and adds diagnostics only.
+- No deployment, DB schema, payment behavior, Flux, or GHCR image build/push changes. Keep PR #221 open until all required checks pass and the failure is explained.
