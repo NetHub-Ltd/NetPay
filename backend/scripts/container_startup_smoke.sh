@@ -59,7 +59,8 @@ for attempt in $(seq 1 30); do
       curl --fail --silent --show-error http://127.0.0.1:8000/ -o /tmp/netpay-home.html
       grep -q "NetPay" /tmp/netpay-home.html
       curl --fail --silent --show-error http://127.0.0.1:8000/dashboard/ -o /tmp/netpay-dashboard.html
-      grep -q "Merchant dashboard preview" /tmp/netpay-dashboard.html
+      # Dashboard is a client shell (OIDC PKCE); static HTML may show loading or sign-in copy.
+      grep -qE "Merchant dashboard|Sign in to NetPay|Loading dashboard" /tmp/netpay-dashboard.html
       curl --fail --silent --show-error http://127.0.0.1:8000/robots.txt -o /tmp/netpay-robots.txt
       grep -q "Sitemap:" /tmp/netpay-robots.txt
       curl --fail --silent --show-error http://127.0.0.1:8000/sitemap.xml -o /tmp/netpay-sitemap.xml
