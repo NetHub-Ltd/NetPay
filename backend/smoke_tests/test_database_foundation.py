@@ -12,6 +12,7 @@ from app.models import *  # noqa: F403
 
 EXPECTED_TABLES = {
     "merchant",
+    "merchant_member",
     "providerintegration",
     "m2mclient",
     "payment",
@@ -89,10 +90,10 @@ def test_conservative_pool_defaults() -> None:
     assert settings.db_max_overflow == 0
 
 
-def test_all_sixteen_domain_tables_are_registered() -> None:
-    """Every intended domain table is registered exactly once for Alembic."""
+def test_all_domain_tables_are_registered() -> None:
+    """Every intended domain table is registered exactly once for Alembic (includes merchant_member)."""
     assert set(SQLModel.metadata.tables) == EXPECTED_TABLES
-    assert len(SQLModel.metadata.tables) == 16
+    assert len(SQLModel.metadata.tables) == len(EXPECTED_TABLES)
 
 
 def test_lifecycle_columns_are_timezone_aware() -> None:
