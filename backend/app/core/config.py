@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     nethub_api_base_url: str | None = None
     nethub_api_timeout_seconds: float = 8.0
 
+    # Public SPA OIDC (PKCE) — no client secret in NetPay process or static frontend
+    oidc_issuer: str | None = None
+    oidc_client_id: str | None = None
+    oidc_redirect_uri: str | None = None
+    oidc_scopes: str = "openid profile email offline_access"
+
     # Daraja credential keyring is provided by secret management, never stored in PostgreSQL.
     m2m_token_signing_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)
     mpesa_credential_encryption_keys: SecretStr | None = Field(default=None, repr=False, exclude=True)

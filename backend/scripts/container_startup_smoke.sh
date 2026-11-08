@@ -31,13 +31,24 @@ docker network create "$network" >/dev/null
 docker run --detach --name "$postgres" --network "$network" \
   --env POSTGRES_USER=netpay --env POSTGRES_PASSWORD=netpay --env POSTGRES_DB=netpay postgres:16-alpine >/dev/null
 docker run --detach --name "$redis" --network "$network" redis:7-alpine >/dev/null
+
+# pg_isready can report ready against the temporary server used by the
+# postgres entrypoint while it initializes the database. Verify the actual
+# configured database with psql so we don't mistake that server for readiness.
+postgres_ready=false
 for attempt in $(seq 1 30); do
-  if docker exec "$postgres" pg_isready -U netpay -d netpay >/dev/null 2>&1 \
+  if docker exec "$postgres" psql -U netpay -d netpay -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null 2>&1 \
     && docker exec "$redis" redis-cli ping | grep -qx PONG; then
+    postgres_ready=true
     break
   fi
   sleep 2
 done
+if [[ "$postgres_ready" != true ]]; then
+  echo "PostgreSQL and Redis did not become ready in time."
+  exit 1
+fi
+
 docker exec "$postgres" pg_isready -U netpay -d netpay >/dev/null
 docker exec "$redis" redis-cli ping | grep -qx PONG
 
@@ -59,7 +70,8 @@ for attempt in $(seq 1 30); do
       curl --fail --silent --show-error http://127.0.0.1:8000/ -o /tmp/netpay-home.html
       grep -q "NetPay" /tmp/netpay-home.html
       curl --fail --silent --show-error http://127.0.0.1:8000/dashboard/ -o /tmp/netpay-dashboard.html
-      grep -q "Merchant dashboard preview" /tmp/netpay-dashboard.html
+      # Dashboard is a client shell (OIDC PKCE); static HTML may show loading or sign-in copy.
+      grep -qE "Merchant dashboard|Sign in to NetPay|Loading dashboard" /tmp/netpay-dashboard.html
       curl --fail --silent --show-error http://127.0.0.1:8000/robots.txt -o /tmp/netpay-robots.txt
       grep -q "Sitemap:" /tmp/netpay-robots.txt
       curl --fail --silent --show-error http://127.0.0.1:8000/sitemap.xml -o /tmp/netpay-sitemap.xml
