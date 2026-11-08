@@ -10,6 +10,7 @@ from app.core.config import get_settings
 
 EXPECTED_TABLES = {
     "merchant",
+    "merchant_member",
     "providerintegration",
     "m2mclient",
     "payment",
@@ -29,8 +30,8 @@ EXPECTED_TABLES = {
 
 
 @pytest.mark.asyncio
-async def test_alembic_head_contains_all_sixteen_domain_tables() -> None:
-    """CI verifies the real PostgreSQL schema after `alembic upgrade head`."""
+async def test_alembic_head_contains_all_domain_tables() -> None:
+    """CI verifies the real PostgreSQL schema after `alembic upgrade head` (head 0004)."""
     database_url = get_settings().async_database_url()
     engine = create_async_engine(database_url, pool_pre_ping=True)
     try:
@@ -38,7 +39,7 @@ async def test_alembic_head_contains_all_sixteen_domain_tables() -> None:
             tables = await connection.run_sync(lambda sync: set(inspect(sync).get_table_names()))
             assert EXPECTED_TABLES.issubset(tables)
             revision = await connection.execute(text("SELECT version_num FROM alembic_version"))
-            assert revision.scalar_one() == "0003_mpesa_core_capabilities"
+            assert revision.scalar_one() == "0004_merchant_member"
 
             integration_columns = await connection.run_sync(
                 lambda sync: {column["name"] for column in inspect(sync).get_columns("providerintegration")}

@@ -38,3 +38,17 @@ class M2MClient(BaseMixin, table=True):
     last_used_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), index=True)
     revoked_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+
+
+class MerchantMember(BaseMixin, table=True):
+    """Links a NetHubKe human user id to a NetPay merchant (identity ≠ authorization)."""
+
+    __tablename__ = "merchant_member"
+    __table_args__ = (
+        UniqueConstraint("user_id", "merchant_id", name="uq_merchant_member_user_merchant"),
+    )
+
+    user_id: UUID = Field(index=True, description="NetHubKe users.id")
+    merchant_id: UUID = Field(foreign_key="merchant.id", index=True)
+    role: str = Field(default="member", max_length=32, index=True)
+    # member | admin — merchant-scoped, not platform admin

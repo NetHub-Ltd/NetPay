@@ -35,3 +35,23 @@ NetPay → Client  Human principal JSON
 ## Endpoint
 
 - `GET /api/v1/auth/me` — human only; returns `auth_type: human_nethub`
+
+## Merchant membership (PR2)
+
+Identity from NetHubKe does **not** grant payment data access.
+
+| Concept | Meaning |
+|---------|---------|
+| `HumanPrincipal.id` | NetHubKe `users.id` |
+| `merchant_member` | Explicit link user → NetPay `merchant` |
+| No row | Human is authenticated but **403** on merchant-scoped APIs |
+
+### Endpoints
+
+- `GET /api/v1/auth/memberships` — list memberships for the caller
+- `POST /api/v1/auth/memberships` — **platform admin** (`is_admin` from NetHubKe) grants membership
+- `DELETE /api/v1/auth/memberships/{merchant_id}?user_id=` — platform admin revoke
+
+### Product rule (v1)
+
+**No auto-merchant on first login.** Membership is provisioned by a platform admin (or future ops tooling).

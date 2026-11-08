@@ -5,7 +5,7 @@ from app.models.base import BaseMixin
 from app.models.delivery import EventDeliveryAttempt
 from app.models.events import EventOutbox
 from app.models.integrations import DarajaIntegration
-from app.models.merchants import M2MClient, Merchant
+from app.models.merchants import M2MClient, Merchant, MerchantMember
 from app.models.operations import (
     AuditLog,
     EventDelivery,
@@ -27,6 +27,7 @@ __all__ = [
     "IdempotencyRecord",
     "M2MClient",
     "Merchant",
+    "MerchantMember",
     "Payment",
     "PaymentAttempt",
     "PaymentVerification",
