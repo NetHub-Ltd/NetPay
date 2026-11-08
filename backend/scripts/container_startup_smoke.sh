@@ -31,13 +31,24 @@ docker network create "$network" >/dev/null
 docker run --detach --name "$postgres" --network "$network" \
   --env POSTGRES_USER=netpay --env POSTGRES_PASSWORD=netpay --env POSTGRES_DB=netpay postgres:16-alpine >/dev/null
 docker run --detach --name "$redis" --network "$network" redis:7-alpine >/dev/null
+
+# pg_isready can report ready against the temporary server used by the
+# postgres entrypoint while it initializes the database. Verify the actual
+# configured database with psql so we don't mistake that server for readiness.
+postgres_ready=false
 for attempt in $(seq 1 30); do
-  if docker exec "$postgres" pg_isready -U netpay -d netpay >/dev/null 2>&1 \
+  if docker exec "$postgres" psql -U netpay -d netpay -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null 2>&1 \
     && docker exec "$redis" redis-cli ping | grep -qx PONG; then
+    postgres_ready=true
     break
   fi
   sleep 2
 done
+if [[ "$postgres_ready" != true ]]; then
+  echo "PostgreSQL and Redis did not become ready in time."
+  exit 1
+fi
+
 docker exec "$postgres" pg_isready -U netpay -d netpay >/dev/null
 docker exec "$redis" redis-cli ping | grep -qx PONG
 
