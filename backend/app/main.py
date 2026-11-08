@@ -13,6 +13,7 @@ from app.core.config import Settings, get_settings
 from app.core.database import check_database, create_database_engine, create_session_factory
 from app.mpesa_core import MpesaCore
 from app.identity.router import router as identity_router
+from app.identity.spa_config import public_spa_config
 from app.payments.router import router as payment_router
 from app import models  # noqa: F401 - register SQLModel metadata
 
@@ -59,6 +60,13 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         application.state.redis = None
 
 app = FastAPI(title="NetPay API", version="0.2.0", description="NetPay payment gateway API.", docs_url="/docs", redoc_url=None, lifespan=lifespan)
+
+
+
+@app.get("/config.json", tags=["config"], include_in_schema=True)
+def config_json() -> dict:
+    return public_spa_config()
+
 
 app.include_router(identity_router)
 app.include_router(payment_router)

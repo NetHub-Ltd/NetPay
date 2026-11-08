@@ -1,7 +1,5 @@
 # Human identity via NetHubKe (resource server)
 
-**Status:** PR1 foundation on `dev` — client + `/api/v1/auth/me`. Dashboard session and merchant membership are separate issues.
-
 ## Roles
 
 | System | Role |
@@ -10,48 +8,63 @@
 | NetHubKe | Resource Server — validates token, returns user JSON |
 | NetPay | Forwards IdP Bearer to NetHubKe; does **not** verify human JWTs |
 
-## Sequence
+## Sequence (dashboard SPA + PKCE)
 
 ```text
-Client → NetPay  Authorization: Bearer <idp-access-token>
-NetPay → NetHubKe GET /api/v1/users/me  (same Bearer)
-  if 404 → POST /api/v1/users/sync then GET /me again
-NetPay → Client  Human principal JSON
+Browser  → IdP authorize (PKCE)
+Browser  ← authorization code
+Browser  → IdP token endpoint (code + verifier) → access_token
+Browser  → NetPay GET /api/v1/auth/me   Authorization: Bearer <access_token>
+NetPay   → NetHubKe GET /users/me (same Bearer; 404 → sync → me)
+NetPay   → Browser human profile JSON
+Browser  → NetPay GET /api/v1/auth/memberships
 ```
 
-## Config (names only)
+**Auth mode:** `spa_pkce` (public client). No OIDC client secret in the static frontend or required for this flow.
 
-- `NETHUB_API_BASE_URL`
-- `NETHUB_API_TIMEOUT_SECONDS` (default 8)
+## Config
+
+### API (secret manager / env)
+
+| Name | Purpose |
+|------|---------|
+| `NETHUB_API_BASE_URL` | NetHubKe API origin |
+| `NETHUB_API_TIMEOUT_SECONDS` | Upstream timeout |
+| `OIDC_ISSUER` | IdP issuer URL |
+| `OIDC_CLIENT_ID` | **Public** SPA client id (must be in NetHubKe `trusted_clients`) |
+| `OIDC_REDIRECT_URI` | e.g. `https://pay.example.com/auth/callback/` |
+| `OIDC_SCOPES` | default `openid profile email offline_access` |
+
+### Runtime discovery
+
+`GET /config.json` (no auth) returns non-secret SPA settings: issuer, client id, redirect, scopes, flags.
+
+## Endpoints
+
+| Method | Path | Auth |
+|--------|------|------|
+| GET | `/config.json` | none |
+| GET | `/api/v1/auth/me` | IdP Bearer |
+| GET | `/api/v1/auth/memberships` | IdP Bearer |
+| POST | `/api/v1/auth/memberships` | IdP Bearer + NetHubKe `is_admin` |
+| DELETE | `/api/v1/auth/memberships/{merchant_id}` | IdP Bearer + admin |
 
 ## Auth matrix
 
-| Token type | NetPay handling |
-|------------|-----------------|
+| Token type | Handling |
+|------------|----------|
 | IdP access token (human) | `get_human_principal` → NetHubKe |
 | NetPay M2M access token | `payments.security.require_scopes` |
-| Daraja callbacks | Untrusted; signature/correlation — not identity |
+| Daraja callbacks | Untrusted evidence |
 
-## Endpoint
+## Merchant membership
 
-- `GET /api/v1/auth/me` — human only; returns `auth_type: human_nethub`
+Identity ≠ authorization. No auto-merchant on first login. Platform admin grants `merchant_member` rows.
 
-## Merchant membership (PR2)
+## Staging checklist
 
-Identity from NetHubKe does **not** grant payment data access.
-
-| Concept | Meaning |
-|---------|---------|
-| `HumanPrincipal.id` | NetHubKe `users.id` |
-| `merchant_member` | Explicit link user → NetPay `merchant` |
-| No row | Human is authenticated but **403** on merchant-scoped APIs |
-
-### Endpoints
-
-- `GET /api/v1/auth/memberships` — list memberships for the caller
-- `POST /api/v1/auth/memberships` — **platform admin** (`is_admin` from NetHubKe) grants membership
-- `DELETE /api/v1/auth/memberships/{merchant_id}?user_id=` — platform admin revoke
-
-### Product rule (v1)
-
-**No auto-merchant on first login.** Membership is provisioned by a platform admin (or future ops tooling).
+1. Register NetPay SPA client id on NetHubKe `trusted_clients`.
+2. Set `NETHUB_API_BASE_URL` and `OIDC_*` on NetPay.
+3. IdP redirect URI matches `OIDC_REDIRECT_URI` (trailing slash if using `trailingSlash: true`).
+4. Sign in at `/dashboard/` → callback → profile loads from `/api/v1/auth/me`.
+5. Grant membership → `/api/v1/auth/memberships` non-empty.

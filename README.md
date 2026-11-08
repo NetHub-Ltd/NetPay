@@ -26,7 +26,7 @@ NetPay is being rebuilt as a minimal, multi-merchant M-Pesa Daraja gateway.
 - STK initiation acceptance is not proof of payment.
 - Daraja Transaction Status requires additional initiator/authorization configuration. NetPay must not claim provider verification until the relevant product and credentials are confirmed for a merchant.
 - C2B registration is optional. Do not enable production external validation when merchant-specific account validation rules are required; that policy is not implemented yet.
-- The dashboard does not yet include NetHub identity/session integration and must not expose merchant data until that is completed.
+- Dashboard human sign-in uses OIDC PKCE and NetHubKe (`/api/v1/auth/me`). Merchant payment data remains gated on membership (`merchant_member`).
 
 ## Frontend and local development
 
