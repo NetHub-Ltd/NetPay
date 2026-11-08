@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     redis_url: SecretStr = SecretStr("redis://localhost:6379/0")
     redis_enabled: bool = True
 
+    # NetHubKe resource server — human identity (forward IdP Bearer; do not verify JWT here)
+    nethub_api_base_url: str | None = None
+    nethub_api_timeout_seconds: float = 8.0
+
     # Daraja credential keyring is provided by secret management, never stored in PostgreSQL.
     m2m_token_signing_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)
     mpesa_credential_encryption_keys: SecretStr | None = Field(default=None, repr=False, exclude=True)
@@ -139,6 +143,14 @@ class Settings(BaseSettings):
         """Require a bounded positive timeout for external Daraja calls."""
         if value <= 0 or value > 60:
             raise ValueError("MPESA_HTTP_TIMEOUT_SECONDS must be between 0 and 60")
+        return value
+
+    @field_validator("nethub_api_timeout_seconds")
+    @classmethod
+    def validate_nethub_api_timeout(cls, value: float) -> float:
+        """Require a bounded positive timeout for NetHubKe identity calls."""
+        if value <= 0 or value > 60:
+            raise ValueError("NETHUB_API_TIMEOUT_SECONDS must be between 0 and 60")
         return value
 
     @field_validator("redis_url")
