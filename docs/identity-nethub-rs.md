@@ -68,3 +68,9 @@ Identity ≠ authorization. No auto-merchant on first login. Platform admin gran
 3. IdP redirect URI matches `OIDC_REDIRECT_URI` (trailing slash if using `trailingSlash: true`).
 4. Sign in at `/dashboard/` → callback → profile loads from `/api/v1/auth/me`.
 5. Grant membership → `/api/v1/auth/memberships` non-empty.
+
+## Deployment
+
+Secret names and k3s rollout order for identity env vars are documented in [`deploy/README.md`](../deploy/README.md).
+
+Program issues: #232–#239 (I0–I7). Staging registration is #233; deploy contract #234; token lifecycle #235.

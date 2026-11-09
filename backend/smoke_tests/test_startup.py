@@ -58,3 +58,26 @@ async def test_database_unavailable_prevents_lifespan_startup(monkeypatch: pytes
 
     assert startup_entered is False
     assert engine.disposed is True
+
+
+def test_readiness_independent_of_nethub_identity_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Readiness must not require NetHubKe or OIDC configuration (k3s probe contract)."""
+    monkeypatch.delenv("NETHUB_API_BASE_URL", raising=False)
+    monkeypatch.delenv("OIDC_ISSUER", raising=False)
+    monkeypatch.delenv("OIDC_CLIENT_ID", raising=False)
+    monkeypatch.delenv("OIDC_REDIRECT_URI", raising=False)
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    try:
+        with TestClient(app) as client:
+            response = client.get("/health/ready")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "ok"
+        assert body["database"] == "ok"
+        # Identity is not part of readiness payload
+        assert "nethub" not in body
+        assert "oidc" not in body
+    finally:
+        get_settings.cache_clear()
