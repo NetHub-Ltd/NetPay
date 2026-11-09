@@ -62,9 +62,21 @@ export function DashboardClient() {
       setStatus({ kind: "signed_in", me, memberships });
     } catch (e) {
       clearSession();
+      const message = e instanceof Error ? e.message : "Could not load session";
+      const is401 =
+        (e instanceof Error && e.name === "AuthApiError" && (e as { status?: number }).status === 401) ||
+        /session expired|sign in again/i.test(message);
+      if (is401) {
+        setStatus({
+          kind: "signed_out",
+          oidcReady: true,
+          message,
+        });
+        return;
+      }
       setStatus({
         kind: "error",
-        message: e instanceof Error ? e.message : "Could not load session",
+        message,
       });
     }
   }, []);

@@ -1,7 +1,7 @@
 /** Public-client OIDC authorization code + PKCE (no client secret). */
 
-import { loadSpaConfig } from "./config";
-import { setPkcePair, takePkcePair, setAccessToken } from "./session";
+import { loadSpaConfig, apiBase } from "./config";
+import { setPkcePair, takePkcePair, setAccessToken, clearSession } from "./session";
 
 function b64url(bytes: ArrayBuffer | Uint8Array): string {
   const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -42,7 +42,6 @@ export async function startLogin(): Promise<void> {
     code_challenge_method: "S256",
   });
 
-  // Resolve authorize endpoint via discovery if available
   let authorize = `${cfg.oidc_issuer}/oauth/v2/authorize`;
   try {
     const disc = await fetch(`${cfg.oidc_issuer}/.well-known/openid-configuration`, {
@@ -53,7 +52,7 @@ export async function startLogin(): Promise<void> {
       if (body.authorization_endpoint) authorize = body.authorization_endpoint;
     }
   } catch {
-    /* use Zitadel default */
+    /* use Zitadel-style default */
   }
 
   window.location.assign(`${authorize}?${params.toString()}`);
@@ -73,7 +72,7 @@ export async function completeLoginFromCallback(url: string): Promise<void> {
   }
   const { verifier, state: expected } = takePkcePair();
   if (!verifier || !expected || expected !== state) {
-    throw new Error("Invalid login state — try signing in again");
+    throw new Error("Invalid login state — start sign-in again");
   }
 
   let tokenEndpoint = `${cfg.oidc_issuer}/oauth/v2/token`;
@@ -106,6 +105,7 @@ export async function completeLoginFromCallback(url: string): Promise<void> {
     const text = await res.text();
     throw new Error(text || "Token exchange failed");
   }
+  // Access token only — refresh tokens are not stored until I7 BFF (D1: no offline_access by default).
   const tokens = (await res.json()) as { access_token?: string };
   if (!tokens.access_token) {
     throw new Error("Token response missing access_token");
@@ -131,28 +131,47 @@ export type Membership = {
   merchant_slug: string | null;
 };
 
-export async function fetchAuthMe(accessToken: string): Promise<AuthMe> {
-  const base = (await import("./config")).apiBase();
-  const res = await fetch(`${base}/api/v1/auth/me`, {
+/** Thrown for /api/v1/auth/* failures; status 401 clears the browser session. */
+export class AuthApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "AuthApiError";
+    this.status = status;
+  }
+}
+
+async function authFetch(path: string, accessToken: string): Promise<Response> {
+  const base = apiBase();
+  return fetch(`${base}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
     cache: "no-store",
   });
+}
+
+export async function fetchAuthMe(accessToken: string): Promise<AuthMe> {
+  const res = await authFetch("/api/v1/auth/me", accessToken);
+  if (res.status === 401) {
+    clearSession();
+    throw new AuthApiError(401, "Session expired — sign in again");
+  }
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `auth/me failed (${res.status})`);
+    throw new AuthApiError(res.status, text || `auth/me failed (${res.status})`);
   }
   return res.json() as Promise<AuthMe>;
 }
 
 export async function fetchMemberships(accessToken: string): Promise<Membership[]> {
-  const base = (await import("./config")).apiBase();
-  const res = await fetch(`${base}/api/v1/auth/memberships`, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
-    cache: "no-store",
-  });
+  const res = await authFetch("/api/v1/auth/memberships", accessToken);
+  if (res.status === 401) {
+    clearSession();
+    throw new AuthApiError(401, "Session expired — sign in again");
+  }
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `memberships failed (${res.status})`);
+    throw new AuthApiError(res.status, text || `memberships failed (${res.status})`);
   }
   return res.json() as Promise<Membership[]>;
 }

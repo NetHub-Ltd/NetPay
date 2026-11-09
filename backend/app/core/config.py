@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     oidc_issuer: str | None = None
     oidc_client_id: str | None = None
     oidc_redirect_uri: str | None = None
-    oidc_scopes: str = "openid profile email offline_access"
+    oidc_scopes: str = "openid profile email"
 
     # Daraja credential keyring is provided by secret management, never stored in PostgreSQL.
     m2m_token_signing_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)

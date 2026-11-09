@@ -62,9 +62,9 @@
 
 | ID | Acceptance criterion | Status |
 |----|----------------------|--------|
-| I3.1 | Default scopes without unused `offline_access` (D1) | OPEN |
-| I3.2 | 401 clears SPA session | OPEN |
-| I3.3 | Logout clears token + PKCE keys | OPEN |
+| I3.1 | Default scopes without unused `offline_access` (D1) | IN PROGRESS |
+| I3.2 | 401 clears SPA session | IN PROGRESS |
+| I3.3 | Logout clears token + PKCE keys | IN PROGRESS (clearSession on logout) |
 | I3.4 | Frontend lint/typecheck/build | OPEN |
 
 ## Milestone I4 — Membership-gated human APIs
