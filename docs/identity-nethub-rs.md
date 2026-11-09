@@ -33,7 +33,7 @@ Browser  → NetPay GET /api/v1/auth/memberships
 | `OIDC_ISSUER` | IdP issuer URL |
 | `OIDC_CLIENT_ID` | **Public** SPA client id (must be in NetHubKe `trusted_clients`) |
 | `OIDC_REDIRECT_URI` | e.g. `https://pay.example.com/auth/callback/` |
-| `OIDC_SCOPES` | default `openid profile email offline_access` |
+| `OIDC_SCOPES` | default `openid profile email` (no offline_access until I7 BFF) |
 
 ### Runtime discovery
 
@@ -74,3 +74,7 @@ Identity ≠ authorization. No auto-merchant on first login. Platform admin gran
 Secret names and k3s rollout order for identity env vars are documented in [`deploy/README.md`](../deploy/README.md).
 
 Program issues: #232–#239 (I0–I7). Staging registration is #233; deploy contract #234; token lifecycle #235.
+
+## Session storage (SPA)
+
+The browser stores the IdP **access token** in `sessionStorage` for the PKCE public client. That is acceptable for staging; XSS can read the token. Production hardening (httpOnly BFF) is tracked as issue #239 (I7). Logout and HTTP 401 from `/api/v1/auth/*` clear the stored token and PKCE keys.

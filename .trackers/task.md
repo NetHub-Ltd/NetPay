@@ -1,7 +1,7 @@
 # Task tracker — NetHubKe client program
 
 **Last updated:** 2026-11-09  
-**Active implementation slice:** I0 + I2 (issues #232, #234) on branch `feat/identity-program-i0-i2`  
+**Active implementation slice:** I3 (#235) token lifecycle on `feat/identity-i3-token-lifecycle`
 **Integration branch:** `dev`  
 **Do not** push directly to `dev` or `main`.
 
