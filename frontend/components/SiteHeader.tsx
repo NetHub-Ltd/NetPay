@@ -38,6 +38,9 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link href="/login/" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-[var(--on-navy)] transition hover:bg-[var(--on-navy-faint)] sm:inline-flex">
+            Sign in
+          </Link>
           <Button href="/request-access/" variant="onNavy" size="sm" className="hidden sm:inline-flex">
             Get started
           </Button>
@@ -68,6 +71,11 @@ export function SiteHeader() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link href="/login/" className="block rounded-xl px-3 py-3 text-sm font-semibold text-[var(--on-navy)] hover:bg-[var(--on-navy-faint)]" onClick={() => setOpen(false)}>
+                Sign in
+              </Link>
+            </li>
             <li className="pt-2">
               <Button href="/request-access/" variant="onNavy" size="md" className="w-full">
                 Request access
