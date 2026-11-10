@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 function loginFailure(request: NextRequest, reason: string): NextResponse {
   const response = NextResponse.redirect(new URL("/login/?error=" + reason, request.url));
+  response.headers.set("Cache-Control", "no-store");
   response.cookies.set(OIDC_TRANSACTION_COOKIE, "", {
     httpOnly: true, secure: process.env.NODE_ENV === "production",
     sameSite: "lax", path: "/auth/callback/", maxAge: 0,
@@ -18,7 +19,12 @@ export async function GET(request: NextRequest) {
   if (request.nextUrl.searchParams.has("error")) return loginFailure(request, "provider");
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
-  const tx = openTransaction(request.cookies.get(OIDC_TRANSACTION_COOKIE)?.value);
+  let tx;
+  try {
+    tx = openTransaction(request.cookies.get(OIDC_TRANSACTION_COOKIE)?.value);
+  } catch {
+    return loginFailure(request, "configuration");
+  }
   if (!code || !state || !tx) return loginFailure(request, "state");
   if (!constantTimeEqual(state, tx.state)) {
     return loginFailure(request, "state");
