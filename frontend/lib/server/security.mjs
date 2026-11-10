@@ -83,10 +83,16 @@ export function openLoginTransaction(value, key, ttlSeconds, nowSeconds) {
   try {
     const [encodedIv, encodedTag, encodedCiphertext, ...extra] = value.split(".");
     if (!encodedIv || !encodedTag || !encodedCiphertext || extra.length) return null;
+    if (![encodedIv, encodedTag, encodedCiphertext].every((part) => /^[A-Za-z0-9_-]+$/.test(part))) return null;
     const iv = Buffer.from(encodedIv, "base64url");
     const tag = Buffer.from(encodedTag, "base64url");
     const ciphertext = Buffer.from(encodedCiphertext, "base64url");
-    if (iv.length !== 12 || tag.length !== 16 || ciphertext.length === 0) return null;
+    if (
+      iv.length !== 12 || tag.length !== 16 || ciphertext.length === 0 ||
+      iv.toString("base64url") !== encodedIv ||
+      tag.toString("base64url") !== encodedTag ||
+      ciphertext.toString("base64url") !== encodedCiphertext
+    ) return null;
     const decipher = createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(tag);
     const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
