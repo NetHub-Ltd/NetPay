@@ -1,6 +1,6 @@
 services:
   migrate:
-    image: nethub/netpay:local
+    image: nethub/netpay-api:local
     build:
       context: ..
       dockerfile: backend/Dockerfile
@@ -15,7 +15,7 @@ services:
     restart: "no"
 
   api:
-    image: nethub/netpay:local
+    image: nethub/netpay-api:local
     build:
       context: ..
       dockerfile: backend/Dockerfile
@@ -24,13 +24,34 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://gateway:gateway@db:5432/gateway
       ENVIRONMENT: development
-      STATIC_DIR: /app/static
     depends_on:
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+  frontend:
+    image: nethub/netpay-frontend:local
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    ports: ["127.0.0.1:3000:3000"]
+    env_file:
+      - ../backend/.env
+      - ../frontend/.env.local
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NETPAY_BACKEND_INTERNAL_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
 
   worker:
-    image: nethub/netpay:local
+    image: nethub/netpay-api:local
     build:
       context: ..
       dockerfile: backend/Dockerfile
@@ -39,7 +60,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://gateway:gateway@db:5432/gateway
       ENVIRONMENT: development
-      PUBLIC_BASE_URL: http://localhost:8000
+      MPESA_PUBLIC_BASE_URL: http://localhost:8000
     depends_on:
       migrate:
         condition: service_completed_successfully
