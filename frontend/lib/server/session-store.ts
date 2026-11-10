@@ -142,7 +142,7 @@ export async function getSessionFromRequest(request: Request): Promise<{
   } catch {
     return null;
   }
-  if (!isValidSessionHandle(sessionId)) return null;
+  if (typeof sessionId !== "string" || !isValidSessionHandle(sessionId)) return null;
   const session = await getActiveSession(sessionId);
   return session ? { sessionId, session } : null;
 }
@@ -151,7 +151,7 @@ export async function getCurrentSession(): Promise<{
 } | null> {
   const jar = await cookies();
   const sessionId = jar.get(SESSION_COOKIE_NAME)?.value;
-  if (!isValidSessionHandle(sessionId)) return null;
+  if (typeof sessionId !== "string" || !isValidSessionHandle(sessionId)) return null;
   const session = await getActiveSession(sessionId);
   return session ? { sessionId, session } : null;
 }

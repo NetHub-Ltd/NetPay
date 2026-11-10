@@ -60,7 +60,7 @@ export function fetchMerchantSummary(merchantId: string): Promise<MerchantSummar
   return authFetch<MerchantSummary>("/v1/auth/merchants/" + encodeURIComponent(merchantId));
 }
 export function fetchMerchantPayments(merchantId: string, limit = 20): Promise<HumanPayment[]> {
-  return authFetch<HumanPayment>(
+  return authFetch<HumanPayment[]>(
     "/v1/auth/merchants/" + encodeURIComponent(merchantId) + "/payments?limit=" + limit,
   );
 }

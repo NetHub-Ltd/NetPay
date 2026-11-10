@@ -158,7 +158,11 @@ export async function verifyIdToken(
     (!key.use || key.use === "sig") && (!key.alg || key.alg === "RS256")
   );
   if (!jwk) { jwksCache = null; throw new Error("ID token signing key was not found"); }
-  const key = createPublicKey({ key: jwk, format: "jwk" });
+  if (typeof jwk.n !== "string" || typeof jwk.e !== "string") {
+    throw new Error("ID token signing key is incomplete");
+  }
+  const publicJwk: Record<string, string> = { kty: "RSA", n: jwk.n, e: jwk.e };
+  const key = createPublicKey({ key: publicJwk, format: "jwk" });
   const verifier = createVerify("RSA-SHA256");
   verifier.update(parts[0] + "." + parts[1]);
   verifier.end();
