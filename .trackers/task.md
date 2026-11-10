@@ -1,7 +1,7 @@
 # Task tracker — NetHubKe client program
 
 **Last updated:** 2026-11-09  
-**Active implementation slice:** I4+#236 + I5+#237 on `feat/identity-i4-i5-membership-dashboard` (one PR)
+**Active implementation slice:** I1+#233 + I6+#238 staging readiness on `feat/identity-i1-i6-staging-readiness` (one PR). Operator must still record live PASS/FAIL for registration.
 **Integration branch:** `dev`  
 **Do not** push directly to `dev` or `main`.
 

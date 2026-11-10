@@ -96,8 +96,10 @@ Worker uses PostgreSQL row locking and durable retry timestamps; deploy separate
 ## Identity + dashboard status
 
 - Human identity: IdP access token → NetPay forwards Bearer to **NetHubKe resource server** → local `merchant_member` ACL. See `docs/identity-nethub-rs.md`.
-- Dashboard serves OIDC PKCE shell (profile + memberships). **Do not expose merchant payment data in the UI until membership-gated APIs and staging E2E (issues #236–#238) pass.**
+- Dashboard: OIDC PKCE shell, membership list, membership-gated merchant summary and recent payments (#236–#237 on `dev`).
+- Staging registration + E2E gate: [`docs/ops/STAGING_IDENTITY.md`](../docs/ops/STAGING_IDENTITY.md) (issues #233, #238).
 - M2M API and Daraja callback pipeline remain the machine integration surface.
+- Do **not** promote identity to production/`main` until I6 checklist is VERIFIED and explicitly approved.
 
 ## Important boundaries
 

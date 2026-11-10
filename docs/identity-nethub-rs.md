@@ -67,6 +67,12 @@ Identity ≠ authorization. No auto-merchant on first login. Platform admin gran
 
 ## Staging checklist
 
+Full operator runbook (I1 registration + I6 E2E): [`docs/ops/STAGING_IDENTITY.md`](ops/STAGING_IDENTITY.md).
+
+Automated probe: `python backend/scripts/identity_staging_probe.py --base-url <origin>`.
+
+## Staging checklist (summary)
+
 1. Register NetPay SPA client id on NetHubKe `trusted_clients`.
 2. Set `NETHUB_API_BASE_URL` and `OIDC_*` on NetPay.
 3. IdP redirect URI matches `OIDC_REDIRECT_URI` (trailing slash if using `trailingSlash: true`).
