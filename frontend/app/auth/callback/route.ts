@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeAuthorizationCode, OIDC_TRANSACTION_COOKIE, openTransaction, verifyIdToken } from "../../../lib/server/oidc";
+import type { LoginTransaction } from "../../../lib/server/oidc";
 import { constantTimeEqual, safeReturnTo } from "../../../lib/server/security.mjs";
 import { createServerSession, SESSION_COOKIE_NAME, sessionCookieOptions, validateHumanAccessToken } from "../../../lib/server/session-store";
 
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
   if (request.nextUrl.searchParams.has("error")) return loginFailure(request, "provider");
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
-  let tx;
+  let tx: LoginTransaction | null;
   try {
     tx = openTransaction(request.cookies.get(OIDC_TRANSACTION_COOKIE)?.value);
   } catch {
