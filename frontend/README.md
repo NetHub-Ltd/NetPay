@@ -1,32 +1,43 @@
-# React + TypeScript + Vite
+# NetPay frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+NetPay's frontend is an independently deployed Next.js App Router application. It runs as a Node.js server and owns public pages, login/callback routes, the authenticated dashboard and the same-origin HTTP BFF.
 
-Currently, two official plugins are available:
+## Local development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Configure backend/.env and frontend/.env.local from their example files.
+2. Set the same random BFF_INTERNAL_SECRET in both services.
+3. Configure a dedicated confidential OIDC web client. Its redirect URI must exactly match OIDC_REDIRECT_URI (local default: http://localhost:3000/auth/callback/).
+4. Start FastAPI on port 8000 and Next.js on port 3000:
 
-## React Compiler
+    cd backend
+    uvicorn app.main:app --reload --port 8000
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+In another terminal:
 
-## Expanding the Oxlint configuration
+    cd frontend
+    npm ci
+    npm run dev
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Server-only configuration
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+- NETPAY_BACKEND_INTERNAL_URL: private FastAPI origin used by Route Handlers and server components.
+- BFF_INTERNAL_SECRET: shared service credential for private session-store endpoints; never prefix it with NEXT_PUBLIC_.
+- OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI and OIDC_SCOPES: confidential OIDC web-client configuration.
+- OIDC_TRANSACTION_SECRET: independent random secret (at least 32 characters) used to encrypt the short-lived PKCE transaction cookie.
+- NEXT_PUBLIC_SITE_URL: public canonical origin for metadata and sitemap generation only.
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The browser receives only a random HttpOnly session cookie. Access and refresh tokens are stored encrypted in the backend PostgreSQL session table. The frontend does not read tokens from browser storage or call FastAPI directly.
+
+## Production container
+
+Build from the repository root:
+
+    docker build -f frontend/Dockerfile -t netpay-frontend:local .
+
+The image uses Next.js standalone output and starts with node server.js. Configure all server-only variables at runtime; do not bake secrets into build arguments.
+
+## API boundary
+
+Browser requests use /api/backend/*. The BFF currently exposes an explicit GET allowlist for the dashboard's human profile, memberships, merchant summary and merchant payment list. Add new methods and routes deliberately with runtime validation, session checks, CSRF protection for mutations, safe cache headers and backend authorization preserved. Never turn the BFF into an arbitrary URL proxy.
+
+FastAPI remains authoritative for merchant membership and payment authorization. Machine-to-machine payment clients and Safaricom callbacks retain their independent backend contracts.
