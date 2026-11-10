@@ -1,6 +1,6 @@
 # NetPay milestones — NetHubKe client + deploy readiness
 
-**Last updated:** 2026-11-09  
+**Last updated:** 2026-11-10  
 **Integration branch:** `dev`  
 **Program tip at baseline write:** `82e85cb` (merge PR #231 — identity dashboard session)  
 **Status rule:** Do not mark VERIFIED without command/run/operator evidence. Use OBSERVED / VERIFIED / INFERRED / PROPOSED / UNKNOWN.
@@ -9,10 +9,10 @@
 
 | Item | Contract |
 |------|----------|
-| Image | Next static export inside FastAPI image (`ghcr.io/nethub-ltd/netpay`) |
+| Images | FastAPI API: `ghcr.io/nethub-ltd/netpay`; independent Next.js server: `ghcr.io/nethub-ltd/netpay-frontend` |
 | Release | GHCR publish from **`main` only** |
 | PRs | Always target **`dev`** |
-| Runtime | k3s: migrate Job → API + worker; Flux/operators apply |
+| Runtime | k3s: migration Job → FastAPI API + worker + independent Next.js service; ingress routes app/API/callback traffic |
 | Readiness | `/health/ready` = PostgreSQL (+ Redis report). **Not** NetHubKe/IdP |
 | Secrets | Canonical names in `deploy/README.md` + `backend/.env.example` |
 
@@ -27,7 +27,7 @@
 | I4 | #236 | feat(identity): membership-gated human read APIs |
 | I5 | #237 | feat(ui): membership-aware dashboard surface |
 | I6 | #238 | test(identity): staging E2E and deploy readiness gate |
-| I7 | #239 | feat(identity): optional BFF session hardening |
+| I7 | #239 | feat(platform): independent Next.js deployment, mandatory BFF and server-side identity |
 
 ## Milestone I0 — Tracker handoff baseline
 
@@ -92,12 +92,17 @@
 | I6.2 | M2M regression still OK | OPEN — manual I6 step 12 |
 | I6.3 | Go/no-go recorded; no main merge without approval | OPEN |
 
-## Milestone I7 — Optional BFF (after I6 + design approval)
+## Milestone I7 — Mandatory independent Next.js + BFF (#239)
 
 | ID | Acceptance criterion | Status |
 |----|----------------------|--------|
-| I7.1 | Design approved | OPEN |
-| I7.2 | httpOnly/BFF path + tests | OPEN |
+| I7.1 | Architecture and implementation contract approved by owner | VERIFIED — 2026-11-10 |
+| I7.2 | Independent Next.js runtime, server-side OIDC, opaque sessions and mandatory HTTP BFF | IN PROGRESS on feat/239-nextjs-bff-runtime |
+| I7.3 | FastAPI separation, separate images and ingress/deployment docs | IN PROGRESS |
+| I7.4 | Login UI and dashboard session journey | IN PROGRESS |
+| I7.5 | WSS ingress/security readiness documented; no idle gateway | IN PROGRESS |
+| I7.6 | Security, payment regression, container and browser tests | IN PROGRESS |
+| I7.7 | Post-merge live staging acceptance | NOT STARTED — owner deployment required |
 
 ## Historical notes
 
