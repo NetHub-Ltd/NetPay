@@ -128,6 +128,13 @@ spec:
               service:
                 name: nethub-gateway
                 port: { number: 80 }
+          # Human identity endpoints are intentionally not exposed at the API origin.
+          - path: /api/v1/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: netpay-frontend
+                port: { number: 80 }
           - path: /api/v1
             pathType: Prefix
             backend:
