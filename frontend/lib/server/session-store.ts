@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
-import { refreshOidcTokens, type OidcTokens } from "./oidc";
+import { OidcTokenRequestError, refreshOidcTokens, type OidcTokens } from "./oidc";
 import { isValidSessionHandle } from "./security.mjs";
 
 export const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
@@ -18,15 +18,27 @@ function requiredEnv(name: string): string {
 function hashSessionId(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
+function backendBaseUrl(): string {
+  const url = new URL(requiredEnv("NETPAY_BACKEND_INTERNAL_URL"));
+  if (url.username || url.password || url.search || url.hash || url.pathname !== "/") {
+    throw new Error("NETPAY_BACKEND_INTERNAL_URL must be an origin without credentials or path");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("NETPAY_BACKEND_INTERNAL_URL must use HTTP or HTTPS");
+  }
+  return url.origin;
+}
 async function storeRequest(path: string, init: RequestInit = {}): Promise<Response> {
-  const base = requiredEnv("NETPAY_BACKEND_INTERNAL_URL").replace(/\/+$/, "");
-  return fetch(base + "/internal/v1/bff/sessions" + path, {
+  return fetch(backendBaseUrl() + "/internal/v1/bff/sessions" + path, {
     ...init,
     headers: {
-      Accept: "application/json", "Content-Type": "application/json",
-      "X-NetPay-BFF-Secret": requiredEnv("BFF_INTERNAL_SECRET"), ...init.headers,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-NetPay-BFF-Secret": requiredEnv("BFF_INTERNAL_SECRET"),
     },
-    cache: "no-store", signal: init.signal ?? AbortSignal.timeout(7_000),
+    cache: "no-store",
+    redirect: "error",
+    signal: init.signal ?? AbortSignal.timeout(7_000),
   });
 }
 async function readStoredSession(sessionId: string): Promise<StoredSession | null> {
@@ -93,12 +105,22 @@ export async function getActiveSession(sessionId: string): Promise<StoredSession
     await validateHumanAccessToken(rotated.access_token);
     current = await updateStoredSession(sessionId, rotated, current);
     return current;
-  } catch {
+  } catch (error) {
     // Concurrent requests may have rotated the token first. Re-read before revoking.
     const latest = await readStoredSession(sessionId).catch(() => null);
     if (latest && latest.version !== current.version && Date.parse(latest.access_expires_at) > Date.now() + 30_000) {
       return latest;
     }
+    const transient =
+      (error instanceof OidcTokenRequestError && error.retryable) ||
+      error instanceof TypeError ||
+      (error instanceof Error && (
+        error.name === "TimeoutError" ||
+        error.name === "AbortError" ||
+        error.message === "identity_service_unavailable" ||
+        error.message === "Could not rotate the NetPay session"
+      ));
+    if (transient) throw new Error("session_refresh_unavailable");
     await revokeServerSession(sessionId);
     return null;
   }
@@ -141,10 +163,12 @@ export function expiredSessionCookieOptions() {
   };
 }
 export async function validateHumanAccessToken(accessToken: string): Promise<void> {
-  const base = requiredEnv("NETPAY_BACKEND_INTERNAL_URL").replace(/\/+$/, "");
-  const response = await fetch(base + "/api/v1/auth/me", {
+  const response = await fetch(backendBaseUrl() + "/api/v1/auth/me", {
     headers: { Authorization: "Bearer " + accessToken, Accept: "application/json" },
-    cache: "no-store", signal: AbortSignal.timeout(8_000),
+    cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8_000),
   });
+  if (response.status === 429 || response.status >= 500) {
+    throw new Error("identity_service_unavailable");
+  }
   if (!response.ok) throw new Error("NetPay could not resolve the authenticated NetHub identity");
 }
