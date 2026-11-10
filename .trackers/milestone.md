@@ -71,17 +71,17 @@
 
 | ID | Acceptance criterion | Status |
 |----|----------------------|--------|
-| I4.1 | Human read route requires membership | OPEN |
-| I4.2 | M2M scopes path unchanged | OPEN |
-| I4.3 | Positive + negative tests | OPEN |
-| I4.4 | Auth matrix in docs/identity-nethub-rs.md | OPEN |
+| I4.1 | Human read route requires membership | IN PROGRESS |
+| I4.2 | M2M scopes path unchanged | IN PROGRESS (no payment router edits) |
+| I4.3 | Positive + negative tests | IN PROGRESS |
+| I4.4 | Auth matrix in docs/identity-nethub-rs.md | IN PROGRESS |
 
 ## Milestone I5 — Dashboard surface
 
 | ID | Acceptance criterion | Status |
 |----|----------------------|--------|
-| I5.1 | State matrix (out / loading / no membership / membership / error) | OPEN |
-| I5.2 | No payment data without ACL | OPEN |
+| I5.1 | State matrix (out / loading / no membership / membership / error) | IN PROGRESS |
+| I5.2 | No payment data without ACL | IN PROGRESS |
 | I5.3 | Frontend gates green | OPEN |
 
 ## Milestone I6 — Staging E2E + deploy readiness

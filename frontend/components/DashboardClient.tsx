@@ -2,25 +2,30 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  ArrowLeft,
   CreditCard,
   LayoutDashboard,
   LockKeyhole,
+  LogOut,
   Settings,
   Webhook,
 } from "lucide-react";
-import { Badge, Button, Card } from "./ui";
-import { clearSession, getAccessToken } from "../lib/session";
+import { Button, Badge, Card } from "./ui";
+import { loadSpaConfig } from "../lib/config";
 import {
+  AuthApiError,
+  AuthMe,
+  HumanPayment,
+  Membership,
+  MerchantSummary,
   fetchAuthMe,
   fetchMemberships,
+  fetchMerchantPayments,
+  fetchMerchantSummary,
   startLogin,
-  type AuthMe,
-  type Membership,
 } from "../lib/oidc";
-import { loadSpaConfig } from "../lib/config";
+import { clearSession, getAccessToken } from "../lib/session";
 
-const navItems = [
+const NAV = [
   { label: "Overview", icon: LayoutDashboard, active: true },
   { label: "Payments", icon: CreditCard, active: false },
   { label: "Webhooks", icon: Webhook, active: false },
@@ -30,12 +35,39 @@ const navItems = [
 type Status =
   | { kind: "loading" }
   | { kind: "signed_out"; oidcReady: boolean; message?: string }
-  | { kind: "signed_in"; me: AuthMe; memberships: Membership[] }
+  | {
+      kind: "signed_in";
+      me: AuthMe;
+      memberships: Membership[];
+      selectedMerchantId: string | null;
+      merchant: MerchantSummary | null;
+      payments: HumanPayment[];
+      dataError?: string;
+    }
   | { kind: "error"; message: string };
+
+function formatAmount(minor: number, currency: string): string {
+  const major = (minor / 100).toFixed(2);
+  return `${currency} ${major}`;
+}
 
 export function DashboardClient() {
   const [status, setStatus] = useState<Status>({ kind: "loading" });
   const [busy, setBusy] = useState(false);
+
+  const loadMerchantData = useCallback(
+    async (token: string, merchantId: string) => {
+      const merchant = await fetchMerchantSummary(token, merchantId);
+      let payments: HumanPayment[] = [];
+      try {
+        payments = await fetchMerchantPayments(token, merchantId, 10);
+      } catch {
+        payments = [];
+      }
+      return { merchant, payments };
+    },
+    [],
+  );
 
   const refresh = useCallback(async () => {
     setStatus({ kind: "loading" });
@@ -59,12 +91,37 @@ export function DashboardClient() {
       } catch {
         memberships = [];
       }
-      setStatus({ kind: "signed_in", me, memberships });
+
+      const selectedMerchantId: string | null =
+        memberships.length === 1 ? memberships[0].merchant_id : null;
+      let merchant: MerchantSummary | null = null;
+      let payments: HumanPayment[] = [];
+      let dataError: string | undefined;
+
+      if (selectedMerchantId) {
+        try {
+          const data = await loadMerchantData(token, selectedMerchantId);
+          merchant = data.merchant;
+          payments = data.payments;
+        } catch (e) {
+          dataError = e instanceof Error ? e.message : "Could not load merchant data";
+        }
+      }
+
+      setStatus({
+        kind: "signed_in",
+        me,
+        memberships,
+        selectedMerchantId,
+        merchant,
+        payments,
+        dataError,
+      });
     } catch (e) {
       clearSession();
       const message = e instanceof Error ? e.message : "Could not load session";
       const is401 =
-        (e instanceof Error && e.name === "AuthApiError" && (e as { status?: number }).status === 401) ||
+        (e instanceof AuthApiError && e.status === 401) ||
         /session expired|sign in again/i.test(message);
       if (is401) {
         setStatus({
@@ -79,7 +136,7 @@ export function DashboardClient() {
         message,
       });
     }
-  }, []);
+  }, [loadMerchantData]);
 
   useEffect(() => {
     void refresh();
@@ -103,6 +160,40 @@ export function DashboardClient() {
     setStatus({ kind: "signed_out", oidcReady: true });
   }
 
+  async function onSelectMerchant(merchantId: string) {
+    if (status.kind !== "signed_in") return;
+    const token = getAccessToken();
+    if (!token) {
+      clearSession();
+      setStatus({ kind: "signed_out", oidcReady: true, message: "Session expired — sign in again" });
+      return;
+    }
+    setStatus({ ...status, selectedMerchantId: merchantId, merchant: null, payments: [], dataError: undefined });
+    try {
+      const data = await loadMerchantData(token, merchantId);
+      setStatus({
+        ...status,
+        selectedMerchantId: merchantId,
+        merchant: data.merchant,
+        payments: data.payments,
+        dataError: undefined,
+      });
+    } catch (e) {
+      if (e instanceof AuthApiError && e.status === 401) {
+        clearSession();
+        setStatus({ kind: "signed_out", oidcReady: true, message: e.message });
+        return;
+      }
+      setStatus({
+        ...status,
+        selectedMerchantId: merchantId,
+        merchant: null,
+        payments: [],
+        dataError: e instanceof Error ? e.message : "Could not load merchant data",
+      });
+    }
+  }
+
   if (status.kind === "loading") {
     return (
       <div className="grid min-h-screen place-items-center bg-[var(--bg)] text-[var(--ink-muted)]">
@@ -111,154 +202,214 @@ export function DashboardClient() {
     );
   }
 
-  if (status.kind === "signed_out" || status.kind === "error") {
+  if (status.kind === "error") {
     return (
-      <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 px-6">
-        <div>
-          <Badge>Merchant console</Badge>
-          <h1 className="mt-3 font-display text-2xl font-bold text-[var(--ink)]">Sign in to NetPay</h1>
-          <p className="mt-2 text-sm text-[var(--ink-muted)]">
-            Use your NetHub identity. NetPay validates access through NetHubKe — it does not store
-            passwords.
-          </p>
-        </div>
-        {(status.kind === "error" || (status.kind === "signed_out" && status.message)) && (
-          <p className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-sm text-[var(--ink)]" role="alert">
-            {status.kind === "error" ? status.message : status.message}
-          </p>
-        )}
-        <div className="flex flex-wrap gap-3">
-          <Button
-            type="button"
-            onClick={() => void onSignIn()}
-            disabled={busy || (status.kind === "signed_out" && !status.oidcReady)}
-          >
-            {busy ? "Redirecting…" : "Sign in"}
-          </Button>
-          <Button href="/" variant="secondary">
-            Back to site
-          </Button>
-        </div>
+      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-6">
+        <h1 className="text-xl font-bold text-[var(--ink)]">Could not load dashboard</h1>
+        <p className="text-sm text-[var(--ink-muted)]" role="alert">
+          {status.message}
+        </p>
+        <Button type="button" onClick={() => void refresh()}>
+          Try again
+        </Button>
+        <Button type="button" variant="secondary" onClick={onSignOut}>
+          Sign out
+        </Button>
       </div>
     );
   }
 
-  const { me, memberships } = status;
+  if (status.kind === "signed_out") {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-6">
+        <h1 className="text-xl font-bold text-[var(--ink)]">Merchant dashboard</h1>
+        <p className="text-sm text-[var(--ink-muted)]">
+          Sign in with NetHub identity to manage your workspace.
+        </p>
+        {status.message && (
+          <p className="text-sm text-[var(--ink-muted)]" role="status">
+            {status.message}
+          </p>
+        )}
+        <Button type="button" disabled={!status.oidcReady || busy} onClick={() => void onSignIn()}>
+          {busy ? "Redirecting…" : "Sign in"}
+        </Button>
+      </div>
+    );
+  }
+
+  const { me, memberships, selectedMerchantId, merchant, payments, dataError } = status;
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg)] text-[var(--ink)]">
-      <aside
-        className="hidden w-60 shrink-0 flex-col border-r border-[var(--line)] bg-[var(--navy)] text-[var(--on-navy)] md:flex"
-        aria-label="Dashboard navigation"
-      >
-        <div className="flex items-center gap-3 border-b border-[var(--header-border)] px-5 py-5">
-          <span className="grid size-9 place-items-center rounded-xl bg-[var(--accent)] text-[length:var(--text-sm)] font-[number:var(--weight-black)] text-[var(--on-accent)]">
-            N
-          </span>
-          <div>
-            <p className="text-sm font-bold tracking-tight">NetPay</p>
-            <p className="text-xs text-[var(--on-navy-muted)]">Merchant console</p>
-          </div>
-        </div>
-        <nav className="flex flex-1 flex-col gap-1 p-3">
-          {navItems.map(({ label, icon: Icon, active }) => (
-            <span
-              key={label}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${
-                active
-                  ? "bg-[var(--on-navy-soft-fill)] text-[var(--on-navy)]"
-                  : "text-[var(--on-navy-muted)]"
-              }`}
-            >
-              <Icon className="size-4 shrink-0" aria-hidden />
-              {label}
-            </span>
-          ))}
-        </nav>
-        <div className="border-t border-[var(--header-border)] p-4 text-xs text-[var(--on-navy-muted)]">
-          {me.email}
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 sm:px-6">
-          <Button href="/" variant="secondary" size="sm" leftIcon={<ArrowLeft className="size-4" />}>
-            Site
-          </Button>
-          <div className="flex items-center gap-2">
-            <span className="hidden text-sm text-[var(--ink-muted)] sm:inline">{me.full_name || me.email}</span>
-            <Button type="button" variant="secondary" size="sm" onClick={onSignOut}>
-              Sign out
-            </Button>
-          </div>
-        </header>
-
-        <main className="flex-1 space-y-6 p-4 sm:p-6">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Overview</h1>
-            <p className="mt-1 text-sm text-[var(--ink-muted)]">
-              Signed in via NetHubKe resource server. Payment management UI comes next.
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 md:flex-row">
+        <aside className="w-full shrink-0 md:w-56">
+          <div className="mb-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-muted)]">
+              NetPay
             </p>
+            <p className="text-sm font-medium">{me.email}</p>
           </div>
+          <nav className="flex flex-col gap-1" aria-label="Dashboard">
+            {NAV.map((item) => (
+              <span
+                key={item.label}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                  item.active
+                    ? "bg-[var(--surface)] font-medium"
+                    : "text-[var(--ink-muted)]"
+                }`}
+              >
+                <item.icon className="size-4" aria-hidden />
+                {item.label}
+              </span>
+            ))}
+          </nav>
+          <Button type="button" variant="secondary" className="mt-6 w-full" onClick={onSignOut}>
+            <LogOut className="size-4" aria-hidden />
+            Sign out
+          </Button>
+        </aside>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card>
-              <h2 className="text-sm font-semibold">Identity</h2>
-              <dl className="mt-3 space-y-2 text-sm">
+        <main className="flex min-w-0 flex-1 flex-col gap-4">
+          <Card>
+            <h2 className="text-sm font-semibold">Identity</h2>
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex justify-between gap-2">
+                <dt className="text-[var(--ink-muted)]">Email</dt>
+                <dd className="font-medium">{me.email}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-[var(--ink-muted)]">Name</dt>
+                <dd className="font-medium">{me.full_name || "—"}</dd>
+              </div>
+              {me.is_admin && (
                 <div className="flex justify-between gap-2">
-                  <dt className="text-[var(--ink-muted)]">Email</dt>
-                  <dd className="font-medium">{me.email}</dd>
+                  <dt className="text-[var(--ink-muted)]">Role</dt>
+                  <dd>
+                    <Badge>Platform admin</Badge>
+                  </dd>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-[var(--ink-muted)]">Name</dt>
-                  <dd className="font-medium">{me.full_name || "—"}</dd>
-                </div>
-                {me.is_admin && (
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-[var(--ink-muted)]">Role</dt>
-                    <dd>
-                      <Badge>Platform admin</Badge>
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            </Card>
-
-            <Card>
-              <h2 className="text-sm font-semibold">Merchants</h2>
-              {memberships.length === 0 ? (
-                <p className="mt-3 text-sm text-[var(--ink-muted)]">
-                  No merchant membership yet. A platform admin must grant access before payment data
-                  is available.
-                </p>
-              ) : (
-                <ul className="mt-3 space-y-2 text-sm">
-                  {memberships.map((m) => (
-                    <li
-                      key={m.merchant_id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-[var(--line)] px-3 py-2"
-                    >
-                      <span className="font-medium">{m.merchant_name || m.merchant_slug || m.merchant_id}</span>
-                      <Badge>{m.role}</Badge>
-                    </li>
-                  ))}
-                </ul>
               )}
-            </Card>
-          </div>
+            </dl>
+          </Card>
 
           <Card>
-            <div className="flex items-start gap-3">
-              <LockKeyhole className="mt-0.5 size-5 shrink-0 text-[var(--accent)]" aria-hidden />
-              <div>
-                <h2 className="text-sm font-semibold">Data access</h2>
-                <p className="mt-1 text-sm text-[var(--ink-muted)]">
-                  Merchant payment screens stay locked until membership is granted. M2M API keys
-                  remain separate from this human session.
-                </p>
-              </div>
-            </div>
+            <h2 className="text-sm font-semibold">Merchants</h2>
+            {memberships.length === 0 ? (
+              <p className="mt-3 text-sm text-[var(--ink-muted)]">
+                No merchant membership yet. A platform admin must grant access before payment data
+                is available.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2 text-sm" role="list">
+                {memberships.map((m) => {
+                  const selected = selectedMerchantId === m.merchant_id;
+                  return (
+                    <li key={m.merchant_id}>
+                      <button
+                        type="button"
+                        onClick={() => void onSelectMerchant(m.merchant_id)}
+                        className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left ${
+                          selected
+                            ? "border-[var(--accent)] bg-[var(--surface)]"
+                            : "border-[var(--line)]"
+                        }`}
+                        aria-pressed={selected}
+                      >
+                        <span className="font-medium">
+                          {m.merchant_name || m.merchant_slug || m.merchant_id}
+                        </span>
+                        <Badge>{m.role}</Badge>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {memberships.length > 1 && !selectedMerchantId && (
+              <p className="mt-3 text-sm text-[var(--ink-muted)]">
+                Select a merchant to load summary and recent payments.
+              </p>
+            )}
           </Card>
+
+          {selectedMerchantId && (
+            <>
+              <Card>
+                <h2 className="text-sm font-semibold">Merchant summary</h2>
+                {dataError && (
+                  <p className="mt-3 text-sm text-[var(--ink-muted)]" role="alert">
+                    {dataError}
+                  </p>
+                )}
+                {!dataError && !merchant && (
+                  <p className="mt-3 text-sm text-[var(--ink-muted)]">Loading merchant…</p>
+                )}
+                {merchant && (
+                  <dl className="mt-3 space-y-2 text-sm">
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-[var(--ink-muted)]">Name</dt>
+                      <dd className="font-medium">{merchant.name}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-[var(--ink-muted)]">Slug</dt>
+                      <dd className="font-medium">{merchant.slug}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-[var(--ink-muted)]">Status</dt>
+                      <dd>
+                        <Badge>{merchant.status}</Badge>
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-[var(--ink-muted)]">Currency</dt>
+                      <dd className="font-medium">{merchant.default_currency}</dd>
+                    </div>
+                  </dl>
+                )}
+              </Card>
+
+              <Card>
+                <h2 className="text-sm font-semibold">Recent payments</h2>
+                {payments.length === 0 ? (
+                  <p className="mt-3 text-sm text-[var(--ink-muted)]">
+                    No payments yet for this merchant, or none visible with your membership.
+                  </p>
+                ) : (
+                  <ul className="mt-3 divide-y divide-[var(--line)] text-sm">
+                    {payments.map((p) => (
+                      <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                        <div>
+                          <p className="font-medium">{p.merchant_reference}</p>
+                          <p className="text-[var(--ink-muted)]">{p.payment_source}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{formatAmount(p.amount_minor, p.currency)}</p>
+                          <Badge>{p.status}</Badge>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            </>
+          )}
+
+          {memberships.length === 0 && (
+            <Card>
+              <div className="flex items-start gap-3">
+                <LockKeyhole className="mt-0.5 size-5 shrink-0 text-[var(--accent)]" aria-hidden />
+                <div>
+                  <h2 className="text-sm font-semibold">Data access</h2>
+                  <p className="mt-1 text-sm text-[var(--ink-muted)]">
+                    Merchant payment screens stay locked until membership is granted. M2M API keys
+                    remain separate from this human session.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
         </main>
       </div>
     </div>
