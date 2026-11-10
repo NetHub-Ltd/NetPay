@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PublicSiteFrame } from "../../components/PublicSiteFrame";
+import { getCurrentSession } from "../../lib/server/session-store";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -18,6 +20,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const errorMessage = params.error ? ERROR_MESSAGES[params.error] : undefined;
+  const current = await getCurrentSession().catch(() => null);
+  if (current) redirect("/dashboard/");
   return (
     <PublicSiteFrame>
       <main id="main-content" className="mx-auto flex min-h-[72vh] max-w-7xl items-center justify-center px-6 py-16">
