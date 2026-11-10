@@ -92,7 +92,7 @@ export function DashboardClient() {
         memberships = [];
       }
 
-      let selectedMerchantId: string | null =
+      const selectedMerchantId: string | null =
         memberships.length === 1 ? memberships[0].merchant_id : null;
       let merchant: MerchantSummary | null = null;
       let payments: HumanPayment[] = [];
