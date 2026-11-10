@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   CreditCard,
   LayoutDashboard,
+  LockKeyhole,
   LogOut,
   Settings,
   Webhook,
