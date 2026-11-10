@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 from cryptography.fernet import Fernet
+from datetime import UTC, datetime, timedelta
+from hashlib import sha256
+from secrets import token_urlsafe
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
@@ -54,3 +57,59 @@ def test_internal_session_routes_reject_wrong_secret() -> None:
         headers={"X-NetPay-BFF-Secret": "wrong-secret"},
     )
     assert response.status_code == 401
+
+def test_bff_session_store_create_rotate_and_revoke() -> None:
+    from app.main import app as netpay_app
+
+    session_hash = sha256(token_urlsafe(32).encode("ascii")).hexdigest()
+    now = datetime.now(UTC)
+    headers = {"X-NetPay-BFF-Secret": "test-internal-secret-value"}
+    with TestClient(netpay_app) as client:
+        created = client.post(
+            "/internal/v1/bff/sessions",
+            headers=headers,
+            json={
+                "session_id_hash": session_hash,
+                "access_token": "access-token-one",
+                "refresh_token": "refresh-token-one",
+                "access_expires_at": (now + timedelta(minutes=30)).isoformat(),
+                "expires_at": (now + timedelta(hours=2)).isoformat(),
+            },
+        )
+        assert created.status_code == 201
+
+        loaded = client.get("/internal/v1/bff/sessions/" + session_hash, headers=headers)
+        assert loaded.status_code == 200
+        assert loaded.json()["access_token"] == "access-token-one"
+        assert loaded.json()["version"] == 1
+
+        rotated = client.patch(
+            "/internal/v1/bff/sessions/" + session_hash,
+            headers=headers,
+            json={
+                "expected_version": 1,
+                "access_token": "access-token-two",
+                "refresh_token": "refresh-token-two",
+                "access_expires_at": (now + timedelta(minutes=45)).isoformat(),
+                "expires_at": (now + timedelta(hours=2)).isoformat(),
+            },
+        )
+        assert rotated.status_code == 200
+        assert rotated.json()["version"] == "2"
+
+        stale_write = client.patch(
+            "/internal/v1/bff/sessions/" + session_hash,
+            headers=headers,
+            json={
+                "expected_version": 1,
+                "access_token": "stale-token",
+                "refresh_token": "stale-refresh",
+                "access_expires_at": (now + timedelta(minutes=45)).isoformat(),
+                "expires_at": (now + timedelta(hours=2)).isoformat(),
+            },
+        )
+        assert stale_write.status_code == 409
+
+        revoked = client.delete("/internal/v1/bff/sessions/" + session_hash, headers=headers)
+        assert revoked.status_code == 204
+        assert client.get("/internal/v1/bff/sessions/" + session_hash, headers=headers).status_code == 404
