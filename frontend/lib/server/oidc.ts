@@ -89,6 +89,7 @@ export function sealTransaction(value: LoginTransaction): string {
   return sealLoginTransaction(value, transactionKey());
 }
 export function openTransaction(value: string | undefined): LoginTransaction | null {
+  if (!value) return null;
   return openLoginTransaction(
     value, transactionKey(), OIDC_TRANSACTION_TTL_SECONDS, Math.floor(Date.now() / 1000),
   ) as LoginTransaction | null;
