@@ -69,3 +69,33 @@ test("BFF exposes only the explicit dashboard GET routes and bounded query value
     null,
   );
 });
+
+import { createHash, randomBytes } from "node:crypto";
+import {
+  createPkceChallenge,
+  openLoginTransaction,
+  sealLoginTransaction,
+} from "../lib/server/security.mjs";
+
+test("PKCE S256 challenge matches the RFC 7636 SHA-256 base64url construction", () => {
+  const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+  const expected = createHash("sha256").update(verifier, "ascii").digest("base64url");
+  assert.equal(createPkceChallenge(verifier), expected);
+});
+
+test("OIDC transaction cookie is encrypted, authenticated and expires", () => {
+  const key = randomBytes(32);
+  const tx = {
+    state: randomBytes(32).toString("base64url"),
+    nonce: randomBytes(32).toString("base64url"),
+    verifier: randomBytes(48).toString("base64url"),
+    returnTo: "/dashboard/",
+    issuedAt: 1_800_000_000,
+  };
+  const sealed = sealLoginTransaction(tx, key);
+  assert.equal(sealed.includes(tx.verifier), false);
+  assert.deepEqual(openLoginTransaction(sealed, key, 600, tx.issuedAt + 1), tx);
+  assert.equal(openLoginTransaction(sealed + "x", key, 600, tx.issuedAt + 1), null);
+  assert.equal(openLoginTransaction(sealed, key, 600, tx.issuedAt + 601), null);
+  assert.equal(openLoginTransaction(sealed, randomBytes(32), 600, tx.issuedAt + 1), null);
+});

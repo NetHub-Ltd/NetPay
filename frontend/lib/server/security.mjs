@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-import { timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { URL } from "node:url";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -63,4 +63,47 @@ export function resolveAllowedGet(path, searchParams) {
     return "/api/v1/auth/merchants/" + payments[1] + "/payments?limit=" + limit;
   }
   return null;
+}
+
+/** RFC 7636 S256 challenge for a high-entropy PKCE verifier. */
+export function createPkceChallenge(verifier) {
+  return createHash("sha256").update(verifier, "ascii").digest("base64url");
+}
+
+/** AES-256-GCM protects the short-lived OIDC state/nonce/PKCE transaction cookie. */
+export function sealLoginTransaction(value, key) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
+  return [iv, cipher.getAuthTag(), encrypted].map((part) => part.toString("base64url")).join(".");
+}
+
+export function openLoginTransaction(value, key, ttlSeconds, nowSeconds) {
+  if (typeof value !== "string" || value.length > 4096) return null;
+  try {
+    const [encodedIv, encodedTag, encodedCiphertext, ...extra] = value.split(".");
+    if (!encodedIv || !encodedTag || !encodedCiphertext || extra.length) return null;
+    const iv = Buffer.from(encodedIv, "base64url");
+    const tag = Buffer.from(encodedTag, "base64url");
+    const ciphertext = Buffer.from(encodedCiphertext, "base64url");
+    if (iv.length !== 12 || tag.length !== 16 || ciphertext.length === 0) return null;
+    const decipher = createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
+    const parsed = JSON.parse(plaintext);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const tx = parsed;
+    const age = nowSeconds - tx.issuedAt;
+    if (
+      typeof tx.state !== "string" || !/^[A-Za-z0-9_-]{40,60}$/.test(tx.state) ||
+      typeof tx.nonce !== "string" || !/^[A-Za-z0-9_-]{40,60}$/.test(tx.nonce) ||
+      typeof tx.verifier !== "string" || !/^[A-Za-z0-9._~-]{43,128}$/.test(tx.verifier) ||
+      typeof tx.returnTo !== "string" || !tx.returnTo.startsWith("/") ||
+      tx.returnTo.startsWith("//") || tx.returnTo.includes("\\") ||
+      !Number.isSafeInteger(tx.issuedAt) || age < 0 || age > ttlSeconds
+    ) return null;
+    return tx;
+  } catch {
+    return null;
+  }
 }

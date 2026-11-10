@@ -1,7 +1,7 @@
 import {
-  createCipheriv, createDecipheriv, createHash, createPublicKey, createVerify,
-  randomBytes, timingSafeEqual,
+  createHash, createPublicKey, createVerify, randomBytes, timingSafeEqual,
 } from "node:crypto";
+import { createPkceChallenge, openLoginTransaction, sealLoginTransaction } from "./security.mjs";
 
 export const OIDC_TRANSACTION_COOKIE = "netpay_oidc_transaction";
 export const OIDC_TRANSACTION_TTL_SECONDS = 600;
@@ -86,34 +86,12 @@ function randomValue(bytes = 32): string {
 }
 /** Encrypt the short-lived transaction so the PKCE verifier is not readable in the cookie. */
 export function sealTransaction(value: LoginTransaction): string {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", transactionKey(), iv);
-  const encrypted = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
-  return [iv, cipher.getAuthTag(), encrypted].map((part) => part.toString("base64url")).join(".");
+  return sealLoginTransaction(value, transactionKey());
 }
 export function openTransaction(value: string | undefined): LoginTransaction | null {
-  if (!value) return null;
-  try {
-    const [iv, tag, ciphertext] = value.split(".");
-    if (!iv || !tag || !ciphertext) return null;
-    const decipher = createDecipheriv("aes-256-gcm", transactionKey(), Buffer.from(iv, "base64url"));
-    decipher.setAuthTag(Buffer.from(tag, "base64url"));
-    const raw = Buffer.concat([
-      decipher.update(Buffer.from(ciphertext, "base64url")), decipher.final(),
-    ]).toString("utf8");
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-    const tx = parsed as LoginTransaction;
-    const age = Math.floor(Date.now() / 1000) - tx.issuedAt;
-    if (
-      typeof tx.state !== "string" || typeof tx.nonce !== "string" ||
-      typeof tx.verifier !== "string" || typeof tx.returnTo !== "string" ||
-      !Number.isInteger(tx.issuedAt) || age < 0 || age > OIDC_TRANSACTION_TTL_SECONDS
-    ) return null;
-    return tx;
-  } catch {
-    return null;
-  }
+  return openLoginTransaction(
+    value, transactionKey(), OIDC_TRANSACTION_TTL_SECONDS, Math.floor(Date.now() / 1000),
+  ) as LoginTransaction | null;
 }
 export async function createAuthorizationRequest(
   origin: string, returnTo: string,
@@ -124,7 +102,7 @@ export async function createAuthorizationRequest(
   const verifier = randomValue(48);
   const state = randomValue();
   const nonce = randomValue();
-  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  const challenge = createPkceChallenge(verifier);
   const scopes = (process.env.OIDC_SCOPES || "openid profile email").trim();
   if (!scopes.split(/\s+/).includes("openid")) throw new Error("OIDC_SCOPES must include openid");
   const params = new URLSearchParams({
