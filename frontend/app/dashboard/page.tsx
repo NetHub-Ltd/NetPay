@@ -18,12 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  let current = null;
-  try {
-    current = await getCurrentSession();
-  } catch {
-    redirect("/login/?error=configuration");
-  }
+  const current = await getCurrentSession().catch(() => null);
   if (!current) redirect("/login/?returnTo=%2Fdashboard%2F");
   return <DashboardClient />;
 }
