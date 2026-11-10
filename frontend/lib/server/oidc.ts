@@ -21,6 +21,12 @@ type JwtClaims = {
 type TokenResponse = {
   access_token?: unknown; refresh_token?: unknown; id_token?: unknown; expires_in?: unknown;
 };
+export class OidcTokenRequestError extends Error {
+  constructor(readonly code: string, readonly retryable: boolean) {
+    super("Identity provider token request failed");
+    this.name = "OidcTokenRequestError";
+  }
+}
 let metadataCache: { expiresAt: number; value: OidcMetadata } | null = null;
 type SigningJwk = JsonWebKey & { kid?: string; use?: string; alg?: string; kty?: string };
 let jwksCache: { expiresAt: number; keys: SigningJwk[] } | null = null;
@@ -47,7 +53,7 @@ async function getMetadata(): Promise<OidcMetadata> {
   if (metadataCache && metadataCache.expiresAt > now) return metadataCache.value;
   const issuer = configuredIssuer();
   const response = await fetch(issuer + "/.well-known/openid-configuration", {
-    cache: "no-store", signal: AbortSignal.timeout(8_000),
+    cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) throw new Error("Identity provider discovery failed");
   const body: unknown = await response.json();
@@ -138,7 +144,7 @@ async function getJwks(): Promise<SigningJwk[]> {
   if (jwksCache && jwksCache.expiresAt > now) return jwksCache.keys;
   const metadata = await getMetadata();
   const response = await fetch(metadata.jwks_uri, {
-    cache: "no-store", signal: AbortSignal.timeout(8_000),
+    cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) throw new Error("Identity provider signing keys are unavailable");
   const body: unknown = await response.json();
@@ -212,9 +218,20 @@ async function tokenRequest(form: URLSearchParams): Promise<OidcTokens> {
       "Content-Type": "application/x-www-form-urlencoded",
       Accept: "application/json",
     },
-    body: form, cache: "no-store", signal: AbortSignal.timeout(10_000),
+    body: form, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) throw new Error("Identity provider token request failed");
+  if (!response.ok) {
+    let code = "token_request_failed";
+    try {
+      const failure: unknown = await response.json();
+      if (failure && typeof failure === "object" && typeof (failure as { error?: unknown }).error === "string") {
+        code = (failure as { error: string }).error;
+      }
+    } catch {
+      // Do not surface provider error bodies or descriptions to the browser.
+    }
+    throw new OidcTokenRequestError(code, response.status === 429 || response.status >= 500);
+  }
   const body: unknown = await response.json();
   if (!body || typeof body !== "object") throw new Error("Invalid token response");
   const data = body as TokenResponse;
