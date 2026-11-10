@@ -31,3 +31,5 @@ jobs:
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
+      - name: Frontend security helper tests
+        run: npm test

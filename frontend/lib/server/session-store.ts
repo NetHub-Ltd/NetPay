@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
 import { refreshOidcTokens, type OidcTokens } from "./oidc";
+import { isValidSessionHandle } from "./security.mjs";
 
 export const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 export const SESSION_COOKIE_NAME =
@@ -114,7 +115,7 @@ export async function getSessionFromRequest(request: Request): Promise<{
   } catch {
     return null;
   }
-  if (!sessionId || !/^[A-Za-z0-9_-]{40,60}$/.test(sessionId)) return null;
+  if (!isValidSessionHandle(sessionId)) return null;
   const session = await getActiveSession(sessionId);
   return session ? { sessionId, session } : null;
 }
@@ -123,7 +124,7 @@ export async function getCurrentSession(): Promise<{
 } | null> {
   const jar = await cookies();
   const sessionId = jar.get(SESSION_COOKIE_NAME)?.value;
-  if (!sessionId || !/^[A-Za-z0-9_-]{40,60}$/.test(sessionId)) return null;
+  if (!isValidSessionHandle(sessionId)) return null;
   const session = await getActiveSession(sessionId);
   return session ? { sessionId, session } : null;
 }
