@@ -52,6 +52,6 @@ curl --fail --silent http://127.0.0.1:8000/health/ready | grep -q '"database":"o
 test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/)" = "404"
 test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/config.json)" = "404"
 test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/v1/auth/me)" = "401"
-test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-NetPay-BFF-Secret: wrong' http://127.0.0.1:8000/internal/v1/bff/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)" = "401"
+test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-NetPay-BFF-Secret: wrong' http://127.0.0.1:8000/internal/v1/bff/sessions/ready)" = "401"
 
 echo "Independent API container, health checks and browser/auth boundaries passed."

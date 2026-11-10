@@ -28,6 +28,7 @@ curl --fail --silent http://127.0.0.1:3000/login/ | grep -q "Welcome back"
 curl --fail --silent http://127.0.0.1:3000/robots.txt | grep -q "Sitemap:"
 curl --fail --silent http://127.0.0.1:3000/sitemap.xml | grep -q "<urlset"
 curl --fail --silent http://127.0.0.1:3000/api/auth/status | grep -q '"oidc_configured":false'
+test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/health/ready)" = "503"
 test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/backend/v1/auth/me)" = "401"
 test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3000/api/auth/logout)" = "403"
 
