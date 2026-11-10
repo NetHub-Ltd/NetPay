@@ -22,7 +22,7 @@ Record each step PASS / FAIL / N/A with date and redacted evidence only.
 | # | Step | Evidence |
 |---|---|---|
 | 1 | Register a confidential server-side OIDC web client for NetPay | Client name and redacted settings |
-| 2 | Enable Authorization Code + PKCE (S256) and client authentication supported by Zitadel | Redacted IdP configuration |
+| 2 | Enable Authorization Code + PKCE (S256) and client_secret_basic authentication | Redacted IdP configuration |
 | 3 | Exact redirect URI is the frontend public origin plus /auth/callback/ | Redacted IdP app settings |
 | 4 | Scopes include openid profile email; enable offline_access only if refresh tokens are intentionally required | Redacted scope configuration |
 | 5 | Register the client_id as a trusted NetPay client in NetHubKe | Redacted admin confirmation |

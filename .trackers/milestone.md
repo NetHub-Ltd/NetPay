@@ -21,7 +21,7 @@
 | Milestone | Issue | Title |
 |-----------|-------|-------|
 | I0 | #232 | chore(trackers): NetHubKe-client program baseline |
-| I1 | #233 | ops(identity): register NetPay SPA on IdP + NetHubKe RS |
+| I1 | #233 | ops(identity): register NetPay confidential OIDC web client + NetHubKe RS |
 | I2 | #234 | chore(deploy): identity secret and rollout contract |
 | I3 | #235 | fix(identity): SPA token lifecycle and honest scopes |
 | I4 | #236 | feat(identity): membership-gated human read APIs |
