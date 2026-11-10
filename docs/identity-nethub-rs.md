@@ -1,90 +1,84 @@
-# Human identity via NetHubKe (resource server)
+# NetPay human identity and NetHubKe resource-server contract
 
-## Roles
+## Responsibility boundaries
 
-| System | Role |
-|--------|------|
-| IdP (e.g. Zitadel) | Authorization Server — issues access tokens |
-| NetHubKe | Resource Server — validates token, returns user JSON |
-| NetPay | Forwards IdP Bearer to NetHubKe; does **not** verify human JWTs |
+| Component | Responsibility |
+|---|---|
+| Zitadel | User authentication and OIDC authorization-code flow |
+| Next.js | Confidential OIDC client, callback handling, opaque application session and HTTP BFF |
+| NetHubKe | Human identity resolution and product/resource access decisions |
+| FastAPI | Merchant membership, tenant isolation and payment/business authorization |
+| M2M auth | Existing client-credentials flow for machine integrations; independent of human sessions |
 
-## Sequence (dashboard SPA + PKCE)
+NetPay does not store passwords, authenticate users itself or locally verify human JWTs. FastAPI forwards the server-held IdP access token to NetHubKe for identity resolution. Merchant membership remains a separate local authorization check.
 
-```text
-Browser  → IdP authorize (PKCE)
-Browser  ← authorization code
-Browser  → IdP token endpoint (code + verifier) → access_token
-Browser  → NetPay GET /api/v1/auth/me   Authorization: Bearer <access_token>
-NetPay   → NetHubKe GET /users/me (same Bearer; 404 → sync → me)
-NetPay   → Browser human profile JSON
-Browser  → NetPay GET /api/v1/auth/memberships
-```
+## Server-side OIDC flow
 
-**Auth mode:** `spa_pkce` (public client). No OIDC client secret in the static frontend or required for this flow.
+1. Browser navigates to the Next.js login route.
+2. Next.js creates state, nonce and a PKCE verifier/challenge. The short-lived transaction cookie is encrypted, HttpOnly, SameSite=Lax and scoped to the callback path.
+3. Browser is redirected to Zitadel's authorization endpoint using Authorization Code + PKCE.
+4. Zitadel redirects to the exact registered Next.js callback URL.
+5. Next.js validates state, exchanges the code server-side using the confidential client, validates the RS256 ID-token signature and issuer/audience/expiry/nonce claims, then asks FastAPI to resolve the human identity through NetHubKe.
+6. Next.js creates a random application session handle. Only its SHA-256 hash is stored in PostgreSQL. Access/refresh tokens are encrypted at rest using a dedicated BFF Fernet key.
+7. Browser receives only an opaque HttpOnly, Secure-in-production, SameSite=Lax cookie. No upstream token is returned to JavaScript, browser storage or URLs.
 
-## Config
+The server-side session expires after eight hours. If an IdP refresh token is issued, the BFF rotates it server-side and uses optimistic versioning to handle concurrent requests. Without a refresh token, the session ends when the access token expires. Request offline_access only when the confidential client is configured to support refresh tokens.
 
-### API (secret manager / env)
+## Mandatory browser HTTP BFF
 
-| Name | Purpose |
-|------|---------|
-| `NETHUB_API_BASE_URL` | NetHubKe API origin |
-| `NETHUB_API_TIMEOUT_SECONDS` | Upstream timeout |
-| `OIDC_ISSUER` | IdP issuer URL |
-| `OIDC_CLIENT_ID` | **Public** SPA client id (must be in NetHubKe `trusted_clients`) |
-| `OIDC_REDIRECT_URI` | e.g. `https://pay.example.com/auth/callback/` |
-| `OIDC_SCOPES` | default `openid profile email` (no offline_access until I7 BFF) |
+All browser-originated application HTTP API calls use same-origin Next.js Route Handlers under /api/backend/*. The current explicit allowlist supports the dashboard's human profile, memberships, merchant summary and merchant payment list.
 
-### Runtime discovery
+The BFF:
+- Validates the opaque session and refreshes server-side credentials when available.
+- Uses a configured private FastAPI origin; it never accepts a browser-selected upstream URL.
+- Exposes only explicit route/method allowlists and validates path parameters/query values.
+- Uses no-store responses and safe error translation.
+- Never trusts client-supplied user, tenant, merchant or permission claims.
+- Requires same-origin validation for state-changing browser operations such as logout.
 
-`GET /config.json` (no auth) returns non-secret SPA settings: issuer, client id, redirect, scopes, flags.
+Do not add a generic arbitrary URL proxy. New browser API methods must be added deliberately to the allowlist and covered by validation, CSRF and integration tests.
 
-## Endpoints
+FastAPI continues to authorize every protected operation. It must not trust the fact that a request passed through the BFF as proof of merchant membership. The backend still rejects missing/invalid Bearer credentials and enforces merchant_member access.
 
-| Method | Path | Auth |
-|--------|------|------|
-| GET | `/config.json` | none |
-| GET | `/api/v1/auth/me` | IdP Bearer |
-| GET | `/api/v1/auth/memberships` | IdP Bearer |
-| GET | `/api/v1/auth/merchants/{merchant_id}` | IdP Bearer + membership |
-| GET | `/api/v1/auth/merchants/{merchant_id}/payments` | IdP Bearer + membership |
-| POST | `/api/v1/auth/memberships` | IdP Bearer + NetHubKe `is_admin` |
-| DELETE | `/api/v1/auth/memberships/{merchant_id}` | IdP Bearer + admin |
+## Private session persistence
 
-## Auth matrix
+FastAPI exposes internal service-to-service routes under /internal/v1/bff/sessions. They are excluded from OpenAPI and require the shared BFF_INTERNAL_SECRET. Public ingress must not route /internal/* to FastAPI. The Next.js service reaches them through NETPAY_BACKEND_INTERNAL_URL over the private service network.
 
-| Token type | Handling |
-|------------|----------|
-| IdP access token (human) | `get_human_principal` → NetHubKe |
-| NetPay M2M access token | `payments.security.require_scopes` |
-| Daraja callbacks | Untrusted evidence |
-| Human merchant reads | `require_membership` on `/api/v1/auth/merchants/*` |
-| M2M payment APIs | Unchanged `require_scopes` on payment router |
+The bffsession table stores:
+- SHA-256 hash of the random browser session handle;
+- encrypted access and optional refresh tokens;
+- access-token expiry and absolute application-session expiry;
+- optimistic token-rotation version and revocation timestamps.
 
-## Merchant membership
+BFF_SESSION_ENCRYPTION_KEY is a dedicated Fernet key and must not be reused for Daraja credential encryption. The shared BFF_INTERNAL_SECRET must be high entropy and identical in the frontend and API secret stores.
 
-Identity ≠ authorization. No auto-merchant on first login. Platform admin grants `merchant_member` rows.
+## Browser/API boundary
 
-## Staging checklist
+- Browser application code calls /api/backend/* only.
+- Browser JavaScript cannot read IdP access/refresh tokens.
+- The old public /config.json endpoint and browser sessionStorage token flow are removed.
+- Next.js server-to-server calls use the private FastAPI service URL.
+- FastAPI remains separately reachable for existing M2M clients and Safaricom callback URLs. Those contracts are not routed through a human browser session.
+- Do not treat CORS as the security boundary. The browser has no upstream bearer token; the BFF holds it server-side and FastAPI still enforces its normal authorization rules.
 
-Full operator runbook (I1 registration + I6 E2E): [`docs/ops/STAGING_IDENTITY.md`](ops/STAGING_IDENTITY.md).
+## WSS readiness
 
-Automated probe: `python backend/scripts/identity_staging_probe.py --base-url <origin>`.
+Next.js Route Handlers are not a general-purpose WebSocket upgrade proxy. The current NetPay source has no live WebSocket endpoint requiring a gateway. Ingress must support HTTP/1.1 upgrades when a concrete realtime feature is added; reserve /ws/* for a dedicated authenticated realtime service. Authenticate the application session or a short-lived narrowly scoped connection credential, authorize each subscription against merchant membership, handle expiry/revocation and prevent cross-merchant event leakage. Do not introduce an idle gateway or broker.
 
-## Staging checklist (summary)
+## M2M and payment flows
 
-1. Register NetPay SPA client id on NetHubKe `trusted_clients`.
-2. Set `NETHUB_API_BASE_URL` and `OIDC_*` on NetPay.
-3. IdP redirect URI matches `OIDC_REDIRECT_URI` (trailing slash if using `trailingSlash: true`).
-4. Sign in at `/dashboard/` → callback → profile loads from `/api/v1/auth/me`.
-5. Grant membership → `/api/v1/auth/memberships` non-empty.
+The client-credentials token endpoint, merchant-scoped M2M permissions, STK Push, Safaricom callbacks, C2B registration and reconciliation remain independent of human OIDC sessions. The BFF must not change their authentication or callback contracts.
 
-## Deployment
+## Required frontend environment
 
-Secret names and k3s rollout order for identity env vars are documented in [`deploy/README.md`](../deploy/README.md).
+- OIDC_ISSUER
+- OIDC_CLIENT_ID
+- OIDC_CLIENT_SECRET
+- OIDC_REDIRECT_URI
+- OIDC_SCOPES (openid profile email; offline_access only when intentionally enabled)
+- OIDC_TRANSACTION_SECRET
+- NETPAY_BACKEND_INTERNAL_URL
+- BFF_INTERNAL_SECRET
+- NEXT_PUBLIC_SITE_URL (public canonical URL only)
 
-Program issues: #232–#239 (I0–I7). Staging registration is #233; deploy contract #234; token lifecycle #235.
-
-## Session storage (SPA)
-
-The browser stores the IdP **access token** in `sessionStorage` for the PKCE public client. That is acceptable for staging; XSS can read the token. Production hardening (httpOnly BFF) is tracked as issue #239 (I7). Logout and HTTP 401 from `/api/v1/auth/*` clear the stored token and PKCE keys.
+Backend requires NETHUB_API_BASE_URL, BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY in addition to its existing API/payment settings. See deploy/README.md and both .env.example files.

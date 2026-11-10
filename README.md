@@ -1,54 +1,58 @@
-# NetHub Payment Gateway (NetPay)
+# NetPay — NetHub payment gateway
 
-NetPay is being rebuilt as a minimal, multi-merchant M-Pesa Daraja gateway.
+NetPay is NetHub's multi-merchant M-Pesa Daraja gateway. It provides merchant-scoped payment APIs, STK Push, callback handling, optional C2B registration, reconciliation and reliable payment events.
+
+## Architecture
+
+NetPay runs as two independent application services:
+
+- **Next.js App Router:** public website, login, merchant dashboard, server-side OIDC and mandatory same-origin HTTP BFF.
+- **FastAPI:** payment APIs, M2M authentication, merchant authorization, Daraja integration, callbacks, persistence and encrypted BFF session storage.
+
+Zitadel handles authentication. NetHubKe remains the resource server for human identity/access decisions. The browser receives only an opaque HttpOnly session cookie; IdP tokens remain server-side. Every browser-originated HTTP request to NetPay APIs goes through Next.js. FastAPI continues to enforce merchant membership and business authorization.
+
+M2M clients and Safaricom continue using the existing API and callback contracts. They do not depend on a human browser session.
 
 ## Start here
 
-- Agent rules: [AGENTS.md](AGENTS.md)
-- UI theme (Ledger): [Theme.md](Theme.md)
-- Implementation brief: [docs/REBUILD_SPEC.md](docs/REBUILD_SPEC.md)
+- Engineering rules: [AGENTS.md](AGENTS.md)
+- Product and payment specification: [docs/REBUILD_SPEC.md](docs/REBUILD_SPEC.md)
 - Verified Daraja capability notes: [docs/DARAJA_CAPABILITIES.md](docs/DARAJA_CAPABILITIES.md)
-- Backend setup and M2M bootstrap: [backend/README.md](backend/README.md)
+- Backend setup: [backend/README.md](backend/README.md)
+- Frontend setup: [frontend/README.md](frontend/README.md)
 - Deployment and migration runbook: [deploy/README.md](deploy/README.md)
+- Human identity and BFF contract: [docs/identity-nethub-rs.md](docs/identity-nethub-rs.md)
+- Staging acceptance: [docs/ops/STAGING_IDENTITY.md](docs/ops/STAGING_IDENTITY.md)
 
-## Implemented foundation
+## Payment foundation
 
-- OAuth client-credentials token exchange for merchant M2M clients, hashed client secrets, short-lived scoped bearer tokens, and merchant-level authorization.
+- OAuth client-credentials for merchant M2M clients, hashed client secrets, short-lived scoped bearer tokens and merchant-level authorization.
 - Encrypted Daraja integration credentials and NetPay-hosted STK callback URLs.
-- STK Push initiation with KES amount validation, idempotency, explicit unknown outcomes, callback correlation, deduplication, and guarded state transitions.
-- Opt-in C2B URL registration and confirmation handling; external validation currently checks basic shape/shortcode/amount only, not merchant-specific account-reference rules.
-- PostgreSQL-backed event outbox, signed optional merchant webhook delivery, retries/dead-letter state, and worker recovery for callbacks that race ahead of STK correlation persistence.
-- Next.js App Router static public landing page and a no-index dashboard placeholder.
+- STK Push initiation with KES amount validation, idempotency, explicit unknown outcomes, callback correlation, deduplication and guarded state transitions.
+- Opt-in C2B URL registration and confirmation handling.
+- PostgreSQL-backed event outbox, signed optional merchant webhook delivery, retries/dead-letter state and worker recovery.
 
-## Deliberate limitations
+## Runtime and local development
 
-- An OAuth token proves consumer key/secret authentication, not that a shortcode/passkey has all required permissions.
-- STK initiation acceptance is not proof of payment.
-- Daraja Transaction Status requires additional initiator/authorization configuration. NetPay must not claim provider verification until the relevant product and credentials are confirmed for a merchant.
-- C2B registration is optional. Do not enable production external validation when merchant-specific account validation rules are required; that policy is not implemented yet.
-- Dashboard human sign-in uses OIDC PKCE and NetHubKe (`/api/v1/auth/me`). Merchant payment data remains gated on membership (`merchant_member`).
+Production uses two containers: backend/Dockerfile builds FastAPI; frontend/Dockerfile builds the Next.js standalone server. FastAPI no longer builds or serves frontend files.
 
-## Frontend and local development
+For local frontend development, copy frontend/.env.example to frontend/.env.local, configure the confidential OIDC client and BFF settings, then run:
 
-The production image builds the Next.js App Router frontend as a static export, then copies the exported files into the FastAPI application image. FastAPI serves the public site and dashboard preview from the same origin; API, OpenAPI, and health routes are registered before the static-file fallback. Node.js is used only during the image build, not in the runtime container.
+    cd frontend
+    npm ci
+    npm run dev
 
-For frontend-only development:
+Run FastAPI separately on port 8000:
 
-```bash
-cd frontend
-cp .env.example .env.local
-npm ci
-npm run dev
-```
+    cd backend
+    uvicorn app.main:app --reload --port 8000
 
-The Next.js development server listens on port 3000. The backend API runs separately on port 8000 during development. The production container startup smoke test verifies that FastAPI serves the home page, dashboard preview, robots file, sitemap, and generated social image.
+For a full container stack, configure backend/.env and frontend/.env.local, then run:
 
-The build-time `NEXT_PUBLIC_SITE_URL` value controls canonical URLs, metadata, JSON-LD, robots, and the sitemap. Set it to the public site origin when building a non-production image.
+    docker compose -f deploy/docker-compose.yml up --build
 
-## Repository and deployment
+See the service-specific READMEs and deployment runbook for all required settings and migrations.
 
-The frontend npm lockfile is committed and CI uses `npm ci`. A backend `uv.lock` is still outstanding; the current backend install resolves the declared version ranges, so pin and commit the Python lock before treating builds as fully reproducible.
+## Delivery workflow
 
-Git history is preserved. The rebuild is developed on `work/minimal-netpay-rebuild`, created from `main`. The existing GHCR image identity and release intent are retained and the Docker/Kubernetes/Compose files are being adapted to the new API and static frontend.
-
-Do not merge the rebuild into `main` until migrations, backend tests, frontend lint/typecheck/build, container build, and the acceptance criteria in the implementation brief pass.
+Implementation branches start from the latest verified dev and PRs target dev. The repository owner performs the final merge. CI must validate backend tests/migrations, frontend lint/typecheck/build, both production containers and security boundaries. Live staging acceptance is separate from CI and must be recorded after deployment.
