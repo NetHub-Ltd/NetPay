@@ -18,6 +18,11 @@ function requiredEnv(name: string): string {
 function hashSessionId(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
+function bffInternalSecret(): string {
+  const value = requiredEnv("BFF_INTERNAL_SECRET");
+  if (value.length < 32) throw new Error("BFF_INTERNAL_SECRET must contain at least 32 characters");
+  return value;
+}
 function backendBaseUrl(): string {
   const url = new URL(requiredEnv("NETPAY_BACKEND_INTERNAL_URL"));
   if (url.username || url.password || url.search || url.hash || url.pathname !== "/") {
@@ -34,7 +39,7 @@ async function storeRequest(path: string, init: RequestInit = {}): Promise<Respo
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "X-NetPay-BFF-Secret": requiredEnv("BFF_INTERNAL_SECRET"),
+      "X-NetPay-BFF-Secret": bffInternalSecret(),
     },
     cache: "no-store",
     redirect: "error",

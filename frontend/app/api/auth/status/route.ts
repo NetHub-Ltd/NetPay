@@ -12,7 +12,9 @@ export async function GET() {
     process.env.OIDC_TRANSACTION_SECRET,
   );
   const bffConfigured = Boolean(
-    process.env.NETPAY_BACKEND_INTERNAL_URL && process.env.BFF_INTERNAL_SECRET,
+    process.env.NETPAY_BACKEND_INTERNAL_URL &&
+    process.env.BFF_INTERNAL_SECRET &&
+    process.env.BFF_INTERNAL_SECRET.length >= 32,
   );
   return NextResponse.json(
     { oidc_configured: oidcConfigured, bff_configured: bffConfigured },
