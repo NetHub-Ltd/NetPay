@@ -21,14 +21,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <PublicSiteFrame>
       <main id="main-content" className="mx-auto flex min-h-[72vh] max-w-7xl items-center justify-center px-6 py-16">
-        <section className="w-full max-w-lg rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-8 shadow-[var(--shadow-card)] sm:p-10">
+        <section className="w-full max-w-lg rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-8 shadow-[var(--shadow-sm)] sm:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">NetPay account</p>
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[var(--ink)]">Welcome back.</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--ink-muted)]">
             Sign in with your NetHub identity to access your merchant workspace and payment activity.
           </p>
           {errorMessage ? (
-            <p className="mt-6 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
+            <p className="mt-6 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">
               {errorMessage}
             </p>
           ) : null}

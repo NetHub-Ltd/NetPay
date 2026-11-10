@@ -1,5 +1,3 @@
-import "server-only";
-
 import { cookies } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
 import { refreshOidcTokens, type OidcTokens } from "./oidc";

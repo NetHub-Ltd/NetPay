@@ -154,7 +154,7 @@ function safeEqual(left: string, right: string): boolean {
 }
 /** Verify RS256 signature plus required issuer, audience, time and nonce claims. */
 export async function verifyIdToken(
-  token: string, expectedNonce?: string, expectedSubject?: string,
+  token: string, expectedNonce?: string, expectedSubject?: string, expectedAccessToken?: string,
 ): Promise<JwtClaims> {
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("Invalid ID token");
@@ -189,11 +189,16 @@ export async function verifyIdToken(
     typeof claims.iat !== "number" || claims.iat > now + 60 ||
     typeof claims.sub !== "string" || !claims.sub
   ) throw new Error("ID token claims validation failed");
-  if (audiences.length > 1 && claims.azp !== clientId) throw new Error("ID token authorized party validation failed");
+  if ((audiences.length > 1 || claims.azp) && claims.azp !== clientId) throw new Error("ID token authorized party validation failed");
+  if (typeof claims.nbf === "number" && claims.nbf > now + 60) throw new Error("ID token is not yet valid");
   if (expectedNonce && (typeof claims.nonce !== "string" || !safeEqual(claims.nonce, expectedNonce))) {
     throw new Error("ID token nonce validation failed");
   }
   if (expectedSubject && claims.sub !== expectedSubject) throw new Error("ID token subject changed");
+  if (claims.at_hash && expectedAccessToken) {
+    const expectedHash = createHash("sha256").update(expectedAccessToken).digest().subarray(0, 16).toString("base64url");
+    if (!safeEqual(claims.at_hash, expectedHash)) throw new Error("ID token access-token hash validation failed");
+  }
   return claims;
 }
 async function tokenRequest(form: URLSearchParams): Promise<OidcTokens> {
@@ -236,6 +241,6 @@ export async function refreshOidcTokens(refreshToken: string): Promise<OidcToken
     grant_type: "refresh_token",
     refresh_token: refreshToken,
   }));
-  if (tokens.id_token) await verifyIdToken(tokens.id_token);
+  if (tokens.id_token) await verifyIdToken(tokens.id_token, undefined, undefined, tokens.access_token);
   return tokens;
 }
