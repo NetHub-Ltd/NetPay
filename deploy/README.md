@@ -33,7 +33,7 @@ Continue configuring the existing DB_*, DATABASE_URL, REDIS_*, NETHUB_API_*, M2M
 
 | Variable | Purpose |
 |---|---|
-| BFF_INTERNAL_SECRET | High-entropy shared service credential used only by Next.js to access /internal/v1/bff/sessions |
+| BFF_INTERNAL_SECRET | High-entropy shared service credential (minimum 32 characters) used only by Next.js to access /internal/v1/bff/sessions |
 | BFF_SESSION_ENCRYPTION_KEY | Dedicated Fernet key used to encrypt OIDC access/refresh tokens at rest |
 
 Generate a separate encryption key:
@@ -47,7 +47,7 @@ Do not reuse Daraja credential keys, database passwords or the BFF internal secr
 | Variable | Purpose |
 |---|---|
 | NETPAY_BACKEND_INTERNAL_URL | Private/internal FastAPI origin; never a NEXT_PUBLIC_ variable |
-| BFF_INTERNAL_SECRET | Same value as the API's BFF_INTERNAL_SECRET |
+| BFF_INTERNAL_SECRET | Same high-entropy value (minimum 32 characters) as the API's BFF_INTERNAL_SECRET |
 | OIDC_ISSUER | Zitadel issuer URL |
 | OIDC_CLIENT_ID | Confidential server-side NetPay web client ID |
 | OIDC_CLIENT_SECRET | Confidential web client secret; frontend server only |
@@ -88,7 +88,7 @@ Keep the existing Render service as the FastAPI API service so its public API an
 Configure:
 - API service: existing database, NETHUB_API_BASE_URL, MPESA_PUBLIC_BASE_URL, BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY.
 - Frontend service: OIDC_* settings, OIDC_TRANSACTION_SECRET, BFF_INTERNAL_SECRET (same value), NETPAY_BACKEND_INTERNAL_URL set to the API's private service URL, and the Docker build argument NEXT_PUBLIC_SITE_URL set to the frontend's public origin (it is compiled into metadata during build).
-- Register the frontend origin and exact /auth/callback/ redirect URI in Zitadel and NetHubKe trusted-client/CORS configuration as required by the existing NetHubKe contract.
+- Register the exact frontend /auth/callback/ redirect URI in Zitadel and the matching client_id as a NetHubKe trusted client for product netpay. Browser-to-NetHubKe CORS is not required for this server-to-server BFF flow; do not broaden CORS for it.
 - Ensure both services use the same PostgreSQL database and the API migration has run before frontend sign-in is tested.
 - Keep Safaricom callback URLs pointing to the API service origin unless ingress is configured to route /callbacks/mpesa to FastAPI.
 
@@ -104,7 +104,6 @@ The ingress controller must support HTTP/1.1 WebSocket upgrades. No dedicated We
 
 - FastAPI liveness: /health/live
 - FastAPI readiness: /health/ready (PostgreSQL required; Redis remains auxiliary)
-- Next.js liveness: /login/
 - Next.js liveness: /login/
 - Next.js readiness: /api/health/ready (OIDC configuration, FastAPI readiness and BFF session-table/encryption readiness)
 
