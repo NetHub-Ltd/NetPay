@@ -76,6 +76,13 @@ def check_frontend_status(frontend: str) -> list[str]:
     return errors
 
 
+def check_frontend_ready(frontend: str) -> list[str]:
+    status, data, _ = _get(frontend + "/api/health/ready")
+    if status != 200 or not isinstance(data, dict) or data.get("status") != "ok":
+        return ["Frontend readiness failed (OIDC, API or BFF session store not ready)"]
+    return []
+
+
 def check_frontend_login(frontend: str) -> list[str]:
     status, body, _ = _get(frontend + "/login/")
     if status != 200 or not isinstance(body, str) or "Continue with NetHub" not in body:
@@ -106,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
         ("api_health", lambda: check_api_health(api)),
         ("api_boundaries", lambda: check_api_boundaries(api)),
         ("frontend_status", lambda: check_frontend_status(frontend)),
+        ("frontend_ready", lambda: check_frontend_ready(frontend)),
         ("frontend_login", lambda: check_frontend_login(frontend)),
         ("frontend_bff", lambda: check_frontend_bff(frontend)),
     )

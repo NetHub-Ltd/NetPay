@@ -65,6 +65,10 @@ def test_bff_session_store_create_rotate_and_revoke() -> None:
     now = datetime.now(UTC)
     headers = {"X-NetPay-BFF-Secret": "test-internal-secret-value"}
     with TestClient(netpay_app) as client:
+        ready = client.get("/internal/v1/bff/sessions/ready", headers=headers)
+        assert ready.status_code == 200
+        assert ready.json() == {"status": "ok"}
+
         created = client.post(
             "/internal/v1/bff/sessions",
             headers=headers,

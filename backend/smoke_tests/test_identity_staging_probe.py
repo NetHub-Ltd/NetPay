@@ -8,6 +8,7 @@ from app.identity.staging_probe import (
     check_api_health,
     check_frontend_bff,
     check_frontend_login,
+    check_frontend_ready,
     check_frontend_status,
 )
 
@@ -64,3 +65,10 @@ def test_frontend_login_and_protected_dashboard() -> None:
         assert check_frontend_bff("https://pay.example") == [
             "BFF must reject unauthenticated browser API requests"
         ]
+
+def test_frontend_readiness_requires_oidc_api_and_session_store() -> None:
+    with patch(
+        "app.identity.staging_probe._get",
+        return_value=(200, {"status": "ok", "oidc_configured": True, "bff_configured": True}, ""),
+    ):
+        assert check_frontend_ready("https://pay.example") == []
