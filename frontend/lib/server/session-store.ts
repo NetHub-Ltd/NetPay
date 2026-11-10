@@ -110,7 +110,12 @@ export async function getSessionFromRequest(request: Request): Promise<{
   const cookieHeader = request.headers.get("cookie") ?? "";
   const cookiePart = cookieHeader.split(";").map((part) => part.trim())
     .find((part) => part.startsWith(SESSION_COOKIE_NAME + "="));
-  const sessionId = cookiePart ? decodeURIComponent(cookiePart.slice(SESSION_COOKIE_NAME.length + 1)) : null;
+  let sessionId: string | null = null;
+  try {
+    sessionId = cookiePart ? decodeURIComponent(cookiePart.slice(SESSION_COOKIE_NAME.length + 1)) : null;
+  } catch {
+    return null;
+  }
   if (!sessionId || !/^[A-Za-z0-9_-]{40,60}$/.test(sessionId)) return null;
   const session = await getActiveSession(sessionId);
   return session ? { sessionId, session } : null;

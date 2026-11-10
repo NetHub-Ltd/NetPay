@@ -232,5 +232,10 @@ export async function exchangeAuthorizationCode(code: string, verifier: string):
   return tokens;
 }
 export async function refreshOidcTokens(refreshToken: string): Promise<OidcTokens> {
-  return tokenRequest(new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken }));
+  const tokens = await tokenRequest(new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  }));
+  if (tokens.id_token) await verifyIdToken(tokens.id_token);
+  return tokens;
 }
