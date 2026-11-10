@@ -11,7 +11,16 @@ export async function GET() {
     process.env.OIDC_REDIRECT_URI &&
     process.env.OIDC_TRANSACTION_SECRET,
   );
-  const backendBase = process.env.NETPAY_BACKEND_INTERNAL_URL?.trim().replace(/\/+$/, "");
+  let backendBase = "";
+  try {
+    const backendUrl = new URL(process.env.NETPAY_BACKEND_INTERNAL_URL ?? "");
+    if (backendUrl.username || backendUrl.password || backendUrl.search || backendUrl.hash || backendUrl.pathname !== "/") {
+      throw new Error("Invalid backend origin");
+    }
+    backendBase = backendUrl.origin;
+  } catch {
+    backendBase = "";
+  }
   const bffSecret = process.env.BFF_INTERNAL_SECRET;
   if (!oidcConfigured || !backendBase || !bffSecret) {
     return NextResponse.json(
@@ -23,7 +32,7 @@ export async function GET() {
   try {
     const [api, sessionStore] = await Promise.all([
       fetch(backendBase + "/health/ready", {
-        cache: "no-store", signal: AbortSignal.timeout(4_000),
+        cache: "no-store", redirect: "error", signal: AbortSignal.timeout(4_000),
       }),
       fetch(backendBase + "/internal/v1/bff/sessions/ready", {
         headers: { "X-NetPay-BFF-Secret": bffSecret },
