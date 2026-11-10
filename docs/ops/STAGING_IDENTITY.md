@@ -1,101 +1,93 @@
-# Staging identity — NetPay as NetHubKe client
+# Staging identity — independent Next.js BFF and NetHubKe client
 
-**Issues:** #233 (I1 platform registration), #238 (I6 staging E2E gate)  
-**Secrets:** never paste production tokens, client secrets, or admin emails into git or public issues.
+**Related issues:** #233 (operator IdP/NetHubKe registration), #238 (I0–I6 staging acceptance), #239 (mandatory Next.js BFF and server-side identity).
+**Rule:** never paste production tokens, client secrets, session cookies or admin credentials into git, issues or chat.
 
-## Roles
+## Service roles
 
-| System | Action |
-|--------|--------|
-| IdP | Public OIDC app, PKCE, redirect URI |
-| NetHubKe RS | `trusted_clients` row + CORS |
-| NetPay | `NETHUB_*` + `OIDC_*` secrets; same-origin SPA |
+| System | Responsibility |
+|---|---|
+| Zitadel | User authentication |
+| Next.js | Confidential OIDC client, callback, opaque application session, login/dashboard and HTTP BFF |
+| FastAPI | API, merchant authorization, payment flows and encrypted BFF session persistence |
+| NetHubKe | Human identity resolution and product/resource access decisions |
+| Ingress | Public routing to Next.js, M2M API and Safaricom callback paths |
 
-## I1 — Platform registration checklist
+The browser uses the Next.js public origin. Browser-originated application API requests go to same-origin /api/backend/*. The Next.js server calls FastAPI over NETPAY_BACKEND_INTERNAL_URL. Do not configure a browser-facing API base URL or expose upstream tokens to JavaScript.
 
-Record each step as **PASS / FAIL / N/A** with date (no secret values).
+## I1 — Operator registration
 
-| # | Step | Evidence type |
-|---|------|----------------|
-| 1 | Create IdP **public** client (PKCE, no client secret in SPA) | Operator note (client name only) |
-| 2 | Redirect URI exact match: `{PUBLIC_ORIGIN}/auth/callback/` (trailing slash per Next) | Screenshot of IdP app settings redacted |
-| 3 | Scopes: `openid profile email` (no `offline_access` until I7) | Operator note |
-| 4 | NetHubKe admin: register `client_id` in `trusted_clients` with `product=netpay`, active | Admin API or console (id redacted) |
-| 5 | NetHubKe `ALLOWED_ORIGINS` includes NetPay public origin | Config change ticket |
-| 6 | Bootstrap platform admin email(s) in NetHubKe secret store for membership grants | Secret manager path only |
-| 7 | Negative: unknown client_id → NetHubKe 401 | Command result without token |
+Record each step PASS / FAIL / N/A with date and redacted evidence only.
 
-### NetHubKe trusted client (shape only)
+| # | Step | Evidence |
+|---|---|---|
+| 1 | Register a confidential server-side OIDC web client for NetPay | Client name and redacted settings |
+| 2 | Enable Authorization Code + PKCE (S256) and client authentication supported by Zitadel | Redacted IdP configuration |
+| 3 | Exact redirect URI is the frontend public origin plus /auth/callback/ | Redacted IdP app settings |
+| 4 | Scopes include openid profile email; enable offline_access only if refresh tokens are intentionally required | Redacted scope configuration |
+| 5 | Register the client_id as a trusted NetPay client in NetHubKe | Redacted admin confirmation |
+| 6 | Configure frontend runtime secrets: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI, OIDC_SCOPES and OIDC_TRANSACTION_SECRET | Secret-manager key names only |
+| 7 | Configure BFF_INTERNAL_SECRET identically in frontend and API secret stores | Secret-manager key names only |
+| 8 | Configure a separate BFF_SESSION_ENCRYPTION_KEY in the API secret store | Key name only; never record value |
+| 9 | Set NETPAY_BACKEND_INTERNAL_URL to the private FastAPI service origin | Redacted service configuration |
+| 10 | Confirm public ingress does not expose /internal/* | Ingress configuration review |
+| 11 | Confirm the API's NETHUB_API_BASE_URL and existing trusted-client integration | Redacted config evidence |
+| 12 | Confirm the exact frontend origin and callback URI are used in the deployed configuration | Operator evidence |
 
-```http
-POST /api/v1/admin/trusted-clients
-Authorization: Bearer <admin-idp-token>
-Content-Type: application/json
+The browser no longer performs OIDC token exchange. Do not register a public SPA client for the production NetPay frontend.
 
-{
-  "client_id": "<netpay-spa-public-client-id>",
-  "name": "NetPay SPA",
-  "product": "netpay",
-  "notes": "PKCE public client for pay staging"
-}
-```
+## Secret generation
 
-## NetPay secret fill (staging)
+Generate a dedicated Fernet encryption key:
 
-Canonical keys — see `deploy/README.md` and `backend/.env.example`:
+    python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-- `NETHUB_API_BASE_URL`
-- `NETHUB_API_TIMEOUT_SECONDS`
-- `OIDC_ISSUER`
-- `OIDC_CLIENT_ID`
-- `OIDC_REDIRECT_URI`
-- `OIDC_SCOPES=openid profile email`
+Generate BFF_INTERNAL_SECRET and OIDC_TRANSACTION_SECRET as independent high-entropy random values using the organization's secret manager or cryptographically secure generator. The BFF internal secret must match across Next.js and FastAPI. Do not reuse M-Pesa encryption keys, database passwords or OIDC client secrets.
 
-Rollout: secrets → migrate Job if needed → API/worker. Identity missing ⇒ human auth fail-closed; M2M + public static + probes still work.
+## I6 — Live staging acceptance
 
-## I6 — Staging E2E checklist
+Run only after the owner has merged the implementation PR and Render/ingress has deployed both services. Record PASS/FAIL and timestamps.
 
-Run against **staging origin** only. Mark VERIFIED with timestamp.
+| # | Check | Expected result |
+|---|---|---|
+| 1 | FastAPI /health/live | 200 |
+| 2 | FastAPI /health/ready | 200; database=ok |
+| 3 | Next.js /login/ | 200; branded sign-in page |
+| 4 | Next.js /api/auth/status | 200; oidc_configured=true and bff_configured=true; no secret/token fields |
+| 5 | Unauthenticated /dashboard/ | Redirects to /login/ |
+| 6 | Complete browser sign-in | Zitadel → Next.js callback → dashboard |
+| 7 | Session cookie inspection | HttpOnly, Secure in production, SameSite=Lax, Path=/; no upstream tokens in cookies |
+| 8 | Browser storage inspection | No access/refresh token or PKCE verifier in localStorage/sessionStorage |
+| 9 | Browser Network inspection | Human API calls use same-origin /api/backend/*; no direct browser calls to FastAPI /api/v1/* |
+| 10 | Direct FastAPI /api/v1/auth/me without Bearer | 401/403 |
+| 11 | BFF /api/backend/v1/auth/me without session | 401 |
+| 12 | User without merchant membership | Profile may load; merchant data remains denied/empty |
+| 13 | Admin grants one merchant membership | Only that merchant becomes visible |
+| 14 | Attempt another merchant ID without membership | 403; no cross-merchant data |
+| 15 | Logout | Server-side session revoked; cookie cleared; BFF requests return 401 |
+| 16 | Access token expiry | Refresh occurs server-side if refresh token exists; otherwise session is invalidated and login is required |
+| 17 | M2M client_credentials and payment APIs | Existing integration contract remains functional |
+| 18 | Safaricom STK callback and optional C2B callbacks | Existing public callback URLs still reach FastAPI |
+| 19 | /config.json on API | 404; former public SPA config endpoint removed |
+| 20 | /internal/v1/bff/sessions without service secret | 401; route not reachable through public ingress |
+| 21 | Realtime readiness | No idle WebSocket gateway/broker; documented ingress upgrade path reserved for a concrete future endpoint |
 
-| # | Check | How |
-|---|--------|-----|
-| 1 | `GET /health/live` → 200 | curl |
-| 2 | `GET /health/ready` → 200, `database=ok` | curl |
-| 3 | `GET /config.json` → `oidc_configured: true`, **no** secret fields | curl + review JSON |
-| 4 | Browser: `/dashboard/` → Sign in → IdP → `/auth/callback/` → profile | Manual |
-| 5 | `GET /api/v1/auth/me` with Bearer → 200 profile | curl or Network tab |
-| 6 | Memberships empty before grant | UI + API |
-| 7 | Platform admin grants membership | Admin API |
-| 8 | Memberships non-empty; select merchant | UI |
-| 9 | `GET /api/v1/auth/merchants/{id}` → 200 | curl |
-| 10 | `GET /api/v1/auth/merchants/{id}/payments` → 200 (list may be empty) | curl |
-| 11 | Without membership → 403 `merchant_membership_required` | curl other merchant id |
-| 12 | M2M client_credentials still issues token / payment path OK | existing M2M smoke |
-| 13 | 401 clears SPA session (sign-in again) | Manual after token revoke/expiry |
+### Automated probe
 
-### Automated probe (no secrets in output)
+Run from a machine that can reach both staging services:
 
-From a machine that can reach staging:
+    python backend/scripts/identity_staging_probe.py \
+      --base-url https://<fastapi-api-origin> \
+      --frontend-url https://<nextjs-frontend-origin>
 
-```bash
-# Unauthenticated contract probes (safe in CI against a URL)
-python backend/scripts/identity_staging_probe.py --base-url https://pay-staging.example.com
-
-# Optional: human path when ACCESS_TOKEN is in env (never log the token)
-NETPAY_PROBE_ACCESS_TOKEN=... python backend/scripts/identity_staging_probe.py \
-  --base-url https://pay-staging.example.com --with-auth
-```
-
-Exit code 0 = all selected checks passed.
+The probe does not require or print tokens. It checks service health, unauthenticated API boundaries, public frontend readiness, login rendering, dashboard protection and BFF rejection without a session.
 
 ## Go / no-go
 
-| Decision | Criteria |
-|----------|----------|
-| **Go for broader staging use** | I1 rows 1–7 PASS; I6 rows 1–13 PASS; residual risks listed |
-| **No production / main release** | Still requires explicit approval; I7 BFF optional for high-value merchants |
-| Residual risks | Access token in `sessionStorage` (XSS) until #239 |
+- I1 operator registration must be recorded as complete.
+- I0–I6 acceptance remains open until the live evidence above and existing M2M/payment regression evidence are recorded.
+- #239 acceptance additionally requires CI, both production images, secure OIDC/session behavior and deployed BFF verification.
+- CI success is not live staging evidence.
+- Do not promote to production or close #238 solely because the PR merged.
 
-## Recording results
-
-Update `.trackers/task.md` and `.trackers/repo-state.md` with PASS/FAIL tables (no secrets). Comment on issues #233 and #238 with a redacted summary.
+Record evidence in .trackers/task.md and .trackers/repo-state.md and comment on #233/#238 with redacted results. Never include token, secret or cookie values.
