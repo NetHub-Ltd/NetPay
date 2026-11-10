@@ -145,7 +145,8 @@ jobs:
           git tag -a "$tag" -m "Release ${tag}
 
           Automated patch release from main (${GITHUB_SHA}).
-          Image: ghcr.io/nethub-ltd/netpay:${tag}"
+          API image: ghcr.io/nethub-ltd/netpay:${tag}
+          Frontend image: ghcr.io/nethub-ltd/netpay-frontend:${tag}"
 
           git push origin "$tag"
 
@@ -264,19 +265,14 @@ jobs:
             ghcr.io/nethub-ltd/netpay-frontend:latest
             ```
 
-            ```bash
-            docker pull ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}
-            docker run --rm -p 8000:8000 \
-              -e DATABASE_URL=sqlite+aiosqlite:///./data/gateway.db \
-              -e SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" \
-              -e CREDENTIAL_ENCRYPTION_KEY="$(python -c 'import secrets,base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())')" \
-              -e PUBLIC_BASE_URL=https://gateway.example.com \
-              ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}
-            ```
+            Build and deploy the API and frontend images as a compatible pair. Configure the required runtime secrets and service topology described in deploy/README.md. Do not run the API image as a standalone SQLite application.
 
-            Health: `http://localhost:8000/health/live` (liveness), `http://localhost:8000/health/ready` (readiness). Run `alembic upgrade head` once against the target database before starting replicas.
+            - API: `ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}`
+            - Next.js frontend: `ghcr.io/nethub-ltd/netpay-frontend:${{ needs.version.outputs.tag }}`
+
+            Health: API `/health/live` and `/health/ready`; frontend `/login/` and `/api/auth/status`. Run `alembic upgrade head` once against the target PostgreSQL database before starting API replicas.
 
             ### Notes
 
-            - User authentication is intended via **NetHub AS** (see `docs/auth-model.md` when present on the branch).
+            - User authentication uses server-side OIDC with Zitadel/NetHubKe and a mandatory Next.js BFF. See `docs/identity-nethub-rs.md`.
             - To skip the next automated release, include `[skip release]` in the merge commit message on `main`.
