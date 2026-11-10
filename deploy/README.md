@@ -87,7 +87,7 @@ Keep the existing Render service as the FastAPI API service so its public API an
 
 Configure:
 - API service: existing database, NETHUB_API_BASE_URL, MPESA_PUBLIC_BASE_URL, BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY.
-- Frontend service: OIDC_* settings, OIDC_TRANSACTION_SECRET, BFF_INTERNAL_SECRET (same value), NETPAY_BACKEND_INTERNAL_URL set to the API's private service URL, and NEXT_PUBLIC_SITE_URL set to the frontend's public origin.
+- Frontend service: OIDC_* settings, OIDC_TRANSACTION_SECRET, BFF_INTERNAL_SECRET (same value), NETPAY_BACKEND_INTERNAL_URL set to the API's private service URL, and the Docker build argument NEXT_PUBLIC_SITE_URL set to the frontend's public origin (it is compiled into metadata during build).
 - Register the frontend origin and exact /auth/callback/ redirect URI in Zitadel and NetHubKe trusted-client/CORS configuration as required by the existing NetHubKe contract.
 - Ensure both services use the same PostgreSQL database and the API migration has run before frontend sign-in is tested.
 - Keep Safaricom callback URLs pointing to the API service origin unless ingress is configured to route /callbacks/mpesa to FastAPI.

@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     await validateHumanAccessToken(tokens.access_token);
     const sessionId = await createServerSession(tokens);
     const response = NextResponse.redirect(new URL(safeReturnTo(tx.returnTo, request.nextUrl.origin), request.url));
+    response.headers.set("Cache-Control", "no-store");
     response.cookies.set(SESSION_COOKIE_NAME, sessionId, sessionCookieOptions());
     response.cookies.set(OIDC_TRANSACTION_COOKIE, "", {
       httpOnly: true, secure: process.env.NODE_ENV === "production",

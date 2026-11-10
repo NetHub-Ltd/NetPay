@@ -1,6 +1,6 @@
 services:
   migrate:
-    image: nethub/netpay-api:local
+    image: nethub/netpay:local
     build:
       context: ..
       dockerfile: backend/Dockerfile
@@ -15,7 +15,7 @@ services:
     restart: "no"
 
   api:
-    image: nethub/netpay-api:local
+    image: nethub/netpay:local
     build:
       context: ..
       dockerfile: backend/Dockerfile
@@ -51,7 +51,7 @@ services:
         condition: service_healthy
 
   worker:
-    image: nethub/netpay-api:local
+    image: nethub/netpay:local
     build:
       context: ..
       dockerfile: backend/Dockerfile
