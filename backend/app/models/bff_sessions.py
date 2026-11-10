@@ -22,6 +22,7 @@ class BFFSession(SQLModel, table=True):
     access_token_ciphertext: str = Field(sa_type=Text, nullable=False)
     refresh_token_ciphertext: str | None = Field(default=None, sa_type=Text)
     access_expires_at: datetime = Field(sa_type=DateTime(timezone=True), nullable=False)
+    version: int = Field(default=1, nullable=False)
     expires_at: datetime = Field(sa_type=DateTime(timezone=True), nullable=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True), nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True), nullable=False)

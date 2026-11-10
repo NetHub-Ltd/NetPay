@@ -9,7 +9,7 @@ export const SESSION_COOKIE_NAME =
   process.env.NODE_ENV === "production" ? "__Host-netpay_session" : "netpay_session";
 export type StoredSession = {
   access_token: string; refresh_token: string | null;
-  access_expires_at: string; expires_at: string;
+  access_expires_at: string; expires_at: string; version: number;
 };
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -64,6 +64,7 @@ async function updateStoredSession(
   const response = await storeRequest("/" + hashSessionId(sessionId), {
     method: "PATCH",
     body: JSON.stringify({
+      expected_version: current.version,
       access_token: tokens.access_token, refresh_token: refreshToken,
       access_expires_at: accessExpiresAt.toISOString(), expires_at: current.expires_at,
     }),
@@ -72,6 +73,7 @@ async function updateStoredSession(
   return {
     access_token: tokens.access_token, refresh_token: refreshToken,
     access_expires_at: accessExpiresAt.toISOString(), expires_at: current.expires_at,
+    version: current.version + 1,
   };
 }
 export async function getActiveSession(sessionId: string): Promise<StoredSession | null> {
@@ -89,9 +91,15 @@ export async function getActiveSession(sessionId: string): Promise<StoredSession
   }
   try {
     const rotated = await refreshOidcTokens(current.refresh_token);
+    await validateHumanAccessToken(rotated.access_token);
     current = await updateStoredSession(sessionId, rotated, current);
     return current;
   } catch {
+    // Concurrent requests may have rotated the token first. Re-read before revoking.
+    const latest = await readStoredSession(sessionId).catch(() => null);
+    if (latest && latest.version !== current.version && Date.parse(latest.access_expires_at) > Date.now() + 30_000) {
+      return latest;
+    }
     await revokeServerSession(sessionId);
     return null;
   }

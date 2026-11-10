@@ -23,6 +23,7 @@ def upgrade() -> None:
         sa.Column("access_token_ciphertext", sa.Text(), nullable=False),
         sa.Column("refresh_token_ciphertext", sa.Text(), nullable=True),
         sa.Column("access_expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("version", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),

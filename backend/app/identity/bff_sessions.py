@@ -30,6 +30,7 @@ class BFFSessionWrite(BaseModel):
 
 
 class BFFSessionUpdate(BaseModel):
+    expected_version: int = Field(ge=1)
     access_token: SecretStr
     refresh_token: SecretStr | None = None
     access_expires_at: datetime
@@ -37,6 +38,7 @@ class BFFSessionUpdate(BaseModel):
 
 
 class BFFSessionRead(BaseModel):
+    version: int
     access_token: str
     refresh_token: str | None
     access_expires_at: datetime
@@ -110,6 +112,7 @@ async def create_bff_session(
         expires_at=body.expires_at.astimezone(UTC),
         created_at=now,
         updated_at=now,
+        version=1,
         revoked_at=None,
     )
     if existing is not None:
@@ -133,6 +136,7 @@ async def read_bff_session(
     if row is None or row.revoked_at is not None or row.expires_at <= now:
         raise HTTPException(status_code=404, detail="session_not_found")
     return BFFSessionRead(
+        version=row.version,
         access_token=_decrypt(row.access_token_ciphertext),
         refresh_token=(
             _decrypt(row.refresh_token_ciphertext) if row.refresh_token_ciphertext else None
@@ -155,15 +159,18 @@ async def update_bff_session(
     row = await session.get(BFFSession, session_id_hash)
     if row is None or row.revoked_at is not None or row.expires_at <= datetime.now(UTC):
         raise HTTPException(status_code=404, detail="session_not_found")
+    if row.version != body.expected_version:
+        raise HTTPException(status_code=409, detail="session_version_conflict")
     row.access_token_ciphertext = _encrypt(body.access_token.get_secret_value())
     if body.refresh_token is not None:
         row.refresh_token_ciphertext = _encrypt(body.refresh_token.get_secret_value())
     row.access_expires_at = body.access_expires_at.astimezone(UTC)
     row.expires_at = body.expires_at.astimezone(UTC)
+    row.version += 1
     row.updated_at = datetime.now(UTC)
     session.add(row)
     await session.commit()
-    return {"status": "updated"}
+    return {"status": "updated", "version": str(row.version)}
 
 
 @router.delete(
