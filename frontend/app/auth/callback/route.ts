@@ -20,8 +20,6 @@ export async function GET(request: NextRequest) {
   const state = request.nextUrl.searchParams.get("state");
   const tx = openTransaction(request.cookies.get(OIDC_TRANSACTION_COOKIE)?.value);
   if (!code || !state || !tx) return loginFailure(request, "state");
-  const supplied = Buffer.from(state);
-  const expected = Buffer.from(tx.state);
   if (!constantTimeEqual(state, tx.state)) {
     return loginFailure(request, "state");
   }

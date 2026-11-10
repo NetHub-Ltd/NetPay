@@ -89,6 +89,7 @@ export function DashboardClient() {
           merchant = data.merchant;
           payments = data.payments;
         } catch (e) {
+          if (e instanceof AuthApiError && e.status === 401) throw e;
           dataError = e instanceof Error ? e.message : "Could not load merchant data";
         }
       }
