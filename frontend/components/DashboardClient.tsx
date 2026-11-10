@@ -11,10 +11,6 @@ import {
 import { Button, Badge, Card } from "./ui";
 import {
   AuthApiError,
-  AuthMe,
-  HumanPayment,
-  Membership,
-  MerchantSummary,
   fetchAuthMe,
   fetchMemberships,
   fetchMerchantPayments,
@@ -22,6 +18,7 @@ import {
   startLogin,
   clearSession,
 } from "../lib/oidc";
+import type { AuthMe, HumanPayment, Membership, MerchantSummary } from "../lib/oidc";
 
 const NAV = [
   { label: "Overview", icon: LayoutDashboard, active: true },
@@ -59,7 +56,8 @@ export function DashboardClient() {
       let payments: HumanPayment[] = [];
       try {
         payments = await fetchMerchantPayments(merchantId, 10);
-      } catch {
+      } catch (error) {
+        if (error instanceof AuthApiError && error.status === 401) throw error;
         payments = [];
       }
       return { merchant, payments };
@@ -74,7 +72,8 @@ export function DashboardClient() {
       let memberships: Membership[] = [];
       try {
         memberships = await fetchMemberships();
-      } catch {
+      } catch (error) {
+        if (error instanceof AuthApiError && error.status === 401) throw error;
         memberships = [];
       }
 
@@ -104,23 +103,16 @@ export function DashboardClient() {
         dataError,
       });
     } catch (e) {
-      await clearSession().catch(() => undefined);
       const message = e instanceof Error ? e.message : "Could not load session";
       const is401 =
         (e instanceof AuthApiError && e.status === 401) ||
         /session expired|sign in again/i.test(message);
       if (is401) {
-        setStatus({
-          kind: "signed_out",
-          oidcReady: true,
-          message,
-        });
+        await clearSession().catch(() => undefined);
+        setStatus({ kind: "signed_out", oidcReady: true, message });
         return;
       }
-      setStatus({
-        kind: "error",
-        message,
-      });
+      setStatus({ kind: "error", message });
     }
   }, [loadMerchantData]);
 
@@ -142,8 +134,15 @@ export function DashboardClient() {
   }
 
   async function onSignOut() {
-    await clearSession().catch(() => undefined);
-    setStatus({ kind: "signed_out", oidcReady: true });
+    try {
+      await clearSession();
+      setStatus({ kind: "signed_out", oidcReady: true });
+    } catch (error) {
+      setStatus({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Could not sign out",
+      });
+    }
   }
 
   async function onSelectMerchant(merchantId: string) {
