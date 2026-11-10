@@ -167,3 +167,91 @@ def test_grant_membership_as_admin(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_allowed_roles() -> None:
     assert "member" in ALLOWED_ROLES
     assert "admin" in ALLOWED_ROLES
+
+
+def test_merchant_summary_requires_membership() -> None:
+    app = FastAPI()
+    app.include_router(identity_router)
+
+    async def fake_principal() -> HumanPrincipal:
+        return _human()
+
+    app.dependency_overrides[get_human_principal] = fake_principal
+
+    async def fake_session():
+        session = AsyncMock()
+        session.exec = AsyncMock(return_value=MagicMock(first=MagicMock(return_value=None)))
+        yield session
+
+    from app.core.database import get_session
+
+    app.dependency_overrides[get_session] = fake_session
+
+    with TestClient(app) as client:
+        response = client.get(
+            f"/api/v1/auth/merchants/{MERCHANT_ID}",
+            headers={"Authorization": "Bearer unused"},
+        )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "merchant_membership_required"
+
+
+def test_merchant_summary_ok_with_membership() -> None:
+    app = FastAPI()
+    app.include_router(identity_router)
+
+    async def fake_principal() -> HumanPrincipal:
+        return _human()
+
+    member = MerchantMember(user_id=USER_ID, merchant_id=MERCHANT_ID, role="member")
+    merchant = Merchant(
+        id=MERCHANT_ID, name="Acme Stores", slug="acme", status="active", default_currency="KES"
+    )
+
+    async def fake_session():
+        session = AsyncMock()
+        session.exec = AsyncMock(return_value=MagicMock(first=MagicMock(return_value=member)))
+        session.get = AsyncMock(return_value=merchant)
+        yield session
+
+    from app.core.database import get_session
+
+    app.dependency_overrides[get_human_principal] = fake_principal
+    app.dependency_overrides[get_session] = fake_session
+
+    with TestClient(app) as client:
+        response = client.get(
+            f"/api/v1/auth/merchants/{MERCHANT_ID}",
+            headers={"Authorization": "Bearer unused"},
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["slug"] == "acme"
+    assert body["role"] == "member"
+    assert body["name"] == "Acme Stores"
+
+
+def test_merchant_payments_requires_membership() -> None:
+    app = FastAPI()
+    app.include_router(identity_router)
+
+    async def fake_principal() -> HumanPrincipal:
+        return _human()
+
+    async def fake_session():
+        session = AsyncMock()
+        session.exec = AsyncMock(return_value=MagicMock(first=MagicMock(return_value=None)))
+        yield session
+
+    from app.core.database import get_session
+
+    app.dependency_overrides[get_human_principal] = fake_principal
+    app.dependency_overrides[get_session] = fake_session
+
+    with TestClient(app) as client:
+        response = client.get(
+            f"/api/v1/auth/merchants/{MERCHANT_ID}/payments",
+            headers={"Authorization": "Bearer unused"},
+        )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "merchant_membership_required"

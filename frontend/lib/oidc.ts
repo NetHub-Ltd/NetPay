@@ -175,3 +175,68 @@ export async function fetchMemberships(accessToken: string): Promise<Membership[
   }
   return res.json() as Promise<Membership[]>;
 }
+
+
+export type MerchantSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  default_currency: string;
+  role: string;
+};
+
+export type HumanPayment = {
+  id: string;
+  merchant_reference: string;
+  amount_minor: number;
+  currency: string;
+  status: string;
+  payment_source: string;
+  phone_number: string | null;
+  initiated_at: string | null;
+  completed_at: string | null;
+  created_at: string | null;
+};
+
+export async function fetchMerchantSummary(
+  accessToken: string,
+  merchantId: string,
+): Promise<MerchantSummary> {
+  const res = await authFetch(`/api/v1/auth/merchants/${merchantId}`, accessToken);
+  if (res.status === 401) {
+    clearSession();
+    throw new AuthApiError(401, "Session expired — sign in again");
+  }
+  if (res.status === 403) {
+    throw new AuthApiError(403, "Merchant membership required");
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new AuthApiError(res.status, text || `merchant summary failed (${res.status})`);
+  }
+  return res.json() as Promise<MerchantSummary>;
+}
+
+export async function fetchMerchantPayments(
+  accessToken: string,
+  merchantId: string,
+  limit = 20,
+): Promise<HumanPayment[]> {
+  const res = await authFetch(
+    `/api/v1/auth/merchants/${merchantId}/payments?limit=${limit}`,
+    accessToken,
+  );
+  if (res.status === 401) {
+    clearSession();
+    throw new AuthApiError(401, "Session expired — sign in again");
+  }
+  if (res.status === 403) {
+    throw new AuthApiError(403, "Merchant membership required");
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new AuthApiError(res.status, text || `merchant payments failed (${res.status})`);
+  }
+  return res.json() as Promise<HumanPayment[]>;
+}

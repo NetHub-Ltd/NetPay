@@ -46,6 +46,8 @@ Browser  → NetPay GET /api/v1/auth/memberships
 | GET | `/config.json` | none |
 | GET | `/api/v1/auth/me` | IdP Bearer |
 | GET | `/api/v1/auth/memberships` | IdP Bearer |
+| GET | `/api/v1/auth/merchants/{merchant_id}` | IdP Bearer + membership |
+| GET | `/api/v1/auth/merchants/{merchant_id}/payments` | IdP Bearer + membership |
 | POST | `/api/v1/auth/memberships` | IdP Bearer + NetHubKe `is_admin` |
 | DELETE | `/api/v1/auth/memberships/{merchant_id}` | IdP Bearer + admin |
 
@@ -56,6 +58,8 @@ Browser  → NetPay GET /api/v1/auth/memberships
 | IdP access token (human) | `get_human_principal` → NetHubKe |
 | NetPay M2M access token | `payments.security.require_scopes` |
 | Daraja callbacks | Untrusted evidence |
+| Human merchant reads | `require_membership` on `/api/v1/auth/merchants/*` |
+| M2M payment APIs | Unchanged `require_scopes` on payment router |
 
 ## Merchant membership
 
