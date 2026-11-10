@@ -34,7 +34,7 @@ jobs:
       DB_POOL_SIZE: 1
       DB_MAX_OVERFLOW: 0
       REDIS_URL: redis://localhost:6379/0
-      BFF_INTERNAL_SECRET: ci-internal-secret
+      BFF_INTERNAL_SECRET: ci-internal-secret-for-github-actions-tests-min-32
       BFF_SESSION_ENCRYPTION_KEY: b8dWJ0zV1X4QpXhJ0bXg4zYjG7a8uZr1wYz8n7XyQ2M=
     defaults:
       run: { working-directory: backend }
