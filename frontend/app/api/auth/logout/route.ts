@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ detail: "logout_unavailable" }, { status: 503 });
   }
-  const response = new NextResponse(null, { status: 204 });
+  const response = new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   response.cookies.set(SESSION_COOKIE_NAME, "", expiredSessionCookieOptions());
   return response;
 }

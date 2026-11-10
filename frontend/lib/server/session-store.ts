@@ -23,7 +23,7 @@ function bffInternalSecret(): string {
   if (value.length < 32) throw new Error("BFF_INTERNAL_SECRET must contain at least 32 characters");
   return value;
 }
-function backendBaseUrl(): string {
+export function backendBaseUrl(): string {
   const url = new URL(requiredEnv("NETPAY_BACKEND_INTERNAL_URL"));
   if (url.username || url.password || url.search || url.hash || url.pathname !== "/") {
     throw new Error("NETPAY_BACKEND_INTERNAL_URL must be an origin without credentials or path");
