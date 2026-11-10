@@ -28,7 +28,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <section className="w-full max-w-lg rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-8 shadow-[var(--shadow-sm)] sm:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">NetPay account</p>
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[var(--ink)]">Welcome back.</h1>
-          <p className="mt-3 text-sm leading-6 text-[var(--ink-muted)]">
+          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
             Sign in with your NetHub identity to access your merchant workspace and payment activity.
           </p>
           {errorMessage ? (
@@ -42,7 +42,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           >
             Continue with NetHub
           </Link>
-          <p className="mt-6 text-center text-xs leading-5 text-[var(--ink-muted)]">
+          <p className="mt-6 text-center text-xs leading-5 text-[var(--muted)]">
             Authentication is handled securely by NetHub. NetPay never receives your password.
           </p>
         </section>
