@@ -41,8 +41,8 @@ Do not mark I0–I6 live acceptance complete from this #239 PR. Keep #238 open u
 
 - Issue #239 was re-scoped and approved on 2026-11-10 as mandatory independent Next.js + BFF + server-side identity.
 - Branch feat/239-nextjs-bff-runtime created from dev SHA 5792662c22b7d4a5059f329d7b61427ca48769b5.
-- Changes are in progress; GitHub Actions have not yet established passing status for this branch.
-- No PR has been opened and no live staging deployment has been performed.
+- Changes are in progress. Initial CI on an earlier PR head passed frontend lint/typecheck/build and backend readiness, but found two test-fixture/assertion issues plus a frontend container-smoke failure. The test issues are corrected; local Node security-helper tests pass 7/7. A fresh full CI run on the current head remains outstanding.
+- PR #244 is open against dev. No live staging deployment has been performed.
 - Render staging currently needs an independently deployed frontend service and operator-managed OIDC/runtime configuration after merge.
 
 ## CI and deployment

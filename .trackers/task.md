@@ -5,7 +5,7 @@
 **Implementation branch:** feat/239-nextjs-bff-runtime  
 **Verified base:** dev @ 5792662c22b7d4a5059f329d7b61427ca48769b5  
 **PR target:** dev  
-**Status:** implementation in progress; no PR or live staging acceptance yet.
+**Status:** PR #244 open; implementation in progress; live staging acceptance not started.
 
 ## Approved outcome
 
@@ -36,7 +36,9 @@ WSS readiness is included in ingress/security documentation. No realtime gateway
 - Frontend uses a confidential OIDC client; callback and token exchange are server-side.
 - Browser API allowlist currently covers human profile, memberships, merchant summary and merchant payments used by the dashboard.
 - Next.js and FastAPI Docker images and CI jobs are being separated.
-- Current code changes have not yet been validated by GitHub Actions; no tests are claimed as passing.
+- Initial PR CI on an earlier head passed backend readiness, frontend production build, frontend lint and TypeScript. It exposed one backend probe-test fixture issue, one frontend transaction-tamper test issue and a frontend container-smoke failure.
+- The backend probe test and transaction-tamper validation have been corrected. The Node security-helper suite was run locally on the latest helper source: 7/7 passed.
+- The container smoke script now emits command-level diagnostics. A fresh full CI run on the latest branch head is still outstanding; no final CI pass is claimed.
 - Render deployment and operator OIDC configuration remain post-merge tasks.
 
 ## I0–I6 boundary
