@@ -22,7 +22,8 @@ export async function GET() {
     backendBase = "";
   }
   const bffSecret = process.env.BFF_INTERNAL_SECRET;
-  if (!oidcConfigured || !backendBase || !bffSecret) {
+  const bffSecretConfigured = typeof bffSecret === "string" && bffSecret.length >= 32;
+  if (!oidcConfigured || !backendBase || !bffSecretConfigured || !bffSecret) {
     return NextResponse.json(
       { status: "not_ready", oidc_configured: oidcConfigured, bff_configured: false },
       { status: 503, headers: { "Cache-Control": "no-store" } },

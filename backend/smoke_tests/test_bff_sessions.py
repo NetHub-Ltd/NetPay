@@ -16,7 +16,7 @@ from app.identity.bff_sessions import _decrypt, _encrypt, router
 
 @pytest.fixture(autouse=True)
 def _bff_settings(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("BFF_INTERNAL_SECRET", "test-internal-secret-value")
+    monkeypatch.setenv("BFF_INTERNAL_SECRET", "test-internal-secret-value-32chars-minimum")
     monkeypatch.setenv("BFF_SESSION_ENCRYPTION_KEY", Fernet.generate_key().decode("ascii"))
     get_settings.cache_clear()
     yield
@@ -63,7 +63,7 @@ def test_bff_session_store_create_rotate_and_revoke() -> None:
 
     session_hash = sha256(token_urlsafe(32).encode("ascii")).hexdigest()
     now = datetime.now(UTC)
-    headers = {"X-NetPay-BFF-Secret": "test-internal-secret-value"}
+    headers = {"X-NetPay-BFF-Secret": "test-internal-secret-value-32chars-minimum"}
     with TestClient(netpay_app) as client:
         ready = client.get("/internal/v1/bff/sessions/ready", headers=headers)
         assert ready.status_code == 200

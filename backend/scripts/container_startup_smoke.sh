@@ -31,7 +31,7 @@ docker run -d --name "$api" --network "$network" -p 127.0.0.1:8000:8000 \
   -e ENVIRONMENT=test \
   -e DB_HOST="$postgres" -e DB_PORT=5432 -e DB_NAME=netpay -e DB_USER=netpay \
   -e DB_PASSWORD=netpay -e DB_SSL_MODE=disable -e DB_POOL_SIZE=1 -e DB_MAX_OVERFLOW=0 \
-  -e REDIS_URL="redis://$redis:6379/0" -e BFF_INTERNAL_SECRET=ci-internal-secret \
+  -e REDIS_URL="redis://$redis:6379/0" -e BFF_INTERNAL_SECRET=ci-internal-secret-for-container-smoke-test-min-32 \
   ghcr.io/nethub-ltd/netpay:ci >/dev/null
 
 healthy=false
