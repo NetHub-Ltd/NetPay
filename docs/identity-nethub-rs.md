@@ -42,7 +42,7 @@ FastAPI continues to authorize every protected operation. It must not trust the 
 
 ## Private session persistence
 
-FastAPI exposes internal service-to-service routes under /internal/v1/bff/sessions. They are excluded from OpenAPI and require the shared BFF_INTERNAL_SECRET. Public ingress must not route /internal/* to FastAPI. The Next.js service reaches them through NETPAY_BACKEND_INTERNAL_URL over the private service network.
+FastAPI exposes internal service-to-service routes under /internal/v1/bff/sessions. They are excluded from OpenAPI and require the shared BFF_INTERNAL_SECRET. The Kubernetes public ingress does not route /internal/* to FastAPI; unmatched paths go to Next.js. Some managed web-service platforms expose all FastAPI paths on the service hostname. In that case the shared high-entropy secret remains mandatory, Next.js must use the platform's private service address, and edge path filtering should be enabled where supported. These endpoints are never intended for browser clients.
 
 The bffsession table stores:
 - SHA-256 hash of the random browser session handle;
