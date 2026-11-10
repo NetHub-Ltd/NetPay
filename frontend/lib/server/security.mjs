@@ -1,4 +1,6 @@
+import { Buffer } from "node:buffer";
 import { timingSafeEqual } from "node:crypto";
+import { URL } from "node:url";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SESSION_HANDLE = /^[A-Za-z0-9_-]{40,60}$/;
@@ -53,7 +55,7 @@ export function resolveAllowedGet(path, searchParams) {
 
   const payments = route.match(/^v1\/auth\/merchants\/([^/]+)\/payments$/);
   if (payments && UUID.test(payments[1])) {
-    if ([...searchParams.keys()].some((key) => key !== "limit")) return null;
+    if ([...searchParams.keys()].some((key) => key !== "limit") || searchParams.getAll("limit").length > 1) return null;
     const raw = searchParams.get("limit") ?? "20";
     if (!/^\d{1,3}$/.test(raw)) return null;
     const limit = Number(raw);

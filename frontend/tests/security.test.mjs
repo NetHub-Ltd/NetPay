@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { URLSearchParams } from "node:url";
 import {
   constantTimeEqual,
   isSameOriginRequest,
@@ -57,6 +58,10 @@ test("BFF exposes only the explicit dashboard GET routes and bounded query value
   );
   assert.equal(
     resolveAllowedGet(["v1", "auth", "merchants", merchantId, "payments"], new URLSearchParams("limit=5&url=https://evil.example")),
+    null,
+  );
+  assert.equal(
+    resolveAllowedGet(["v1", "auth", "merchants", merchantId, "payments"], new URLSearchParams("limit=5&limit=10")),
     null,
   );
   assert.equal(
