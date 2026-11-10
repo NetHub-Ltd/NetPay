@@ -105,6 +105,7 @@ The ingress controller must support HTTP/1.1 WebSocket upgrades. No dedicated We
 - FastAPI liveness: /health/live
 - FastAPI readiness: /health/ready (PostgreSQL required; Redis remains auxiliary)
 - Next.js liveness: /login/
+- Next.js liveness: /login/
 - Next.js readiness: /api/health/ready (OIDC configuration, FastAPI readiness and BFF session-table/encryption readiness)
 
 Deploy database migrations before the API image. Deploy the API and Next.js images as a compatible pair. Rollback both service images together if a release changes their internal session contract; never roll back the database migration without checking whether active sessions or newer API code depend on it.

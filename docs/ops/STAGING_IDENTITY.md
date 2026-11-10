@@ -54,6 +54,7 @@ Run only after the owner has merged the implementation PR and Render/ingress has
 | 2 | FastAPI /health/ready | 200; database=ok |
 | 3 | Next.js /login/ | 200; branded sign-in page |
 | 4 | Next.js /api/auth/status | 200; oidc_configured=true and bff_configured=true; no secret/token fields |
+| 4a | Next.js /api/health/ready | 200; OIDC config, FastAPI readiness, BFF session table and encryption key are ready |
 | 5 | Unauthenticated /dashboard/ | Redirects to /login/ |
 | 6 | Complete browser sign-in | Zitadel → Next.js callback → dashboard |
 | 7 | Session cookie inspection | HttpOnly, Secure in production, SameSite=Lax, Path=/; no upstream tokens in cookies |
