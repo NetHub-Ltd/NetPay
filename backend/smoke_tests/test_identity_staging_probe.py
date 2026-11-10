@@ -58,7 +58,8 @@ def test_frontend_login_and_protected_dashboard() -> None:
         "app.identity.staging_probe._get",
         side_effect=[
             (200, "<html>Continue with NetHub</html>", "https://pay.example/login/"),
-            (200, "<html>Login</html>", "https://pay.example/login/"),
+            (401, {"detail": "unauthorized"}, "https://pay.example/api/backend/v1/auth/me"),
+            (200, "<html>Login</html>", "https://pay.example/login/?returnTo=%2Fdashboard%2F"),
         ],
     ):
         assert check_frontend_login("https://pay.example") == []

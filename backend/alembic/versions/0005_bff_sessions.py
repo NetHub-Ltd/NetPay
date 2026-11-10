@@ -28,6 +28,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("ix_bffsession_expires_at", "bffsession", ["expires_at"])
     op.create_index("ix_bffsession_access_expires_at", "bffsession", ["access_expires_at"])

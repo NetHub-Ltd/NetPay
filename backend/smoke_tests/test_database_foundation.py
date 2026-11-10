@@ -28,6 +28,7 @@ EXPECTED_TABLES = {
     "eventdelivery",
     "eventdeliveryattempt",
     "auditevent",
+    "bffsession",
 }
 
 

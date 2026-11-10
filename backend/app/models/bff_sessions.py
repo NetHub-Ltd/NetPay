@@ -27,3 +27,4 @@ class BFFSession(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True), nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_type=DateTime(timezone=True), nullable=False)
     revoked_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    deleted_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))

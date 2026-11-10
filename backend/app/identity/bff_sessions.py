@@ -148,7 +148,16 @@ async def read_bff_session(
 ) -> BFFSessionRead:
     row = await session.get(BFFSession, session_id_hash)
     now = datetime.now(UTC)
-    if row is None or row.revoked_at is not None or row.expires_at <= now:
+    if row is None or row.revoked_at is not None or row.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="session_not_found")
+    if row.expires_at <= now:
+        row.revoked_at = now
+        row.deleted_at = now
+        row.access_token_ciphertext = ""
+        row.refresh_token_ciphertext = None
+        row.updated_at = now
+        session.add(row)
+        await session.commit()
         raise HTTPException(status_code=404, detail="session_not_found")
     return BFFSessionRead(
         version=row.version,
@@ -178,6 +187,7 @@ async def update_bff_session(
             BFFSession.session_id_hash == session_id_hash,
             BFFSession.version == body.expected_version,
             BFFSession.revoked_at.is_(None),
+            BFFSession.deleted_at.is_(None),
             BFFSession.expires_at > now,
         )
         .values(
@@ -218,9 +228,12 @@ async def revoke_bff_session(
         .where(
             BFFSession.session_id_hash == session_id_hash,
             BFFSession.revoked_at.is_(None),
+            BFFSession.deleted_at.is_(None),
         )
         .values(
             revoked_at=now,
+            deleted_at=now,
+            deleted_at=now,
             access_token_ciphertext="",
             refresh_token_ciphertext=None,
             updated_at=now,
