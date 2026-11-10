@@ -71,7 +71,7 @@ async def require_bff_internal_secret(
     supplied: Annotated[str | None, Header(alias="X-NetPay-BFF-Secret")] = None,
 ) -> None:
     expected = get_settings().bff_internal_secret
-    if expected is None:
+    if expected is None or len(expected.get_secret_value()) < 32:
         raise HTTPException(status_code=503, detail="bff_internal_auth_not_configured")
     if supplied is None or not secrets.compare_digest(
         supplied, expected.get_secret_value()

@@ -37,7 +37,7 @@ export async function GET() {
       }),
       fetch(backendBase + "/internal/v1/bff/sessions/ready", {
         headers: { "X-NetPay-BFF-Secret": bffSecret },
-        cache: "no-store", signal: AbortSignal.timeout(4_000),
+        cache: "no-store", redirect: "error", signal: AbortSignal.timeout(4_000),
       }),
     ]);
     if (!api.ok || !sessionStore.ok) {
