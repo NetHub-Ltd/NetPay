@@ -11,7 +11,7 @@ from typing import Annotated
 
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import APIRouter, Depends, Header, HTTPException, Path, Response, status
-from sqlalchemy import update
+from sqlalchemy import select, update
 from pydantic import BaseModel, Field, SecretStr
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -119,6 +119,22 @@ async def create_bff_session(
     session.add(row)
     await session.commit()
     return {"status": "created"}
+
+
+@router.get(
+    "/ready",
+    dependencies=[Depends(require_bff_internal_secret)],
+)
+async def bff_session_store_ready(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    """Internal readiness: DB table and token-encryption key must both be usable."""
+    _fernet()
+    try:
+        await session.execute(select(BFFSession.session_id_hash).limit(1))
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="bff_session_store_unavailable") from exc
+    return {"status": "ok"}
 
 
 @router.get(

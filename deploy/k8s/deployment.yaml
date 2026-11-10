@@ -56,7 +56,7 @@ spec:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { cpu: 500m, memory: 512Mi }
           readinessProbe:
-            httpGet: { path: /api/auth/status, port: 3000 }
+            httpGet: { path: /api/health/ready, port: 3000 }
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
