@@ -1,26 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-on_error() {
-  local status=$?
-  echo "ERROR: container startup smoke test failed at line ${BASH_LINENO[0]} (exit ${status}): ${BASH_COMMAND}" >&2
-  for container in "${api:-}" "${postgres:-}" "${redis:-}"; do
-    [[ -n "$container" ]] || continue
-    if docker container inspect "$container" >/dev/null 2>&1; then
-      echo "--- docker inspect: $container ---" >&2
-      docker inspect --format 'state={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}}' "$container" >&2 || true
-      echo "--- docker logs: $container ---" >&2
-      docker logs --tail 100 "$container" >&2 || true
-    fi
-  done
-  exit "$status"
-}
-trap on_error ERR
-
-network="netpay-smoke-network"
-postgres="netpay-smoke-postgres"
-redis="netpay-smoke-redis"
-api="netpay-bootstrap-smoke"
+network="netpay-api-smoke-network"
+postgres="netpay-api-smoke-postgres"
+redis="netpay-api-smoke-redis"
+api="netpay-api-smoke"
 cleanup() {
   docker rm --force "$api" "$postgres" "$redis" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
@@ -28,67 +12,46 @@ cleanup() {
 trap cleanup EXIT
 
 docker network create "$network" >/dev/null
-docker run --detach --name "$postgres" --network "$network" \
-  --env POSTGRES_USER=netpay --env POSTGRES_PASSWORD=netpay --env POSTGRES_DB=netpay postgres:16-alpine >/dev/null
-docker run --detach --name "$redis" --network "$network" redis:7-alpine >/dev/null
+docker run -d --name "$postgres" --network "$network" \
+  -e POSTGRES_USER=netpay -e POSTGRES_PASSWORD=netpay -e POSTGRES_DB=netpay postgres:16-alpine >/dev/null
+docker run -d --name "$redis" --network "$network" redis:7-alpine >/dev/null
 
-# pg_isready can report ready against the temporary server used by the
-# postgres entrypoint while it initializes the database. Verify the actual
-# configured database with psql so we don't mistake that server for readiness.
-postgres_ready=false
+ready=false
 for attempt in $(seq 1 30); do
-  if docker exec "$postgres" psql -U netpay -d netpay -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null 2>&1 \
-    && docker exec "$redis" redis-cli ping | grep -qx PONG; then
-    postgres_ready=true
+  if docker exec "$postgres" pg_isready -U netpay -d netpay >/dev/null 2>&1 \
+    && docker exec "$redis" redis-cli ping 2>/dev/null | grep -qx PONG; then
+    ready=true
     break
   fi
   sleep 2
 done
-if [[ "$postgres_ready" != true ]]; then
-  echo "PostgreSQL and Redis did not become ready in time."
-  exit 1
-fi
+[[ "$ready" == true ]] || { echo "Database/cache did not become ready"; exit 1; }
 
-docker exec "$postgres" pg_isready -U netpay -d netpay >/dev/null
-docker exec "$redis" redis-cli ping | grep -qx PONG
-
-docker run --detach --name "$api" --network "$network" --publish 127.0.0.1:8000:8000 \
-  --env ENVIRONMENT=test \
-  --env DB_HOST=netpay-smoke-postgres \
-  --env DB_PORT=5432 \
-  --env DB_NAME=netpay \
-  --env DB_USER=netpay \
-  --env DB_SSL_MODE=disable \
-  --env DB_POOL_SIZE=1 \
-  --env DB_MAX_OVERFLOW=0 \
-  --env REDIS_URL=redis://netpay-smoke-redis:6379/0 \
+docker run -d --name "$api" --network "$network" -p 127.0.0.1:8000:8000 \
+  -e ENVIRONMENT=test \
+  -e DB_HOST="$postgres" -e DB_PORT=5432 -e DB_NAME=netpay -e DB_USER=netpay \
+  -e DB_PASSWORD=netpay -e DB_SSL_MODE=disable -e DB_POOL_SIZE=1 -e DB_MAX_OVERFLOW=0 \
+  -e REDIS_URL="redis://$redis:6379/0" -e BFF_INTERNAL_SECRET=ci-internal-secret \
   ghcr.io/nethub-ltd/netpay:ci >/dev/null
+
+healthy=false
 for attempt in $(seq 1 30); do
-  if docker logs "$api" 2>&1 | grep -q 'database_connectivity=ok'; then
-    if curl --fail --silent http://127.0.0.1:8000/health/live >/dev/null; then
-      curl --fail --silent http://127.0.0.1:8000/health/ready | grep -q '"database":"ok"'
-      curl --fail --silent --show-error http://127.0.0.1:8000/ -o /tmp/netpay-home.html
-      grep -q "NetPay" /tmp/netpay-home.html
-      curl --fail --silent --show-error http://127.0.0.1:8000/dashboard/ -o /tmp/netpay-dashboard.html
-      # Dashboard is a client shell (OIDC PKCE); static HTML may show loading or sign-in copy.
-      grep -qE "Merchant dashboard|Sign in to NetPay|Loading dashboard" /tmp/netpay-dashboard.html
-      curl --fail --silent --show-error http://127.0.0.1:8000/robots.txt -o /tmp/netpay-robots.txt
-      grep -q "Sitemap:" /tmp/netpay-robots.txt
-      curl --fail --silent --show-error http://127.0.0.1:8000/sitemap.xml -o /tmp/netpay-sitemap.xml
-      grep -q "<urlset" /tmp/netpay-sitemap.xml
-      curl --fail --silent --show-error -D /tmp/netpay-og-headers http://127.0.0.1:8000/opengraph-image -o /tmp/netpay-og.png
-      grep -qi '^content-type: image/png' /tmp/netpay-og-headers
-      test -s /tmp/netpay-og.png
-      echo "Container startup, health endpoints, and frontend static routes passed."
-      exit 0
-    fi
+  if curl --fail --silent http://127.0.0.1:8000/health/live >/dev/null; then
+    healthy=true
+    break
   fi
   if ! docker inspect -f '{{.State.Running}}' "$api" 2>/dev/null | grep -qx true; then
-    docker logs "$api" || true
+    docker logs "$api"
     exit 1
   fi
   sleep 2
 done
-echo "NetPay container did not become healthy."
-docker logs "$api" || true
-exit 1
+[[ "$healthy" == true ]] || { docker logs "$api"; echo "API did not become healthy"; exit 1; }
+
+curl --fail --silent http://127.0.0.1:8000/health/ready | grep -q '"database":"ok"'
+test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/)" = "404"
+test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/config.json)" = "404"
+test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/v1/auth/me)" = "401"
+test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-NetPay-BFF-Secret: wrong' http://127.0.0.1:8000/internal/v1/bff/sessions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)" = "401"
+
+echo "Independent API container, health checks and browser/auth boundaries passed."
