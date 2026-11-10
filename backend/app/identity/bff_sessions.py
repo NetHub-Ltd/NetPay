@@ -233,7 +233,6 @@ async def revoke_bff_session(
         .values(
             revoked_at=now,
             deleted_at=now,
-            deleted_at=now,
             access_token_ciphertext="",
             refresh_token_ciphertext=None,
             updated_at=now,
