@@ -1,10 +1,7 @@
 """NetPay API and database/cache lifecycle."""
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import AsyncIterator
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -13,7 +10,7 @@ from app.core.config import Settings, get_settings
 from app.core.database import check_database, create_database_engine, create_session_factory
 from app.mpesa_core import MpesaCore
 from app.identity.router import router as identity_router
-from app.identity.spa_config import public_spa_config
+from app.identity.bff_sessions import router as bff_sessions_router
 from app.payments.router import router as payment_router
 from app import models  # noqa: F401 - register SQLModel metadata
 
@@ -63,13 +60,9 @@ app = FastAPI(title="NetPay API", version="0.2.0", description="NetPay payment g
 
 
 
-@app.get("/config.json", tags=["config"], include_in_schema=True)
-def config_json() -> dict:
-    return public_spa_config()
-
-
 app.include_router(identity_router)
 app.include_router(payment_router)
+app.include_router(bff_sessions_router)
 
 @app.get("/health/live", tags=["health"], summary="Liveness probe")
 async def liveness() -> dict[str, str]:
@@ -97,18 +90,4 @@ async def readiness(request: Request) -> dict[str, str]:
             logger.warning("redis_readiness=failed error_type={}", type(exc).__name__)
     return {"status": "ok", "database": "ok", "redis": redis_status}
 
-# Serve the prebuilt Next.js export only after API, docs, and health routes are registered.
-# In backend-only development the export may not exist; the API remains runnable.
-frontend_static_dir = Path(__file__).resolve().parent / "static"
-if frontend_static_dir.is_dir():
-    # Next.js exports this generated PNG without a file extension. Expose a stable,
-    # correctly typed URL for social crawlers that expect a conventional image path.
-    generated_og_image = frontend_static_dir / "opengraph-image"
-    if generated_og_image.is_file():
-        @app.get("/opengraph-image", include_in_schema=False)
-        async def open_graph_image() -> FileResponse:
-            return FileResponse(generated_og_image, media_type="image/png")
-
-    app.mount("/", StaticFiles(directory=frontend_static_dir, html=True), name="frontend")
-else:
-    logger.info("frontend_static=not_built path={}", str(frontend_static_dir))
+# The API is an independent service. Next.js owns all browser-facing pages and BFF routes.
