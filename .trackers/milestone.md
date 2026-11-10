@@ -43,10 +43,10 @@
 
 | ID | Acceptance criterion | Status |
 |----|----------------------|--------|
-| I1.1 | IdP public PKCE client + redirect URI | OPEN |
+| I1.1 | IdP public PKCE client + redirect URI | OPEN — runbook in docs/ops/STAGING_IDENTITY.md |
 | I1.2 | NetHubKe `trusted_clients` product=netpay | OPEN |
 | I1.3 | NetHubKe CORS allows NetPay origin | OPEN |
-| I1.4 | Checklist in trackers without secrets | OPEN |
+| I1.4 | Checklist in trackers without secrets | IN PROGRESS — template shipped |
 
 ## Milestone I2 — Deploy contract for identity
 
@@ -88,8 +88,8 @@
 
 | ID | Acceptance criterion | Status |
 |----|----------------------|--------|
-| I6.1 | Staging checklist complete (VERIFIED steps) | OPEN |
-| I6.2 | M2M regression still OK | OPEN |
+| I6.1 | Staging checklist complete (VERIFIED steps) | IN PROGRESS — checklist + probe; live VERIFIED pending ops |
+| I6.2 | M2M regression still OK | OPEN — manual I6 step 12 |
 | I6.3 | Go/no-go recorded; no main merge without approval | OPEN |
 
 ## Milestone I7 — Optional BFF (after I6 + design approval)
