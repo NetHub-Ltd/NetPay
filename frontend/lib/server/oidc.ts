@@ -16,13 +16,14 @@ type OidcMetadata = {
 };
 type JwtClaims = {
   iss?: string; aud?: string | string[]; azp?: string; sub?: string;
-  exp?: number; iat?: number; nonce?: string;
+  exp?: number; iat?: number; nbf?: number; nonce?: string; at_hash?: string;
 };
 type TokenResponse = {
   access_token?: unknown; refresh_token?: unknown; id_token?: unknown; expires_in?: unknown;
 };
 let metadataCache: { expiresAt: number; value: OidcMetadata } | null = null;
-let jwksCache: { expiresAt: number; keys: JsonWebKey[] } | null = null;
+type SigningJwk = JsonWebKey & { kid?: string; use?: string; alg?: string; kty?: string };
+let jwksCache: { expiresAt: number; keys: SigningJwk[] } | null = null;
 
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -132,7 +133,7 @@ export async function createAuthorizationRequest(
     }),
   };
 }
-async function getJwks(): Promise<JsonWebKey[]> {
+async function getJwks(): Promise<SigningJwk[]> {
   const now = Date.now();
   if (jwksCache && jwksCache.expiresAt > now) return jwksCache.keys;
   const metadata = await getMetadata();
@@ -144,7 +145,7 @@ async function getJwks(): Promise<JsonWebKey[]> {
   if (!body || typeof body !== "object" || !Array.isArray((body as { keys?: unknown }).keys)) {
     throw new Error("Identity provider signing keys are invalid");
   }
-  const keys = (body as { keys: JsonWebKey[] }).keys;
+  const keys = (body as { keys: SigningJwk[] }).keys;
   jwksCache = { keys, expiresAt: now + 300_000 };
   return keys;
 }
