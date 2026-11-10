@@ -37,12 +37,12 @@ curl --fail --silent --show-error http://127.0.0.1:3000/robots.txt | grep -q "Si
 echo "Checking sitemap.xml"
 curl --fail --silent --show-error http://127.0.0.1:3000/sitemap.xml | grep -q "<urlset"
 echo "Checking non-secret OIDC/BFF status"
-curl --fail --silent --show-error http://127.0.0.1:3000/api/auth/status | grep -q '"oidc_configured":false'
+curl --fail --silent --show-error http://127.0.0.1:3000/api/auth/status/ | grep -q '"oidc_configured":false'
 echo "Checking fail-closed readiness"
-test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/health/ready)" = "503"
+test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/health/ready/)" = "503"
 echo "Checking unauthenticated BFF rejection"
-test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/backend/v1/auth/me)" = "401"
+test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/backend/v1/auth/me/)" = "401"
 echo "Checking logout CSRF protection"
-test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3000/api/auth/logout)" = "403"
+test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3000/api/auth/logout/)" = "403"
 
 echo "Independent Next.js server, login, SEO routes and BFF boundary passed."
