@@ -11,6 +11,7 @@ from typing import Annotated
 
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import APIRouter, Depends, Header, HTTPException, Path, Response, status
+from sqlalchemy import update
 from pydantic import BaseModel, Field, SecretStr
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -99,7 +100,7 @@ async def create_bff_session(
 ) -> dict[str, str]:
     _validate_expiry(body.access_expires_at, body.expires_at)
     existing = await session.get(BFFSession, body.session_id_hash)
-    if existing is not None and existing.revoked_at is None:
+    if existing is not None:
         raise HTTPException(status_code=409, detail="session_already_exists")
     now = datetime.now(UTC)
     row = BFFSession(
@@ -115,8 +116,6 @@ async def create_bff_session(
         version=1,
         revoked_at=None,
     )
-    if existing is not None:
-        await session.delete(existing)
     session.add(row)
     await session.commit()
     return {"status": "created"}
@@ -156,21 +155,36 @@ async def update_bff_session(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> dict[str, str]:
     _validate_expiry(body.access_expires_at, body.expires_at)
-    row = await session.get(BFFSession, session_id_hash)
-    if row is None or row.revoked_at is not None or row.expires_at <= datetime.now(UTC):
-        raise HTTPException(status_code=404, detail="session_not_found")
-    if row.version != body.expected_version:
+    now = datetime.now(UTC)
+    statement = (
+        update(BFFSession)
+        .where(
+            BFFSession.session_id_hash == session_id_hash,
+            BFFSession.version == body.expected_version,
+            BFFSession.revoked_at.is_(None),
+            BFFSession.expires_at > now,
+        )
+        .values(
+            access_token_ciphertext=_encrypt(body.access_token.get_secret_value()),
+            refresh_token_ciphertext=(
+                _encrypt(body.refresh_token.get_secret_value())
+                if body.refresh_token is not None
+                else BFFSession.refresh_token_ciphertext
+            ),
+            access_expires_at=body.access_expires_at.astimezone(UTC),
+            expires_at=body.expires_at.astimezone(UTC),
+            version=BFFSession.version + 1,
+            updated_at=now,
+        )
+    )
+    result = await session.execute(statement)
+    if result.rowcount != 1:
+        existing = await session.get(BFFSession, session_id_hash)
+        if existing is None or existing.revoked_at is not None or existing.expires_at <= now:
+            raise HTTPException(status_code=404, detail="session_not_found")
         raise HTTPException(status_code=409, detail="session_version_conflict")
-    row.access_token_ciphertext = _encrypt(body.access_token.get_secret_value())
-    if body.refresh_token is not None:
-        row.refresh_token_ciphertext = _encrypt(body.refresh_token.get_secret_value())
-    row.access_expires_at = body.access_expires_at.astimezone(UTC)
-    row.expires_at = body.expires_at.astimezone(UTC)
-    row.version += 1
-    row.updated_at = datetime.now(UTC)
-    session.add(row)
     await session.commit()
-    return {"status": "updated", "version": str(row.version)}
+    return {"status": "updated", "version": str(body.expected_version + 1)}
 
 
 @router.delete(
@@ -182,12 +196,20 @@ async def revoke_bff_session(
     session_id_hash: Annotated[str, Path(pattern=r"^[a-f0-9]{64}$")],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Response:
-    row = await session.get(BFFSession, session_id_hash)
-    if row is not None and row.revoked_at is None:
-        row.revoked_at = datetime.now(UTC)
-        row.access_token_ciphertext = ""
-        row.refresh_token_ciphertext = None
-        row.updated_at = datetime.now(UTC)
-        session.add(row)
-        await session.commit()
+    now = datetime.now(UTC)
+    statement = (
+        update(BFFSession)
+        .where(
+            BFFSession.session_id_hash == session_id_hash,
+            BFFSession.revoked_at.is_(None),
+        )
+        .values(
+            revoked_at=now,
+            access_token_ciphertext="",
+            refresh_token_ciphertext=None,
+            updated_at=now,
+        )
+    )
+    await session.execute(statement)
+    await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
