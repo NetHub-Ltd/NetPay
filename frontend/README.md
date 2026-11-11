@@ -28,13 +28,11 @@ In another terminal:
 
 The browser receives only a random HttpOnly session cookie. Access and refresh tokens are stored encrypted in the backend PostgreSQL session table. The frontend does not read tokens from browser storage or call FastAPI directly.
 
-## Production container
+## Vercel deployment
 
-Build from the repository root:
+Deploy this directory as an independent Next.js application. Set the Vercel project Root Directory to `frontend`, keep the Next.js framework preset and default install/build/output settings, and use the normal Next.js server runtime. Do not enable static export or add a frontend Docker image. Configure the server-only environment variables above in Vercel.
 
-    docker build -f frontend/Dockerfile -t netpay-frontend:local .
-
-The image uses Next.js standalone output and starts with node server.js. Configure all server-only variables at runtime; do not bake secrets into build arguments.
+The Vercel server must be able to reach the configured `NETPAY_BACKEND_INTERNAL_URL`; do not assume a cluster-only hostname is reachable from Vercel.
 
 ## API boundary
 
