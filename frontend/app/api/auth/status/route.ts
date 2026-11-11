@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isOidcConfigured } from "../../../../lib/server/security.mjs";
+import { getOidcConfigurationChecks, isOidcConfigured } from "../../../../lib/server/security.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,8 +11,9 @@ export async function GET() {
     process.env.BFF_INTERNAL_SECRET &&
     process.env.BFF_INTERNAL_SECRET.length >= 32,
   );
+  const checks = getOidcConfigurationChecks(process.env);
   return NextResponse.json(
-    { oidc_configured: oidcConfigured, bff_configured: bffConfigured },
+    { oidc_configured: oidcConfigured, bff_configured: bffConfigured, checks },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

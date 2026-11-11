@@ -42,3 +42,18 @@ export function createPublicClientTokenRequest(
 export function isOidcConfigured(
   environment: Record<string, string | undefined>,
 ): boolean;
+
+export type OidcConfigurationChecks = {
+  issuer_present: boolean;
+  issuer_https: boolean;
+  client_id_present: boolean;
+  redirect_uri_present: boolean;
+  redirect_uri_https: boolean;
+  redirect_origin_matches_site: boolean;
+  transaction_secret_ok: boolean;
+  scopes_ok: boolean;
+};
+
+export function getOidcConfigurationChecks(
+  environment: Record<string, string | undefined>,
+): OidcConfigurationChecks;
