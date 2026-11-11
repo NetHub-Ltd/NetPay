@@ -112,8 +112,8 @@ Earlier R0–R2 / public-site / mpesa_core tracker rows from Oct 2026 remain use
 
 ## Deployment correction — issue #245
 
-- Status: implementation in progress; final PR CI and review pending.
+- Status: PR #246 is open as a draft; check the PR's latest-head status for CI readiness.
 - Next.js deployment is Vercel-managed; custom fonts are deferred and system font stacks are used for this pass.
 - Frontend Dockerfile, frontend container smoke, frontend GHCR publishing and Kubernetes frontend Deployment/Service are removed by the #245 change set.
 - FastAPI image, release, API, worker, M2M and Safaricom callback contracts remain unchanged.
-- External acceptance after merge: Vercel project Root Directory/framework settings, server-only environment variables, and live reachability from Vercel to the configured FastAPI origin.
+- External acceptance after merge: Vercel project Root Directory/framework settings, server-only environment variables, and a private service-to-service path from Vercel to every required FastAPI BFF route, including the session-store endpoints.
