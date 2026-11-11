@@ -20,16 +20,19 @@ export function classifyOidcLoginFailure(error) {
   if (message === "Identity provider discovery failed") {
     return { category: "discovery_http_error", browserError: "provider" };
   }
-  if (message === "Identity provider metadata is invalid") {
+  if (message === "Identity provider metadata is invalid" || error instanceof SyntaxError) {
     return { category: "discovery_invalid_response", browserError: "provider" };
   }
   if (message === "Identity provider metadata does not match configured issuer") {
     return { category: "discovery_issuer_mismatch", browserError: "provider" };
   }
-  if (message === "Identity provider endpoint is not trusted") {
+  if (message === "Identity provider endpoint is not trusted" || message === "Invalid URL") {
     return { category: "discovery_endpoint_invalid", browserError: "provider" };
   }
-  if (error instanceof TypeError || (error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name))) {
+  if (
+    (error instanceof TypeError && /fetch failed|network/i.test(message)) ||
+    (error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name))
+  ) {
     return { category: "discovery_unreachable", browserError: "provider" };
   }
   return { category: "internal", browserError: "provider" };
