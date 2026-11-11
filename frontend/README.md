@@ -40,18 +40,55 @@ Failed login initiation writes one structured JSON event to the Vercel function 
 
 - Event: `oidc_login_initiation_failed`
 - Fields: `request_id`, `category`, and `timestamp`
-- Categories distinguish local configuration, discovery HTTP/response/issuer/endpoint failures, provider unreachability and unexpected internal failures.
+- The browser still receives only a generic `error` query value (`configuration` or `provider`). Technical detail stays server-side.
 
-The event intentionally excludes exception messages, stack traces, request URLs, cookies, authorization codes, tokens and environment-variable values. The browser receives only the existing generic configuration/provider error state; diagnostic details remain server-side.
+### Allowlisted `category` values
 
-To investigate a production failure:
-1. Open the Vercel project `net-pay` and select the deployment serving the affected domain.
-2. Open Logs / Runtime Logs and filter to the `/api/auth/login` function around the reproduction time.
-3. Find the `oidc_login_initiation_failed` JSON event and use its category and request ID to correlate the failure.
-4. Verify the configured issuer's `/.well-known/openid-configuration` response independently. Its `issuer` must exactly match `OIDC_ISSUER`; authorization, token and JWKS endpoints must be valid HTTPS URLs.
-5. Do not paste secrets, tokens, authorization codes, cookies or raw provider responses into tickets or chat.
+| category | Meaning | Typical fix |
+|---|---|---|
+| `missing_env` | A required `OIDC_*` server env var is unset or empty | Set `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_REDIRECT_URI`, `OIDC_TRANSACTION_SECRET` on the Vercel project that serves the live host |
+| `redirect_origin_mismatch` | `OIDC_REDIRECT_URI` origin ≠ request origin | Set `OIDC_REDIRECT_URI` to `https://<live-frontend-host>/auth/callback/` (trailing slash). Live host is currently `netpay.nethub.co.ke` |
+| `transaction_secret_invalid` | `OIDC_TRANSACTION_SECRET` shorter than 32 characters | Generate a new ≥32-char random secret |
+| `issuer_invalid` | Issuer URL invalid or not HTTPS in production | Fix `OIDC_ISSUER` |
+| `redirect_uri_invalid` | Redirect URI invalid or not HTTPS in production | Fix `OIDC_REDIRECT_URI` |
+| `scopes_invalid` | `OIDC_SCOPES` does not include `openid` | Use `openid profile email` |
+| `discovery_*` / `internal` | IdP discovery or unexpected failure | Check IdP availability and issuer metadata |
 
-The login page's error banner is derived from its `error` query parameter. Reloading the same URL preserves the banner; visit `/login/` without the query string to clear the displayed state after investigation.
+The event intentionally excludes exception messages, stack traces, request URLs, cookies, authorization codes, tokens and environment-variable values.
+
+### Safe status endpoint
+
+`GET /api/auth/status` returns:
+
+```json
+{
+  "oidc_configured": true,
+  "bff_configured": true,
+  "checks": {
+    "issuer_present": true,
+    "issuer_https": true,
+    "client_id_present": true,
+    "redirect_uri_present": true,
+    "redirect_uri_https": true,
+    "redirect_origin_matches_site": true,
+    "transaction_secret_ok": true,
+    "scopes_ok": true
+  }
+}
+```
+
+All `checks` values are booleans. No secret values or full redirect URLs are returned. `redirect_origin_matches_site` compares `OIDC_REDIRECT_URI` origin to `NEXT_PUBLIC_SITE_URL` origin — set both to the **same** public frontend origin (for production: `https://netpay.nethub.co.ke`).
+
+### Investigate a production failure
+
+1. Open the Vercel project that serves `netpay.nethub.co.ke` and select the active deployment.
+2. Runtime Logs → filter `/api/auth/login` around the reproduction time.
+3. Find `oidc_login_initiation_failed` and read `category` + `request_id`.
+4. Optionally `curl -s https://netpay.nethub.co.ke/api/auth/status` and inspect `checks` (booleans only).
+5. Confirm Zitadel redirect URI equals `OIDC_REDIRECT_URI` exactly (including trailing slash).
+6. Do not paste secrets, tokens, authorization codes, cookies or raw provider responses into tickets or chat.
+
+The login page error banner comes from the `error` query parameter. Visit `/login/` without the query string to clear it after fixing configuration.
 
 ## API boundary
 
