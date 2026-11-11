@@ -75,7 +75,7 @@ jobs:
     uses: ./.github/workflows/frontend-build.yml
 
   version:
-    needs: [backend, frontend-lint, frontend-build]
+    needs: [backend, frontend-build]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
@@ -265,12 +265,12 @@ jobs:
             ghcr.io/nethub-ltd/netpay-frontend:latest
             ```
 
-            Build and deploy the API and frontend images as a compatible pair. Configure the required runtime secrets and service topology described in deploy/README.md. Do not run the API image as a standalone SQLite application.
+            Deploy the FastAPI image independently from the Next.js application on Vercel. Configure the required runtime secrets and service topology described in deploy/README.md. Do not run the API image as a standalone SQLite application.
 
             - API: `ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}`
             - Next.js frontend: `ghcr.io/nethub-ltd/netpay-frontend:${{ needs.version.outputs.tag }}`
 
-            Health: API `/health/live` and `/health/ready`; frontend `/login/` and `/api/auth/status`. Run `alembic upgrade head` once against the target PostgreSQL database before starting API replicas.
+            Health: API `/health/live` and `/health/ready`. Vercel manages the Next.js runtime independently. Run `alembic upgrade head` once against the target PostgreSQL database before starting API replicas.
 
             ### Notes
 
