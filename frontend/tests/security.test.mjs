@@ -73,6 +73,8 @@ test("BFF exposes only the explicit dashboard GET routes and bounded query value
 import { createHash, randomBytes } from "node:crypto";
 import {
   createPkceChallenge,
+  createPublicClientTokenRequest,
+  isOidcConfigured,
   openLoginTransaction,
   sealLoginTransaction,
 } from "../lib/server/security.mjs";
@@ -98,4 +100,54 @@ test("OIDC transaction cookie is encrypted, authenticated and expires", () => {
   assert.equal(openLoginTransaction(sealed + "x", key, 600, tx.issuedAt + 1), null);
   assert.equal(openLoginTransaction(sealed, key, 600, tx.issuedAt + 601), null);
   assert.equal(openLoginTransaction(sealed, randomBytes(32), 600, tx.issuedAt + 1), null);
+});
+
+
+test("public OIDC authorization-code exchange uses client_id and PKCE without client authentication secret", () => {
+  const request = createPublicClientTokenRequest("netpay-public-client", new URLSearchParams({
+    grant_type: "authorization_code",
+    code: "authorization-code",
+    redirect_uri: "https://pay.example.test/auth/callback/",
+    code_verifier: "a".repeat(64),
+  }));
+  assert.equal(request.body.get("client_id"), "netpay-public-client");
+  assert.equal(request.body.get("grant_type"), "authorization_code");
+  assert.equal(request.body.get("code_verifier"), "a".repeat(64));
+  assert.equal(request.body.get("redirect_uri"), "https://pay.example.test/auth/callback/");
+  assert.equal(request.body.has("client_secret"), false);
+  assert.equal(request.headers.Authorization, undefined);
+  assert.equal(request.headers["Content-Type"], "application/x-www-form-urlencoded");
+});
+
+test("public OIDC refresh-token exchange includes client_id and never sends a client secret", () => {
+  const request = createPublicClientTokenRequest("netpay-public-client", new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: "refresh-token-value",
+  }));
+  assert.equal(request.body.get("client_id"), "netpay-public-client");
+  assert.equal(request.body.get("grant_type"), "refresh_token");
+  assert.equal(request.body.get("refresh_token"), "refresh-token-value");
+  assert.equal(request.body.has("client_secret"), false);
+  assert.equal(request.headers.Authorization, undefined);
+});
+
+test("public OIDC token request rejects an accidental client_secret or mismatched client_id", () => {
+  assert.throws(() => createPublicClientTokenRequest("netpay-public-client", new URLSearchParams({
+    grant_type: "authorization_code", client_secret: "must-not-exist",
+  })), /must not include a client secret/);
+  assert.throws(() => createPublicClientTokenRequest("netpay-public-client", new URLSearchParams({
+    grant_type: "authorization_code", client_id: "another-client",
+  })), /does not match configuration/);
+});
+
+test("OIDC readiness requires public-client settings and the encrypted transaction secret, not a client secret", () => {
+  const environment = {
+    OIDC_ISSUER: "https://auth.example.test",
+    OIDC_CLIENT_ID: "netpay-public-client",
+    OIDC_REDIRECT_URI: "https://pay.example.test/auth/callback/",
+    OIDC_TRANSACTION_SECRET: "t".repeat(32),
+  };
+  assert.equal(isOidcConfigured(environment), true);
+  assert.equal(isOidcConfigured({ ...environment, OIDC_TRANSACTION_SECRET: "short" }), false);
+  assert.equal(isOidcConfigured({ ...environment, OIDC_CLIENT_ID: "" }), false);
 });

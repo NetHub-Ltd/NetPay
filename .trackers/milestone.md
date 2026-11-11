@@ -22,7 +22,7 @@
 | Milestone | Issue | Title |
 |-----------|-------|-------|
 | I0 | #232 | chore(trackers): NetHubKe-client program baseline |
-| I1 | #233 | ops(identity): register NetPay confidential OIDC web client + NetHubKe RS |
+| I1 | #233 | ops(identity): register NetPay public OIDC client + NetHubKe RS |
 | I2 | #234 | chore(deploy): identity secret and rollout contract |
 | I3 | #235 | fix(identity): SPA token lifecycle and honest scopes |
 | I4 | #236 | feat(identity): membership-gated human read APIs |
@@ -44,7 +44,7 @@
 
 | ID | Acceptance criterion | Status |
 |----|----------------------|--------|
-| I1.1 | IdP confidential server-side OIDC client + exact callback URI | OPEN — runbook in docs/ops/STAGING_IDENTITY.md |
+| I1.1 | IdP public OIDC client with Authorization Code + PKCE S256; no client secret; exact callback URI | OPEN — runbook in docs/ops/STAGING_IDENTITY.md |
 | I1.2 | NetHubKe `trusted_clients` product=netpay | OPEN |
 | I1.3 | No browser CORS dependency for BFF; verify server-to-server NetHubKe access | OPEN |
 | I1.4 | Checklist in trackers without secrets | IN PROGRESS — template shipped |
@@ -112,8 +112,17 @@ Earlier R0–R2 / public-site / mpesa_core tracker rows from Oct 2026 remain use
 
 ## Deployment correction — issue #245
 
-- Status: PR #246 is open; use the latest-head GitHub Actions and Vercel checks as the review-readiness gate.
+- Status: PR #246 merged; the independent Vercel frontend deployment code is integrated.
 - Next.js deployment is Vercel-managed; custom fonts are deferred and system font stacks are used for this pass.
 - Frontend Dockerfile, frontend container smoke, frontend GHCR publishing and Kubernetes frontend Deployment/Service are removed by the #245 change set.
 - FastAPI image, release, API, worker, M2M and Safaricom callback contracts remain unchanged.
 - External acceptance after merge: Vercel project Root Directory/framework settings, server-only environment variables, and a private service-to-service path from Vercel to every required FastAPI BFF route, including the session-store endpoints.
+
+
+## Public OIDC client correction — issue #248
+
+- NetPay's Next.js server uses a **public OIDC client** with Authorization Code + PKCE (S256). Server-side callback handling does not require a client secret.
+- Authorization-code and refresh-token grants send `client_id` in the form body; no HTTP Basic authentication or `client_secret` parameter is used.
+- `OIDC_TRANSACTION_SECRET` remains a separate application secret protecting the short-lived encrypted PKCE transaction cookie.
+- Operator registration contract is updated in issue #233. Live Zitadel/NetHubKe registration and staging sign-in remain unverified until operator evidence is recorded.
+- Implementation: issue #248; [draft PR #249](https://github.com/NetHub-Ltd/NetPay/pull/249) from `fix/248-oidc-public-client` to `dev`. Vercel preview build is READY and GitGuardian passed; GitHub Actions are queued on head `60ae8398c0b453467dffe540ba718282b0b2d405`.

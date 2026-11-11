@@ -113,3 +113,37 @@ export function openLoginTransaction(value, key, ttlSeconds, nowSeconds) {
     return null;
   }
 }
+
+
+/** Build a public OIDC token request. PKCE, not a client secret, binds the code exchange. */
+export function createPublicClientTokenRequest(clientId, parameters) {
+  if (typeof clientId !== "string" || !clientId.trim()) {
+    throw new Error("OIDC client ID is required");
+  }
+  const body = new URLSearchParams(parameters);
+  if (body.has("client_secret")) {
+    throw new Error("Public OIDC token requests must not include a client secret");
+  }
+  const suppliedClientId = body.get("client_id");
+  if (suppliedClientId && suppliedClientId !== clientId.trim()) {
+    throw new Error("OIDC token request client ID does not match configuration");
+  }
+  body.set("client_id", clientId.trim());
+  return {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body,
+  };
+}
+
+/** Validate the server-only settings needed to create and protect an OIDC transaction. */
+export function isOidcConfigured(environment) {
+  const required = ["OIDC_ISSUER", "OIDC_CLIENT_ID", "OIDC_REDIRECT_URI"];
+  return required.every((name) =>
+    typeof environment[name] === "string" && environment[name].trim().length > 0
+  ) &&
+    typeof environment.OIDC_TRANSACTION_SECRET === "string" &&
+    environment.OIDC_TRANSACTION_SECRET.trim().length >= 32;
+}
