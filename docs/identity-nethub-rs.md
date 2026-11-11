@@ -5,7 +5,7 @@
 | Component | Responsibility |
 |---|---|
 | Zitadel | User authentication and OIDC authorization-code flow |
-| Next.js | Confidential OIDC client, callback handling, opaque application session and HTTP BFF |
+| Next.js | Public OIDC client using PKCE, callback handling, opaque application session and HTTP BFF |
 | NetHubKe | Human identity resolution and product/resource access decisions |
 | FastAPI | Merchant membership, tenant isolation and payment/business authorization |
 | M2M auth | Existing client-credentials flow for machine integrations; independent of human sessions |
@@ -18,11 +18,11 @@ NetPay does not store passwords, authenticate users itself or locally verify hum
 2. Next.js creates state, nonce and a PKCE verifier/challenge. The short-lived transaction cookie is encrypted, HttpOnly, SameSite=Lax and scoped to the callback path.
 3. Browser is redirected to Zitadel's authorization endpoint using Authorization Code + PKCE.
 4. Zitadel redirects to the exact registered Next.js callback URL.
-5. Next.js validates state, exchanges the code server-side using the confidential client with client_secret_basic authentication, validates the RS256 ID-token signature and issuer/audience/expiry/nonce claims, then asks FastAPI to resolve the human identity through NetHubKe.
+5. Next.js validates state, exchanges the code server-side using the public client_id and PKCE verifier (no client secret), validates the RS256 ID-token signature and issuer/audience/expiry/nonce claims, then asks FastAPI to resolve the human identity through NetHubKe.
 6. Next.js creates a random application session handle. Only its SHA-256 hash is stored in PostgreSQL. Access/refresh tokens are encrypted at rest using a dedicated BFF Fernet key.
 7. Browser receives only an opaque HttpOnly, Secure-in-production, SameSite=Lax cookie. No upstream token is returned to JavaScript, browser storage or URLs.
 
-The server-side session expires after eight hours. If an IdP refresh token is issued, the BFF rotates it server-side and uses optimistic versioning to handle concurrent requests. Without a refresh token, the session ends when the access token expires. Request offline_access only when the confidential client is configured to support refresh tokens.
+The server-side session expires after eight hours. If an IdP refresh token is issued, the BFF rotates it server-side and uses optimistic versioning to handle concurrent requests. Without a refresh token, the session ends when the access token expires. Request offline_access only when refresh tokens are intentionally required and the public client/IdP policy is configured to support them.
 
 ## Mandatory browser HTTP BFF
 
@@ -73,7 +73,6 @@ The client-credentials token endpoint, merchant-scoped M2M permissions, STK Push
 
 - OIDC_ISSUER
 - OIDC_CLIENT_ID
-- OIDC_CLIENT_SECRET
 - OIDC_REDIRECT_URI
 - OIDC_SCOPES (openid profile email; offline_access only when intentionally enabled)
 - OIDC_TRANSACTION_SECRET

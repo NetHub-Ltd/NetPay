@@ -1,7 +1,7 @@
 import {
   createHash, createPublicKey, createVerify, randomBytes, timingSafeEqual,
 } from "node:crypto";
-import { createPkceChallenge, openLoginTransaction, sealLoginTransaction } from "./security.mjs";
+import { createPkceChallenge, createPublicClientTokenRequest, openLoginTransaction, sealLoginTransaction } from "./security.mjs";
 
 export const OIDC_TRANSACTION_COOKIE = "netpay_oidc_transaction";
 export const OIDC_TRANSACTION_TTL_SECONDS = 600;
@@ -193,15 +193,11 @@ export async function verifyIdToken(
 }
 async function tokenRequest(form: URLSearchParams): Promise<OidcTokens> {
   const metadata = await getMetadata();
-  const basic = Buffer.from(requiredEnv("OIDC_CLIENT_ID") + ":" + requiredEnv("OIDC_CLIENT_SECRET")).toString("base64");
+  const request = createPublicClientTokenRequest(requiredEnv("OIDC_CLIENT_ID"), form);
   const response = await fetch(metadata.token_endpoint, {
     method: "POST",
-    headers: {
-      Authorization: "Basic " + basic,
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-    },
-    body: form, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
+    headers: request.headers,
+    body: request.body, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) {
     let code = "token_request_failed";

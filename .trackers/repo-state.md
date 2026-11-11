@@ -1,9 +1,9 @@
 # Repository state — NetPay
 
-**Current deployment correction:** issue #245 — Vercel frontend deployment  
-**Current implementation branch:** `chore/245-vercel-frontend-deployment`  
-**Verified implementation base:** `dev` @ `b24acde75ea9a6b8161ea772247410c8d28b45d4`  
-**Current implementation state:** PR #246 is open; the PR's latest-head checks are the source of truth for CI/review readiness. The owner retains final merge authority.
+**Current active issue:** #248 — public OIDC client + PKCE  
+**Current implementation branch:** `fix/248-oidc-public-client`  
+**Verified implementation base:** `dev` @ `4ea426f20af6d273e1bd82c5ca2fefdb2f7fa0c5`  
+**Current implementation state:** implementation in progress; PR/CI handoff pending. The owner retains final merge authority.
 
 ## Current deployment contract
 
@@ -93,3 +93,12 @@ Preserve the FastAPI image identity ghcr.io/nethub-ltd/netpay and release behavi
 ## Evidence rules
 
 Use OBSERVED / VERIFIED / INFERRED / PROPOSED / UNKNOWN. CI results verify CI only. Live staging, operator configuration and deployment status require direct evidence. Never record secrets, access tokens, refresh tokens or session cookies.
+
+
+## Public OIDC client correction — issue #248
+
+- Current contract: Next.js performs the OIDC callback and token exchange server-side as a public OIDC client using Authorization Code + PKCE (S256). No Zitadel client secret is configured or sent.
+- Token endpoint requests carry `client_id` in the form body for both authorization-code and refresh-token grants. No HTTP Basic authentication is used.
+- `OIDC_TRANSACTION_SECRET` remains required only to encrypt the short-lived PKCE transaction cookie; it is an application secret, not an IdP client secret.
+- Operator registration issue #233 has been corrected to the public-client contract. Live IdP registration and end-to-end staging login remain unverified.
+- Implementation issue #248; branch `fix/248-oidc-public-client` from `dev`; PR/CI status pending.

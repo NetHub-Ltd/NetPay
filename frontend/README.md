@@ -6,7 +6,7 @@ NetPay's frontend is an independently deployed Next.js App Router application. I
 
 1. Configure backend/.env and frontend/.env.local from their example files.
 2. Set the same random BFF_INTERNAL_SECRET in both services.
-3. Configure a dedicated confidential OIDC web client. Its redirect URI must exactly match OIDC_REDIRECT_URI (local default: http://localhost:3000/auth/callback/).
+3. Configure a public OIDC client with Authorization Code + PKCE (S256). No Zitadel client secret is required. Its redirect URI must exactly match OIDC_REDIRECT_URI (local default: http://localhost:3000/auth/callback/).
 4. Start FastAPI on port 8000 and Next.js on port 3000:
 
     cd backend
@@ -22,7 +22,7 @@ In another terminal:
 
 - NETPAY_BACKEND_INTERNAL_URL: private FastAPI origin used by Route Handlers and server components.
 - BFF_INTERNAL_SECRET: shared service credential for private session-store endpoints; never prefix it with NEXT_PUBLIC_.
-- OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI and OIDC_SCOPES: confidential OIDC web-client configuration.
+- OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_REDIRECT_URI and OIDC_SCOPES: public OIDC client configuration; token requests use client_id and PKCE, not a client secret.
 - OIDC_TRANSACTION_SECRET: independent random secret (at least 32 characters) used to encrypt the short-lived PKCE transaction cookie.
 - NEXT_PUBLIC_SITE_URL: public canonical origin for metadata and sitemap generation only.
 

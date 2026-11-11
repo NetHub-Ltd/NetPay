@@ -48,14 +48,13 @@ Do not reuse Daraja credential keys, database passwords or the BFF internal secr
 | NETPAY_BACKEND_INTERNAL_URL | Private/internal FastAPI origin; never a NEXT_PUBLIC_ variable |
 | BFF_INTERNAL_SECRET | Same high-entropy value (minimum 32 characters) as the API's BFF_INTERNAL_SECRET |
 | OIDC_ISSUER | Zitadel issuer URL |
-| OIDC_CLIENT_ID | Confidential server-side NetPay web client ID |
-| OIDC_CLIENT_SECRET | Confidential web client secret; frontend server only |
+| OIDC_CLIENT_ID | Public NetPay OIDC client ID; token exchange is bound with PKCE |
 | OIDC_REDIRECT_URI | Exact public callback URL, normally https://<frontend-origin>/auth/callback/ |
 | OIDC_SCOPES | At minimum openid profile email; request offline_access only when enabled for the registered client |
 | OIDC_TRANSACTION_SECRET | Independent random secret of at least 32 characters for encrypted short-lived PKCE transaction cookies |
 | NEXT_PUBLIC_SITE_URL | Public canonical frontend origin for SEO metadata only |
 
-Never pass OIDC_CLIENT_SECRET, BFF_INTERNAL_SECRET or OIDC_TRANSACTION_SECRET as build arguments. Configure them at runtime through the platform's secret manager.
+Do not pass BFF_INTERNAL_SECRET or OIDC_TRANSACTION_SECRET as build arguments. Configure these application secrets at runtime through the platform's secret manager. Zitadel does not issue a client secret for this public OIDC client.
 
 ## Database migration
 
@@ -71,7 +70,7 @@ Migration 0005 adds the BFF session table. Session handles are stored as SHA-256
 1. Copy backend/.env.example to backend/.env and set local DB values.
 2. Copy frontend/.env.example to frontend/.env.local.
 3. Generate BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY; set the BFF internal secret identically in both services.
-4. Register a confidential OIDC web client with redirect URI http://localhost:3000/auth/callback/.
+4. Register a public OIDC client with Authorization Code + PKCE (S256) and redirect URI http://localhost:3000/auth/callback/. No client secret is needed.
 5. Start the backend services and dependencies:
 
     docker compose -f deploy/docker-compose.yml up --build
@@ -94,7 +93,7 @@ Keep FastAPI on its existing independent runtime. Deploy Next.js independently o
 
 Configure:
 - FastAPI: existing database, NETHUB_API_BASE_URL, MPESA_PUBLIC_BASE_URL, BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY.
-- Vercel: OIDC_* settings, OIDC_TRANSACTION_SECRET, BFF_INTERNAL_SECRET (same value), NETPAY_BACKEND_INTERNAL_URL set to an API origin reachable from the Vercel server runtime, and NEXT_PUBLIC_SITE_URL set to the frontend's public origin.
+- Vercel: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_REDIRECT_URI, OIDC_SCOPES, OIDC_TRANSACTION_SECRET, BFF_INTERNAL_SECRET (same value), NETPAY_BACKEND_INTERNAL_URL set to an API origin reachable from the Vercel server runtime, and NEXT_PUBLIC_SITE_URL set to the frontend's public origin.
 - Register the exact frontend /auth/callback/ redirect URI in Zitadel and the matching client_id as a NetHubKe trusted client for product netpay. Browser-to-NetHubKe CORS is not required for this server-to-server BFF flow; do not broaden CORS for it.
 - Ensure both services use the same PostgreSQL database and the API migration has run before frontend sign-in is tested.
 - Keep Safaricom callback URLs pointing to the API service origin unless ingress is configured to route /callbacks/mpesa to FastAPI.

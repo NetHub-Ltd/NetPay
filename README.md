@@ -36,7 +36,7 @@ M2M clients and Safaricom continue using the existing API and callback contracts
 
 Production deploys Next.js independently on Vercel and FastAPI on its own server runtime. The frontend is not built into a container or served as static files by FastAPI.
 
-For local frontend development, copy frontend/.env.example to frontend/.env.local, configure the confidential OIDC client and BFF settings, then run:
+For local frontend development, copy frontend/.env.example to frontend/.env.local, configure the public OIDC client (Authorization Code + PKCE S256) and BFF settings, then run:
 
     cd frontend
     npm ci
