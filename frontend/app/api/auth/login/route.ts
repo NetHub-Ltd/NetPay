@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createAuthorizationRequest, OIDC_TRANSACTION_COOKIE, OIDC_TRANSACTION_TTL_SECONDS } from "../../../../lib/server/oidc";
+import { classifyOidcLoginFailure, createOidcLoginDiagnostic } from "../../../../lib/server/oidc-diagnostics.mjs";
 import { safeReturnTo } from "../../../../lib/server/security.mjs";
 
 export const runtime = "nodejs";
@@ -16,7 +18,11 @@ export async function GET(request: NextRequest) {
       sameSite: "lax", path: "/auth/callback/", maxAge: OIDC_TRANSACTION_TTL_SECONDS,
     });
     return response;
-  } catch {
-    return NextResponse.redirect(new URL("/login/?error=configuration", request.url));
+  } catch (error) {
+    const requestId = randomUUID();
+    const failure = classifyOidcLoginFailure(error);
+    // Log only an allowlisted category and correlation ID; never log exception text or secrets.
+    console.error(JSON.stringify(createOidcLoginDiagnostic(requestId, failure)));
+    return NextResponse.redirect(new URL("/login/?error=" + failure.browserError, request.url));
   }
 }
