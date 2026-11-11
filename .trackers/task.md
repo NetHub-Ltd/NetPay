@@ -26,7 +26,7 @@ The first deployment pass uses system font stacks so the build does not depend o
 
 ## Verification
 
-- Frontend: npm ci, npm run lint, npm run typecheck, npm test, npm run build; start the production server and smoke-test login, robots and sitemap routes.
+- Frontend: npm ci, npm run lint, npm run typecheck, npm test, npm run build, npm run smoke:production; the host-process smoke verifies login, robots/sitemap, non-secret OIDC status, fail-closed readiness, unauthenticated BFF rejection and logout CSRF.
 - Backend: existing migration, smoke-test and FastAPI container CI remain intact.
 - GitHub Actions must reach terminal green on the PR head before requesting review.
 - Vercel project settings and a live deployment are operator-side acceptance steps after merge; CI alone does not prove them.
