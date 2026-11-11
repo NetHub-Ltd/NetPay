@@ -112,7 +112,7 @@ Earlier R0–R2 / public-site / mpesa_core tracker rows from Oct 2026 remain use
 
 ## Deployment correction — issue #245
 
-- Status: PR #246 is open as a draft; check the PR's latest-head status for CI readiness.
+- Status: PR #246 is open; use the latest-head GitHub Actions and Vercel checks as the review-readiness gate.
 - Next.js deployment is Vercel-managed; custom fonts are deferred and system font stacks are used for this pass.
 - Frontend Dockerfile, frontend container smoke, frontend GHCR publishing and Kubernetes frontend Deployment/Service are removed by the #245 change set.
 - FastAPI image, release, API, worker, M2M and Safaricom callback contracts remain unchanged.
