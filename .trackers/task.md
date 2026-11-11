@@ -5,7 +5,7 @@
 **Implementation branch:** chore/245-vercel-frontend-deployment  
 **Verified base:** dev @ b24acde75ea9a6b8161ea772247410c8d28b45d4  
 **PR target:** dev  
-**Status:** PR #246 is open as a draft. CI status for the current PR head is authoritative in the linked GitHub checks; keep this draft until every required check is terminal green.
+**Status:** PR #246 is open; latest-head CI and Vercel checks are authoritative in the linked GitHub checks. Do not request review unless every required check for the latest head is terminal green.
 
 ## Approved outcome
 
@@ -28,7 +28,7 @@ The first deployment pass uses system font stacks so the build does not depend o
 
 - Frontend: npm ci, npm run lint, npm run typecheck, npm test, npm run build, npm run smoke:production; the host-process smoke verifies login, robots/sitemap, non-secret OIDC status, fail-closed readiness, unauthenticated BFF rejection and logout CSRF.
 - Backend: existing migration, smoke-test and FastAPI container CI remain intact.
-- GitHub Actions must reach terminal green on the PR head before requesting review.
+- GitHub Actions and Vercel checks must reach terminal green on the latest PR head before requesting review.
 - Vercel project settings, private Vercel-to-FastAPI reachability for the BFF session-store routes and a live deployment are operator-side acceptance steps after merge; CI alone does not prove them.
 
 ## Approval boundaries
