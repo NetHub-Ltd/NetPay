@@ -3,7 +3,7 @@
 **Current deployment correction:** issue #245 — Vercel frontend deployment  
 **Current implementation branch:** `chore/245-vercel-frontend-deployment`  
 **Verified implementation base:** `dev` @ `b24acde75ea9a6b8161ea772247410c8d28b45d4`  
-**Current implementation state:** PR #246 is open as a draft; current-head CI status is tracked on the PR. The owner retains final merge authority.
+**Current implementation state:** PR #246 is open; the PR's latest-head checks are the source of truth for CI/review readiness. The owner retains final merge authority.
 
 ## Current deployment contract
 
@@ -27,8 +27,6 @@ Vercel server functions must be able to reach the configured `NETPAY_BACKEND_INT
 - Frontend CI uses a host-process Next.js production smoke test; backend container CI is retained.
 - Frontend GHCR publishing and Kubernetes frontend routing have been removed; FastAPI image/release behavior remains unchanged.
 - PR #246 records Vercel provider checks and GitHub Actions results for its current head. No live Vercel-to-FastAPI private network test or production deployment has been performed.
-- No live Vercel-to-FastAPI network test or production deployment has been performed.
-
 ## Branch and delivery model
 
 | Ref | Role |
