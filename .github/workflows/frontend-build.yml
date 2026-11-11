@@ -38,25 +38,4 @@ jobs:
       - name: Build production Next.js application
         run: npm run build
       - name: Smoke test the production Next.js server
-        run: |
-          set -euo pipefail
-          npm run start > /tmp/netpay-next.log 2>&1 &
-          server_pid=$!
-          cleanup() {
-            kill "$server_pid" 2>/dev/null || true
-          }
-          trap cleanup EXIT
-          ready=0
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/login/ >/dev/null 2>&1; then
-              ready=1
-              break
-            fi
-            sleep 2
-          done
-          if [ "$ready" -ne 1 ]; then
-            cat /tmp/netpay-next.log
-            exit 1
-          fi
-          curl --fail --silent --show-error http://127.0.0.1:3000/robots.txt >/dev/null
-          curl --fail --silent --show-error http://127.0.0.1:3000/sitemap.xml >/dev/null
+        run: npm run smoke:production
