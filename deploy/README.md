@@ -6,7 +6,7 @@ NetPay is deployed as two independent application services:
 
 | Service | Image | Runtime | Responsibility |
 |---|---|---|---|
-| Next.js frontend | ghcr.io/nethub-ltd/netpay-frontend | Node.js 22 / Next standalone | Public pages, login, dashboard, OIDC callback and HTTP BFF |
+| Next.js frontend | Vercel project (Root Directory: `frontend`) | Managed Next.js server runtime | Public pages, login, dashboard, OIDC callback and HTTP BFF |
 | FastAPI API | ghcr.io/nethub-ltd/netpay | Python 3.12 / Uvicorn | M2M APIs, payments, merchant authorization, callbacks and encrypted BFF session persistence |
 | Worker | Same FastAPI image | Python | Durable event and payment work |
 | PostgreSQL | Managed / PostgreSQL 16 | Database | Financial source of truth and BFF session store |
@@ -16,14 +16,13 @@ The browser communicates with the Next.js origin only for the NetPay application
 
 FastAPI continues to enforce merchant membership, tenant isolation and business authorization. M2M clients and Safaricom continue using the existing API and callback contracts.
 
-## Build images
+## Deployment targets
 
-Run from the repository root:
+Deploy Next.js independently on Vercel with Root Directory `frontend` and the Next.js framework preset. Keep the normal Next.js server runtime: no static export, standalone container output or frontend Docker image.
+
+Build only the FastAPI image from the repository root:
 
     docker build -f backend/Dockerfile -t ghcr.io/nethub-ltd/netpay:local .
-    docker build -f frontend/Dockerfile -t ghcr.io/nethub-ltd/netpay-frontend:local .
-
-The API image no longer contains Node.js or frontend assets. The Next.js image uses standalone output and runs node server.js. Both images run as non-root users.
 
 ## Environment variables
 
@@ -67,7 +66,7 @@ Run migrations once before starting new API replicas:
 
 Migration 0005 adds the BFF session table. Session handles are stored as SHA-256 hashes; upstream access and refresh tokens are encrypted with BFF_SESSION_ENCRYPTION_KEY. Keep the database backup and migration rollback plan consistent with the normal NetPay database process.
 
-## Local Compose
+## Local development
 
 1. Copy backend/.env.example to backend/.env and set local DB values.
 2. Copy frontend/.env.example to frontend/.env.local.
@@ -81,22 +80,22 @@ Frontend: http://localhost:3000
 FastAPI API: http://localhost:8000  
 OpenAPI: http://localhost:8000/docs
 
-## Render staging
+## Vercel and FastAPI configuration
 
-Keep the existing Render service as the FastAPI API service so its public API and Safaricom callback base URL remain stable. Deploy a second Render web service from frontend/Dockerfile for Next.js.
+Keep FastAPI on its existing independent runtime. Deploy Next.js independently on Vercel with Root Directory `frontend`.
 
 Configure:
-- API service: existing database, NETHUB_API_BASE_URL, MPESA_PUBLIC_BASE_URL, BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY.
-- Frontend service: OIDC_* settings, OIDC_TRANSACTION_SECRET, BFF_INTERNAL_SECRET (same value), NETPAY_BACKEND_INTERNAL_URL set to the API's private service URL, and the Docker build argument NEXT_PUBLIC_SITE_URL set to the frontend's public origin (it is compiled into metadata during build).
+- FastAPI: existing database, NETHUB_API_BASE_URL, MPESA_PUBLIC_BASE_URL, BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY.
+- Vercel: OIDC_* settings, OIDC_TRANSACTION_SECRET, BFF_INTERNAL_SECRET (same value), NETPAY_BACKEND_INTERNAL_URL set to an API origin reachable from the Vercel server runtime, and NEXT_PUBLIC_SITE_URL set to the frontend's public origin.
 - Register the exact frontend /auth/callback/ redirect URI in Zitadel and the matching client_id as a NetHubKe trusted client for product netpay. Browser-to-NetHubKe CORS is not required for this server-to-server BFF flow; do not broaden CORS for it.
 - Ensure both services use the same PostgreSQL database and the API migration has run before frontend sign-in is tested.
 - Keep Safaricom callback URLs pointing to the API service origin unless ingress is configured to route /callbacks/mpesa to FastAPI.
 
 Render service names, private hostnames and domain bindings are operator-controlled; do not guess them in committed configuration. The frontend's browser-facing API remains same-origin because the browser calls the frontend BFF, not the API service hostname.
 
-## Kubernetes ingress and WSS
+## API ingress and WSS
 
-The manifest deploys Next.js and FastAPI separately. Ingress routes / to Next.js, /api/v1 and /callbacks/mpesa to FastAPI for M2M and provider traffic. The /internal/* session-store routes are not routed publicly. Set the same BFF_INTERNAL_SECRET in both Kubernetes secrets.
+Route /api/v1 and /callbacks/mpesa to FastAPI for M2M and provider traffic. Keep /internal/* session-store routes private.
 
 The ingress controller must support HTTP/1.1 WebSocket upgrades. No dedicated WebSocket endpoint or gateway is deployed by this change because the current NetPay product has no concrete WebSocket use case. When one is introduced, reserve /ws/* and route it to a dedicated authenticated realtime service; authenticate the application session or a short-lived scoped credential and authorize every subscription against merchant membership. Do not use ordinary Next.js Route Handlers as a WebSocket proxy.
 
@@ -104,7 +103,6 @@ The ingress controller must support HTTP/1.1 WebSocket upgrades. No dedicated We
 
 - FastAPI liveness: /health/live
 - FastAPI readiness: /health/ready (PostgreSQL required; Redis remains auxiliary)
-- Next.js liveness: /login/
-- Next.js readiness: /api/health/ready (OIDC configuration, FastAPI readiness and BFF session-table/encryption readiness)
+- Next.js: Vercel-managed runtime; verify `/login/` and the same-origin BFF after deployment.
 
-Deploy database migrations before the API image. Deploy the API and Next.js images as a compatible pair. Rollback both service images together if a release changes their internal session contract; never roll back the database migration without checking whether active sessions or newer API code depend on it.
+Deploy database migrations before the API image. Deploy FastAPI independently; Vercel manages frontend builds and rollbacks separately. Keep the BFF contract compatible and never roll back a migration without checking active sessions and API dependencies.
