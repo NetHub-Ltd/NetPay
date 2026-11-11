@@ -72,13 +72,21 @@ Migration 0005 adds the BFF session table. Session handles are stored as SHA-256
 2. Copy frontend/.env.example to frontend/.env.local.
 3. Generate BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY; set the BFF internal secret identically in both services.
 4. Register a confidential OIDC web client with redirect URI http://localhost:3000/auth/callback/.
-5. Run:
+5. Start the backend services and dependencies:
 
     docker compose -f deploy/docker-compose.yml up --build
+
+6. In a separate terminal, run the Next.js development server:
+
+    cd frontend
+    npm ci
+    npm run dev
 
 Frontend: http://localhost:3000  
 FastAPI API: http://localhost:8000  
 OpenAPI: http://localhost:8000/docs
+
+Compose intentionally does not build or run a frontend container.
 
 ## Vercel and FastAPI configuration
 
