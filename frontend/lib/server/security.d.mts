@@ -26,3 +26,19 @@ export function openLoginTransaction(
   ttlSeconds: number,
   nowSeconds: number,
 ): LoginTransaction | null;
+
+
+export function createPublicClientTokenRequest(
+  clientId: string,
+  parameters: URLSearchParams,
+): {
+  headers: {
+    "Content-Type": string;
+    Accept: string;
+  };
+  body: URLSearchParams;
+};
+
+export function isOidcConfigured(
+  environment: Record<string, string | undefined>,
+): boolean;
