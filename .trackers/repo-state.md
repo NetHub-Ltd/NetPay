@@ -3,7 +3,7 @@
 **Current active issue:** #248 — public OIDC client + PKCE  
 **Current implementation branch:** `fix/248-oidc-public-client`  
 **Verified implementation base:** `dev` @ `4ea426f20af6d273e1bd82c5ca2fefdb2f7fa0c5`  
-**Current implementation state:** implementation in progress; PR/CI handoff pending. The owner retains final merge authority.
+**Current implementation state:** draft PR #249 open; Vercel preview READY and GitGuardian passed; GitHub Actions queued on head `60ae8398c0b453467dffe540ba718282b0b2d405`. The owner retains final merge authority.
 
 ## Current deployment contract
 
@@ -101,4 +101,4 @@ Use OBSERVED / VERIFIED / INFERRED / PROPOSED / UNKNOWN. CI results verify CI on
 - Token endpoint requests carry `client_id` in the form body for both authorization-code and refresh-token grants. No HTTP Basic authentication is used.
 - `OIDC_TRANSACTION_SECRET` remains required only to encrypt the short-lived PKCE transaction cookie; it is an application secret, not an IdP client secret.
 - Operator registration issue #233 has been corrected to the public-client contract. Live IdP registration and end-to-end staging login remain unverified.
-- Implementation issue #248; branch `fix/248-oidc-public-client` from `dev`; PR/CI status pending.
+- Implementation issue #248; [draft PR #249](https://github.com/NetHub-Ltd/NetPay/pull/249) from `fix/248-oidc-public-client` to `dev`; Vercel preview READY, GitGuardian success, GitHub Actions queued.

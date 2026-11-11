@@ -125,4 +125,4 @@ Earlier R0–R2 / public-site / mpesa_core tracker rows from Oct 2026 remain use
 - Authorization-code and refresh-token grants send `client_id` in the form body; no HTTP Basic authentication or `client_secret` parameter is used.
 - `OIDC_TRANSACTION_SECRET` remains a separate application secret protecting the short-lived encrypted PKCE transaction cookie.
 - Operator registration contract is updated in issue #233. Live Zitadel/NetHubKe registration and staging sign-in remain unverified until operator evidence is recorded.
-- Implementation: issue #248; branch `fix/248-oidc-public-client` from `dev`. PR and CI evidence are pending.
+- Implementation: issue #248; [draft PR #249](https://github.com/NetHub-Ltd/NetPay/pull/249) from `fix/248-oidc-public-client` to `dev`. Vercel preview build is READY and GitGuardian passed; GitHub Actions are queued on head `60ae8398c0b453467dffe540ba718282b0b2d405`.

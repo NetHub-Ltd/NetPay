@@ -5,7 +5,7 @@
 **Implementation branch:** `fix/248-oidc-public-client`  
 **Verified base:** dev @ 4ea426f20af6d273e1bd82c5ca2fefdb2f7fa0c5  
 **PR target:** dev  
-**Status:** implementation in progress; PR/CI handoff pending.
+**Status:** draft PR #249 open against `dev`; Vercel preview READY, GitGuardian success, GitHub Actions queued on the latest head.
 
 ## Approved outcome
 
@@ -49,11 +49,11 @@ The first deployment pass uses system font stacks so the build does not depend o
 
 ## Public OIDC client correction — #248
 
-**Status:** Implementation committed to `fix/248-oidc-public-client`; PR/CI handoff pending.
+**Status:** Implementation committed; draft PR #249 open. Latest head `60ae8398c0b453467dffe540ba718282b0b2d405`; Vercel READY, GitGuardian success, GitHub Actions queued.
 **Base:** `dev` @ `4ea426f20af6d273e1bd82c5ca2fefdb2f7fa0c5`.
 **Outcome:** Next.js remains the server-side OIDC callback/BFF, but uses a public OIDC client with Authorization Code + PKCE S256. No Zitadel client secret is required.
 **Changed behavior:** Token requests include `client_id` in the form body for authorization-code and refresh-token grants; no HTTP Basic auth or client_secret parameter. Auth status/readiness use the public-client settings and still require a sufficiently long `OIDC_TRANSACTION_SECRET`.
 **Security boundary:** PKCE transaction remains encrypted in an HttpOnly cookie; access/refresh tokens remain server-side and encrypted in the FastAPI session store. No browser token exposure or live secret/IdP changes.
 **Operator contract:** issue #233 now specifies public-client registration; live Zitadel/NetHubKe registration remains pending.
 **Tests:** focused Node security tests, frontend lint/typecheck/build and production smoke are required in CI. No local test execution is claimed from the source archive.
-**Next action:** open PR #248 against `dev`, monitor all required checks on its latest head SHA, fix attributable failures and update this tracker with evidence.
+**Next action:** monitor PR #249 checks on the latest head SHA, fix attributable failures, and update this tracker with terminal CI evidence.
