@@ -34,7 +34,7 @@ The Next.js server uses the private NETPAY_BACKEND_INTERNAL_URL to access intern
 - Store only a SHA-256 hash of the opaque browser session handle.
 - Encrypt upstream access/refresh tokens using BFF_SESSION_ENCRYPTION_KEY.
 - Use an optimistic version to prevent concurrent refresh-token rotations from overwriting each other.
-- Must not be routed to the API through the Kubernetes public ingress; the default public ingress routes unmatched paths to Next.js. On platforms that expose every FastAPI path on a public service hostname (for example, a Render web service), the high-entropy shared secret remains mandatory and the frontend must use the private service URL. Apply platform-level path filtering where supported.
+- Must not be exposed through the FastAPI public ingress. The Next.js application is hosted independently on Vercel; `NETPAY_BACKEND_INTERNAL_URL` must point to an origin reachable from the Vercel server runtime. Do not assume a cluster-only hostname is reachable from Vercel. If the platform exposes internal routes on a public service hostname, the high-entropy shared secret remains mandatory and platform-level path filtering/network controls should be applied where supported.
 - Never expose the internal secret or encryption key to browser code.
 
 BFF_INTERNAL_SECRET is a high-entropy shared service credential. BFF_SESSION_ENCRYPTION_KEY is a dedicated Fernet key and must not be reused for Daraja credentials.

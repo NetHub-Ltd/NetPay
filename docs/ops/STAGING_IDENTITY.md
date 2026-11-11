@@ -11,9 +11,10 @@
 | Next.js | Confidential OIDC client, callback, opaque application session, login/dashboard and HTTP BFF |
 | FastAPI | API, merchant authorization, payment flows and encrypted BFF session persistence |
 | NetHubKe | Human identity resolution and product/resource access decisions |
-| Ingress | Public routing to Next.js, M2M API and Safaricom callback paths |
+| Vercel | Public browser application, login/callback, dashboard and same-origin BFF |
+| FastAPI ingress | M2M API and Safaricom callback paths only; internal session routes remain private |
 
-The browser uses the Next.js public origin. Browser-originated application API requests go to same-origin /api/backend/*. The Next.js server calls FastAPI over NETPAY_BACKEND_INTERNAL_URL. Do not configure a browser-facing API base URL or expose upstream tokens to JavaScript.
+The browser uses the Vercel Next.js public origin. Browser-originated application API requests go to same-origin /api/backend/*. The Vercel server runtime calls FastAPI over NETPAY_BACKEND_INTERNAL_URL, which must be reachable from Vercel. Do not assume an internal Kubernetes-only hostname is reachable from Vercel, configure a browser-facing API base URL, or expose upstream tokens to JavaScript.
 
 ## I1 — Operator registration
 
@@ -46,7 +47,7 @@ Generate BFF_INTERNAL_SECRET and OIDC_TRANSACTION_SECRET as independent high-ent
 
 ## I6 — Live staging acceptance
 
-Run only after the owner has merged the implementation PR and Render/ingress has deployed both services. Record PASS/FAIL and timestamps.
+Run only after the owner has merged the implementation PR, Vercel has deployed the frontend, and the independent FastAPI environment is configured and reachable. Record PASS/FAIL and timestamps.
 
 | # | Check | Expected result |
 |---|---|---|
@@ -75,7 +76,7 @@ Run only after the owner has merged the implementation PR and Render/ingress has
 
 ### Automated probe
 
-Run from a machine that can reach both staging services:
+Run from a machine that can reach both staging origins:
 
     python backend/scripts/identity_staging_probe.py \
       --base-url https://<fastapi-api-origin> \

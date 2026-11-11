@@ -1,8 +1,16 @@
 # Rollback — NetHubKe client program
 
-**Last updated:** 2026-11-09
+**Last updated:** 2026-11-11
 
 ## Principles
+
+## Issue #245 — independent Vercel frontend
+
+- Revert the #245 PR to restore the previous frontend container deployment artifacts and routing if the Vercel deployment cannot be completed.
+- The correction does not change payment schema, payment records, FastAPI business behavior or backend image identity.
+- Vercel project configuration is external to this repository; restore the previous operator-managed frontend service only if the owner explicitly chooses that rollback path.
+- Do not revert or rotate OIDC/BFF secrets as part of a code-only rollback unless a separate credential exposure or compromise is established.
+
 
 - Prefer revert of merge commit on `dev` over history rewrite
 - Never force-push protected branches

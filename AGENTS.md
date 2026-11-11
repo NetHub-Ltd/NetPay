@@ -13,14 +13,14 @@ Read this file, docs/REBUILD_SPEC.md, the active issue/implementation contract a
 
 ## Current application architecture
 
-- Next.js App Router is an independently deployed Node.js server using standalone output.
+- Next.js App Router is independently deployed on Vercel using the normal Next.js server runtime (Root Directory: `frontend`).
 - Next.js owns public rendering, login/callback, application sessions and the same-origin HTTP BFF.
 - Browser-originated NetPay HTTP API calls must go through the Next.js BFF. Browser JavaScript must never receive IdP access/refresh tokens or call FastAPI directly.
 - FastAPI is an independently deployed API service. It owns payment/domain rules, M2M contracts, merchant membership, tenant isolation, persistence, provider callbacks and business authorization.
 - The BFF's opaque session handle is stored as a hash; upstream tokens are encrypted at rest in PostgreSQL using a dedicated key. Internal session-store routes are service-to-service only and must not be exposed by public ingress.
 - Zitadel authenticates users; NetHubKe remains the identity/access resource server. NetPay must not become an IdP or password store.
 - M2M clients and Safaricom callbacks retain their existing API contracts.
-- No static export or FastAPI static frontend hosting. Do not add a WebSocket gateway/broker without a concrete realtime product requirement; design ingress routing and authentication deliberately when one is needed.
+- No static export, standalone container output, frontend Docker image or FastAPI static frontend hosting. Do not add a WebSocket gateway/broker without a concrete realtime product requirement; design ingress routing and authentication deliberately when one is needed.
 
 ## Non-negotiable engineering constraints
 
@@ -37,8 +37,8 @@ Read this file, docs/REBUILD_SPEC.md, the active issue/implementation contract a
 ## Quality and delivery
 
 - Add meaningful positive and negative tests for behavior and security boundaries.
-- Run relevant backend tests, frontend lint/typecheck/build, container builds and deployment validation. Report exact commands and results; never claim tests passed unless actually run.
+- Run backend tests/migrations and FastAPI container validation; run frontend lint, strict typecheck, security tests, production build and non-container production-server smoke tests. Report exact commands and results; never claim tests passed unless actually run.
 - Keep changes reviewable and scoped to the approved issue. Update affected docs, trackers, environment examples and CI in the same delivery.
-- Preserve GHCR API image identity and release behavior; publish the separate frontend image alongside it.
+- Preserve GHCR FastAPI image identity and release behavior. Vercel deploys the frontend independently; do not publish a frontend image.
 - Keep production secrets out of git, PR comments and chat.
 - Do not claim live staging acceptance before the owner's merge and the resulting deployment have been verified.
