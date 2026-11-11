@@ -26,12 +26,13 @@ EXPECTED_TABLES = {
     "eventdelivery",
     "eventdeliveryattempt",
     "auditevent",
+    "bffsession",
 }
 
 
 @pytest.mark.asyncio
 async def test_alembic_head_contains_all_domain_tables() -> None:
-    """CI verifies the real PostgreSQL schema after `alembic upgrade head` (head 0004)."""
+    """CI verifies the real PostgreSQL schema after `alembic upgrade head` (head 0005)."""
     database_url = get_settings().async_database_url()
     engine = create_async_engine(database_url, pool_pre_ping=True)
     try:
@@ -39,7 +40,7 @@ async def test_alembic_head_contains_all_domain_tables() -> None:
             tables = await connection.run_sync(lambda sync: set(inspect(sync).get_table_names()))
             assert EXPECTED_TABLES.issubset(tables)
             revision = await connection.execute(text("SELECT version_num FROM alembic_version"))
-            assert revision.scalar_one() == "0004_merchant_member"
+            assert revision.scalar_one() == "0005_bff_sessions"
 
             integration_columns = await connection.run_sync(
                 lambda sync: {column["name"] for column in inspect(sync).get_columns("providerintegration")}
@@ -50,10 +51,15 @@ async def test_alembic_head_contains_all_domain_tables() -> None:
             )
             assert {"idempotency_key", "request_hash"}.issubset(provider_request_columns)
 
-            for table_name in EXPECTED_TABLES:
+            for table_name in EXPECTED_TABLES - {"bffsession"}:
                 columns = await connection.run_sync(
                     lambda sync, name=table_name: {column["name"] for column in inspect(sync).get_columns(name)}
                 )
                 assert {"id", "created_at", "updated_at", "deleted_at"}.issubset(columns), table_name
+
+            bff_columns = await connection.run_sync(
+                lambda sync: {column["name"] for column in inspect(sync).get_columns("bffsession")}
+            )
+            assert {"session_id_hash", "created_at", "updated_at", "deleted_at"}.issubset(bff_columns)
     finally:
         await engine.dispose()

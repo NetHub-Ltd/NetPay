@@ -1,56 +1,54 @@
 # Repository state — NetPay
 
-**Last updated:** 2026-11-09  
-**Recorded integration tip:** `82e85cb` on `dev` (PR #231 merged) — **re-fetch before work**
+**Last updated:** 2026-11-10  
+**Verified integration baseline:** dev @ 5792662c22b7d4a5059f329d7b61427ca48769b5  
+**Implementation branch:** feat/239-nextjs-bff-runtime  
+**Implementation state:** in progress; awaiting CI and PR review.
 
-## Branches
+## Branch and delivery model
 
 | Ref | Role |
-|-----|------|
-| `main` | Default branch; GHCR release source; older line still tagged (e.g. v1.1.12) — rebuild identity lives on `dev` until promoted |
-| `dev` | Integration branch for rebuild + identity |
-| Feature branches | `feat/…`, `fix/…`, `chore/…` from latest `dev`; PR back to `dev` |
+|---|---|
+| main | Release source; GHCR release workflow remains main-only |
+| dev | Integration branch; PR target |
+| feat/239-nextjs-bff-runtime | Approved #239 implementation branch from verified dev baseline |
 
-## Identity status (OBSERVED on dev)
+The owner performs the final merge. No direct push to dev/main, no rebase/squash/reset/force-push and no production deployment by the agent.
 
-| Capability | State |
-|------------|--------|
-| NetHubKe client forwarder | Present (`backend/app/identity/`) |
-| SPA PKCE + `/config.json` | Present |
-| Membership model + admin grant | Present |
-| Membership-gated payment/merchant read APIs | **Not done** → #236 |
-| Staging IdP + trusted_client registration | **Not done** → #233 |
-| Deploy secret docs for NETHUB/OIDC | In progress → #234 |
-| Live staging E2E | **Not done** → #238 |
+## Current architecture target
 
-## Deploy status
+| Component | Target |
+|---|---|
+| Next.js | Independent Node.js server, standalone output, public site/login/dashboard and HTTP BFF |
+| FastAPI | Independent API service; payment/domain logic, M2M, merchant authorization, callbacks and BFF session persistence |
+| OIDC | Confidential server-side Authorization Code + PKCE |
+| Browser session | Opaque HttpOnly cookie; no IdP tokens in JavaScript/storage |
+| Session persistence | PostgreSQL hash of session handle; Fernet-encrypted access/refresh tokens |
+| Browser API | Same-origin Next.js BFF only |
+| M2M / Safaricom | Existing API and callback contracts retained |
+| WSS | Ingress readiness documented; no gateway until a concrete realtime use case |
 
-| Item | State |
-|------|--------|
-| Dockerfile multi-stage FE→BE | Present |
-| `deploy/k8s` migration + API + worker | Present |
-| Flux apply | Out of agent scope unless approved |
-| Identity keys in deploy README | Updated under #234 |
+## I0–I6 identity work
 
-## Open program issues
+PRs #240–#243 delivered the majority of I0–I6 code and CI work. The following remain separate operator/live acceptance items:
+- I1: actual confidential IdP registration and NetHubKe trusted-client configuration/evidence.
+- I6 / issue #238: live staging browser and API evidence; CI alone is insufficient.
+- Existing M2M/payment regression evidence must be recorded as part of staging acceptance.
 
-- #232 I0 trackers
-- #233 I1 ops registration
-- #234 I2 deploy contract
-- #235 I3 token lifecycle
-- #236 I4 membership APIs
-- #237 I5 dashboard UI
-- #238 I6 staging gate
-- #239 I7 optional BFF
+Do not mark I0–I6 live acceptance complete from this #239 PR. Keep #238 open until evidence is recorded.
 
-## CI (re-verify before relying)
+## #239 implementation
 
-Workflows: `ci.yml`, `backend-readiness.yml`, `frontend-build.yml`, `frontend-lint.yml`, `release.yml` (main only).  
-Re-fetch Actions runs for the PR head under test; do not copy historical run IDs as current VERIFIED.
+- Issue #239 was re-scoped and approved on 2026-11-10 as mandatory independent Next.js + BFF + server-side identity.
+- Branch feat/239-nextjs-bff-runtime created from dev SHA 5792662c22b7d4a5059f329d7b61427ca48769b5.
+- Changes are in progress. Initial CI on an earlier PR head passed frontend lint/typecheck/build and backend readiness, but found two test-fixture/assertion issues plus a frontend container-smoke failure. The test issues are corrected; local Node security-helper tests pass 7/7. A fresh full CI run on the current head remains outstanding.
+- PR #244 is open against dev. No live staging deployment has been performed.
+- Render staging currently needs an independently deployed frontend service and operator-managed OIDC/runtime configuration after merge.
 
-## Agent constraints (summary)
+## CI and deployment
 
-- PAT confidential; never echo
-- No direct push to `dev`/`main`
-- No production break; propose migration strategies
-- Trackers updated when state changes
+Preserve the FastAPI image identity ghcr.io/nethub-ltd/netpay and release behavior; add ghcr.io/nethub-ltd/netpay-frontend. CI must build/test both independently. Kubernetes and Compose now target separate services in this branch. Render configuration is documented as a two-service operator rollout; no live settings are assumed.
+
+## Evidence rules
+
+Use OBSERVED / VERIFIED / INFERRED / PROPOSED / UNKNOWN. CI results verify CI only. Live staging, operator configuration and deployment status require direct evidence. Never record secrets, access tokens, refresh tokens or session cookies.

@@ -29,14 +29,10 @@ jobs:
         env:
           npm_config_registry: https://registry.npmjs.org/
         run: npm ci --no-audit --no-fund
-      - name: Build static frontend
+      - name: Build production Next.js server
         run: npm run build
-      - name: Verify exported routes and SEO assets
+      - name: Verify standalone runtime output
         run: |
-          test -s out/index.html
-          test -s out/dashboard/index.html
-          test -s out/robots.txt
-          test -s out/sitemap.xml
-          test -s out/opengraph-image
-          grep -q 'name="robots"' out/dashboard/index.html
-          grep -q 'noindex' out/dashboard/index.html
+          test -s .next/standalone/server.js
+          test -d .next/static
+          test ! -d out

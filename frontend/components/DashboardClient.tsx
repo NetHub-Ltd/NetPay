@@ -10,20 +10,16 @@ import {
   Webhook,
 } from "lucide-react";
 import { Button, Badge, Card } from "./ui";
-import { loadSpaConfig } from "../lib/config";
 import {
   AuthApiError,
-  AuthMe,
-  HumanPayment,
-  Membership,
-  MerchantSummary,
   fetchAuthMe,
   fetchMemberships,
   fetchMerchantPayments,
   fetchMerchantSummary,
   startLogin,
+  clearSession,
 } from "../lib/oidc";
-import { clearSession, getAccessToken } from "../lib/session";
+import type { AuthMe, HumanPayment, Membership, MerchantSummary } from "../lib/oidc";
 
 const NAV = [
   { label: "Overview", icon: LayoutDashboard, active: true },
@@ -56,12 +52,13 @@ export function DashboardClient() {
   const [busy, setBusy] = useState(false);
 
   const loadMerchantData = useCallback(
-    async (token: string, merchantId: string) => {
-      const merchant = await fetchMerchantSummary(token, merchantId);
+    async (merchantId: string) => {
+      const merchant = await fetchMerchantSummary(merchantId);
       let payments: HumanPayment[] = [];
       try {
-        payments = await fetchMerchantPayments(token, merchantId, 10);
-      } catch {
+        payments = await fetchMerchantPayments(merchantId, 10);
+      } catch (error) {
+        if (error instanceof AuthApiError && error.status === 401) throw error;
         payments = [];
       }
       return { merchant, payments };
@@ -72,23 +69,12 @@ export function DashboardClient() {
   const refresh = useCallback(async () => {
     setStatus({ kind: "loading" });
     try {
-      const cfg = await loadSpaConfig();
-      const token = getAccessToken();
-      if (!token) {
-        setStatus({
-          kind: "signed_out",
-          oidcReady: cfg.oidc_configured,
-          message: cfg.oidc_configured
-            ? undefined
-            : "OIDC is not configured on this deployment (set OIDC_* env on the API).",
-        });
-        return;
-      }
-      const me = await fetchAuthMe(token);
+      const me = await fetchAuthMe();
       let memberships: Membership[] = [];
       try {
-        memberships = await fetchMemberships(token);
-      } catch {
+        memberships = await fetchMemberships();
+      } catch (error) {
+        if (error instanceof AuthApiError && error.status === 401) throw error;
         memberships = [];
       }
 
@@ -100,10 +86,11 @@ export function DashboardClient() {
 
       if (selectedMerchantId) {
         try {
-          const data = await loadMerchantData(token, selectedMerchantId);
+          const data = await loadMerchantData(selectedMerchantId);
           merchant = data.merchant;
           payments = data.payments;
         } catch (e) {
+          if (e instanceof AuthApiError && e.status === 401) throw e;
           dataError = e instanceof Error ? e.message : "Could not load merchant data";
         }
       }
@@ -118,23 +105,16 @@ export function DashboardClient() {
         dataError,
       });
     } catch (e) {
-      clearSession();
       const message = e instanceof Error ? e.message : "Could not load session";
       const is401 =
         (e instanceof AuthApiError && e.status === 401) ||
         /session expired|sign in again/i.test(message);
       if (is401) {
-        setStatus({
-          kind: "signed_out",
-          oidcReady: true,
-          message,
-        });
+        await clearSession().catch(() => undefined);
+        setStatus({ kind: "signed_out", oidcReady: true, message });
         return;
       }
-      setStatus({
-        kind: "error",
-        message,
-      });
+      setStatus({ kind: "error", message });
     }
   }, [loadMerchantData]);
 
@@ -155,22 +135,23 @@ export function DashboardClient() {
     }
   }
 
-  function onSignOut() {
-    clearSession();
-    setStatus({ kind: "signed_out", oidcReady: true });
+  async function onSignOut() {
+    try {
+      await clearSession();
+      setStatus({ kind: "signed_out", oidcReady: true });
+    } catch (error) {
+      setStatus({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Could not sign out",
+      });
+    }
   }
 
   async function onSelectMerchant(merchantId: string) {
     if (status.kind !== "signed_in") return;
-    const token = getAccessToken();
-    if (!token) {
-      clearSession();
-      setStatus({ kind: "signed_out", oidcReady: true, message: "Session expired — sign in again" });
-      return;
-    }
     setStatus({ ...status, selectedMerchantId: merchantId, merchant: null, payments: [], dataError: undefined });
     try {
-      const data = await loadMerchantData(token, merchantId);
+      const data = await loadMerchantData(merchantId);
       setStatus({
         ...status,
         selectedMerchantId: merchantId,
@@ -180,7 +161,7 @@ export function DashboardClient() {
       });
     } catch (e) {
       if (e instanceof AuthApiError && e.status === 401) {
-        clearSession();
+        await clearSession().catch(() => undefined);
         setStatus({ kind: "signed_out", oidcReady: true, message: e.message });
         return;
       }

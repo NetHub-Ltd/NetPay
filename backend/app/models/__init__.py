@@ -1,6 +1,7 @@
 """Register the complete NetPay SQLModel schema for runtime and Alembic."""
 
 from app.models.attempts import PaymentAttempt
+from app.models.bff_sessions import BFFSession
 from app.models.base import BaseMixin
 from app.models.delivery import EventDeliveryAttempt
 from app.models.events import EventOutbox
@@ -20,6 +21,7 @@ from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
 __all__ = [
     "AuditLog",
     "BaseMixin",
+    "BFFSession",
     "DarajaIntegration",
     "EventDelivery",
     "EventDeliveryAttempt",

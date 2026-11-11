@@ -1,108 +1,110 @@
-# NetPay deployment notes
+# NetPay deployment
 
-## Architecture (binding)
+## Runtime architecture
 
-| Item | Contract |
-|------|----------|
-| Image | Single multi-stage image: Next.js static export copied into FastAPI `STATIC_DIR` (`/app/static`) |
-| Registry | `ghcr.io/nethub-ltd/netpay` (tags from **release on `main` only**) |
-| Integration branch | `dev` — all feature PRs target `dev` |
-| Production promote | Merge `dev` → `main` only after acceptance; release workflow tags + pushes GHCR |
-| Runtime | k3s preferred: one-shot **migrate Job**, then **API Deployment** (replicas) + **worker Deployment** |
-| Deploy apply | **Flux / human operators** own cluster apply. Agents must not apply Flux changes without explicit approval |
-| Data | PostgreSQL is authoritative for payments, membership, outbox. Redis is auxiliary |
+NetPay is deployed as two independent application services:
 
-API routes, OIDC callback pages, and Daraja callback routes share the **same public origin** when the SPA is served by FastAPI.
+| Service | Image | Runtime | Responsibility |
+|---|---|---|---|
+| Next.js frontend | ghcr.io/nethub-ltd/netpay-frontend | Node.js 22 / Next standalone | Public pages, login, dashboard, OIDC callback and HTTP BFF |
+| FastAPI API | ghcr.io/nethub-ltd/netpay | Python 3.12 / Uvicorn | M2M APIs, payments, merchant authorization, callbacks and encrypted BFF session persistence |
+| Worker | Same FastAPI image | Python | Durable event and payment work |
+| PostgreSQL | Managed / PostgreSQL 16 | Database | Financial source of truth and BFF session store |
+| Redis | Optional auxiliary | Cache/coordination | Never the source of truth |
 
-## Docker Compose (local)
+The browser communicates with the Next.js origin only for the NetPay application. Authenticated HTTP API requests use same-origin Next.js Route Handlers under /api/backend/*. The Next.js server calls FastAPI using the private NETPAY_BACKEND_INTERNAL_URL. Upstream OIDC tokens are encrypted at rest in the bffsession table and never exposed to browser JavaScript.
 
-1. Copy `backend/.env.example` to `backend/.env` and set required secrets (see inventory below).
-2. Set `MPESA_PUBLIC_BASE_URL` to a publicly reachable HTTPS origin for Daraja callbacks (use a secure tunnel for local sandbox; not `localhost` for real callbacks).
-3. From repository root:
+FastAPI continues to enforce merchant membership, tenant isolation and business authorization. M2M clients and Safaricom continue using the existing API and callback contracts.
 
-```bash
-docker compose -f deploy/docker-compose.yml up --build
-```
+## Build images
 
-Compose waits for PostgreSQL, runs the one-shot Alembic migration service, then starts the API (and worker when configured).
+Run from the repository root:
 
-## Kubernetes (k3s)
+    docker build -f backend/Dockerfile -t ghcr.io/nethub-ltd/netpay:local .
+    docker build -f frontend/Dockerfile -t ghcr.io/nethub-ltd/netpay-frontend:local .
 
-### Secret: `nethub-gateway-secrets`
+The API image no longer contains Node.js or frontend assets. The Next.js image uses standalone output and runs node server.js. Both images run as non-root users.
 
-Canonical names match `backend/app/core/config.py` / `backend/.env.example`. **Do not invent alternate names.**
+## Environment variables
 
-#### Required for core API / payments
+### FastAPI API and worker
 
-| Key | Purpose |
-|-----|---------|
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL_MODE` | PostgreSQL; use `DB_SSL_MODE=require` for managed TLS (e.g. Aiven). App builds asyncpg/psycopg URLs internally |
-| `M2M_TOKEN_SIGNING_SECRET` | Signs NetPay M2M access tokens (long random; secret manager) |
-| `MPESA_CREDENTIAL_ENCRYPTION_KEYS` | Fernet key map for Daraja credential encryption |
-| `MPESA_CREDENTIAL_ACTIVE_KEY_ID` | Active key id (e.g. `v1`) |
-| `MPESA_PUBLIC_BASE_URL` | Public HTTPS origin for `/callbacks/mpesa/*` (must be reachable by Safaricom) |
+Continue configuring the existing DB_*, DATABASE_URL, REDIS_*, NETHUB_API_*, M2M_TOKEN_SIGNING_SECRET and MPESA_* settings. Add:
 
-#### Optional / auxiliary
+| Variable | Purpose |
+|---|---|
+| BFF_INTERNAL_SECRET | High-entropy shared service credential (minimum 32 characters) used only by Next.js to access /internal/v1/bff/sessions |
+| BFF_SESSION_ENCRYPTION_KEY | Dedicated Fernet key used to encrypt OIDC access/refresh tokens at rest |
 
-| Key | Purpose |
-|-----|---------|
-| `REDIS_URL` | Redis URL (`redis://` / `rediss://`) |
-| `REDIS_ENABLED` | `true` / `false` — Redis is auxiliary; readiness reports it but must not fail the process solely for identity |
-| `ENVIRONMENT` | `development` \| `test` \| `staging` \| `production` |
-| `LOG_LEVEL` | Log level |
+Generate a separate encryption key:
 
-#### Human identity (NetHubKe client) — required for dashboard OIDC
+    python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-| Key | Purpose |
-|-----|---------|
-| `NETHUB_API_BASE_URL` | NetHubKe API origin (no trailing slash required; stripped in code) |
-| `NETHUB_API_TIMEOUT_SECONDS` | Upstream timeout (default `8`, max `60`) |
-| `OIDC_ISSUER` | IdP issuer URL (appears in public `/config.json`) |
-| `OIDC_CLIENT_ID` | **Public** SPA client id — must be registered in NetHubKe `trusted_clients` |
-| `OIDC_REDIRECT_URI` | Exact redirect, e.g. `https://pay.example.com/auth/callback/` (trailing slash must match Next + IdP app) |
-| `OIDC_SCOPES` | Default without refresh until I7: `openid profile email` (see issue #235) |
+Do not reuse Daraja credential keys, database passwords or the BFF internal secret.
 
-Also set frontend build-time `NEXT_PUBLIC_SITE_URL` when building images for non-default public origin (canonical URLs, sitemap, metadata).
+### Next.js frontend
 
-**Fail-closed human auth:** If `NETHUB_API_BASE_URL` or OIDC fields are empty, human `/api/v1/auth/*` fails as designed; **M2M payments, callbacks, public static pages, and health probes must still work.**
+| Variable | Purpose |
+|---|---|
+| NETPAY_BACKEND_INTERNAL_URL | Private/internal FastAPI origin; never a NEXT_PUBLIC_ variable |
+| BFF_INTERNAL_SECRET | Same high-entropy value (minimum 32 characters) as the API's BFF_INTERNAL_SECRET |
+| OIDC_ISSUER | Zitadel issuer URL |
+| OIDC_CLIENT_ID | Confidential server-side NetPay web client ID |
+| OIDC_CLIENT_SECRET | Confidential web client secret; frontend server only |
+| OIDC_REDIRECT_URI | Exact public callback URL, normally https://<frontend-origin>/auth/callback/ |
+| OIDC_SCOPES | At minimum openid profile email; request offline_access only when enabled for the registered client |
+| OIDC_TRANSACTION_SECRET | Independent random secret of at least 32 characters for encrypted short-lived PKCE transaction cookies |
+| NEXT_PUBLIC_SITE_URL | Public canonical frontend origin for SEO metadata only |
 
-> Legacy notes sometimes mentioned `SECRET_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, `PUBLIC_BASE_URL`, or `CORS_ORIGINS`. Prefer the canonical table above. If an old cluster secret still uses legacy names, map them explicitly in the operator runbook — do not assume silent aliases in application code.
+Never pass OIDC_CLIENT_SECRET, BFF_INTERNAL_SECRET or OIDC_TRANSACTION_SECRET as build arguments. Configure them at runtime through the platform's secret manager.
 
-### Rollout order
+## Database migration
 
-```bash
-# 1. Ensure nethub-gateway-secrets contains required keys (including identity keys for staging dashboard)
-# 2. Migrate once per release image
-kubectl delete job nethub-gateway-migrate --ignore-not-found
-kubectl apply -f deploy/k8s/migration-job.yaml
-kubectl wait --for=condition=complete job/nethub-gateway-migrate --timeout=180s
-# 3. Roll API + worker
-kubectl apply -f deploy/k8s/deployment.yaml
-```
+Run migrations once before starting new API replicas:
 
-### Probes
+    cd backend
+    alembic upgrade head
 
-| Probe | Path | Contract |
-|-------|------|----------|
-| Liveness | `GET /health/live` | Process up; **no** dependency calls |
-| Readiness | `GET /health/ready` | **PostgreSQL required**; Redis reported as auxiliary (`ok` / `unavailable` / `disabled`) |
+Migration 0005 adds the BFF session table. Session handles are stored as SHA-256 hashes; upstream access and refresh tokens are encrypted with BFF_SESSION_ENCRYPTION_KEY. Keep the database backup and migration rollback plan consistent with the normal NetPay database process.
 
-**Readiness must not call NetHubKe or IdP.** Identity outage removes human login capability, not pod readiness.
+## Local Compose
 
-### Worker
+1. Copy backend/.env.example to backend/.env and set local DB values.
+2. Copy frontend/.env.example to frontend/.env.local.
+3. Generate BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY; set the BFF internal secret identically in both services.
+4. Register a confidential OIDC web client with redirect URI http://localhost:3000/auth/callback/.
+5. Run:
 
-Worker uses PostgreSQL row locking and durable retry timestamps; deploy separately from API replicas (`python -m app.worker`).
+    docker compose -f deploy/docker-compose.yml up --build
 
-## Identity + dashboard status
+Frontend: http://localhost:3000  
+FastAPI API: http://localhost:8000  
+OpenAPI: http://localhost:8000/docs
 
-- Human identity: IdP access token → NetPay forwards Bearer to **NetHubKe resource server** → local `merchant_member` ACL. See `docs/identity-nethub-rs.md`.
-- Dashboard: OIDC PKCE shell, membership list, membership-gated merchant summary and recent payments (#236–#237 on `dev`).
-- Staging registration + E2E gate: [`docs/ops/STAGING_IDENTITY.md`](../docs/ops/STAGING_IDENTITY.md) (issues #233, #238).
-- M2M API and Daraja callback pipeline remain the machine integration surface.
-- Do **not** promote identity to production/`main` until I6 checklist is VERIFIED and explicitly approved.
+## Render staging
 
-## Important boundaries
+Keep the existing Render service as the FastAPI API service so its public API and Safaricom callback base URL remain stable. Deploy a second Render web service from frontend/Dockerfile for Next.js.
 
-- Do **not** merge rebuild identity work to `main` / trigger GHCR release until program gates (through I6) and explicit approval.
-- Do **not** put production client IDs, tokens, or admin emails in git.
-- Flux owns production reconciliation; this folder is the in-repo contract reference.
+Configure:
+- API service: existing database, NETHUB_API_BASE_URL, MPESA_PUBLIC_BASE_URL, BFF_INTERNAL_SECRET and BFF_SESSION_ENCRYPTION_KEY.
+- Frontend service: OIDC_* settings, OIDC_TRANSACTION_SECRET, BFF_INTERNAL_SECRET (same value), NETPAY_BACKEND_INTERNAL_URL set to the API's private service URL, and the Docker build argument NEXT_PUBLIC_SITE_URL set to the frontend's public origin (it is compiled into metadata during build).
+- Register the exact frontend /auth/callback/ redirect URI in Zitadel and the matching client_id as a NetHubKe trusted client for product netpay. Browser-to-NetHubKe CORS is not required for this server-to-server BFF flow; do not broaden CORS for it.
+- Ensure both services use the same PostgreSQL database and the API migration has run before frontend sign-in is tested.
+- Keep Safaricom callback URLs pointing to the API service origin unless ingress is configured to route /callbacks/mpesa to FastAPI.
+
+Render service names, private hostnames and domain bindings are operator-controlled; do not guess them in committed configuration. The frontend's browser-facing API remains same-origin because the browser calls the frontend BFF, not the API service hostname.
+
+## Kubernetes ingress and WSS
+
+The manifest deploys Next.js and FastAPI separately. Ingress routes / to Next.js, /api/v1 and /callbacks/mpesa to FastAPI for M2M and provider traffic. The /internal/* session-store routes are not routed publicly. Set the same BFF_INTERNAL_SECRET in both Kubernetes secrets.
+
+The ingress controller must support HTTP/1.1 WebSocket upgrades. No dedicated WebSocket endpoint or gateway is deployed by this change because the current NetPay product has no concrete WebSocket use case. When one is introduced, reserve /ws/* and route it to a dedicated authenticated realtime service; authenticate the application session or a short-lived scoped credential and authorize every subscription against merchant membership. Do not use ordinary Next.js Route Handlers as a WebSocket proxy.
+
+## Health and rollback
+
+- FastAPI liveness: /health/live
+- FastAPI readiness: /health/ready (PostgreSQL required; Redis remains auxiliary)
+- Next.js liveness: /login/
+- Next.js readiness: /api/health/ready (OIDC configuration, FastAPI readiness and BFF session-table/encryption readiness)
+
+Deploy database migrations before the API image. Deploy the API and Next.js images as a compatible pair. Rollback both service images together if a release changes their internal session contract; never roll back the database migration without checking whether active sessions or newer API code depend on it.

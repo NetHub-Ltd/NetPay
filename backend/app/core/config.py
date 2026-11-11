@@ -55,11 +55,9 @@ class Settings(BaseSettings):
     nethub_api_base_url: str | None = None
     nethub_api_timeout_seconds: float = 8.0
 
-    # Public SPA OIDC (PKCE) — no client secret in NetPay process or static frontend
-    oidc_issuer: str | None = None
-    oidc_client_id: str | None = None
-    oidc_redirect_uri: str | None = None
-    oidc_scopes: str = "openid profile email"
+    # Next.js BFF session persistence. These secrets are independent of Daraja keys.
+    bff_internal_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)
+    bff_session_encryption_key: SecretStr | None = Field(default=None, repr=False, exclude=True)
 
     # Daraja credential keyring is provided by secret management, never stored in PostgreSQL.
     m2m_token_signing_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)

@@ -2,7 +2,7 @@
 
 ## Goal and working rules
 
-Rebuild NetPay in place as a small, dependable multi-merchant M-Pesa Daraja gateway. Git history must remain intact. Work only on `work/minimal-netpay-rebuild`, created from `main`. Do not modify `main`, create more branches, or merge until the acceptance criteria pass.
+Maintain NetPay as a dependable multi-merchant M-Pesa Daraja gateway. Git history must remain intact. Work on a focused topic branch created from the latest verified `dev`; open a PR targeting `dev`. The repository owner performs the final merge. Do not push directly to `dev` or `main`.
 
 This specification is the source of truth. Read `/AGENTS.md` first. The legacy application source has intentionally been pruned from this branch; inspect retained infrastructure and workflows before implementation. Do not restore the old application.
 
@@ -47,7 +47,9 @@ Do not claim transaction verification or reconciliation capability for a transac
 ## Stack and runtime
 
 - Backend: FastAPI, Python, SQLModel/SQLAlchemy async, PostgreSQL/asyncpg, Alembic, Pydantic, pytest, Loguru.
-- Frontend: Next.js App Router + TypeScript; no TypeScript `any`. Public marketing/docs pages must be SEO-friendly; private dashboard routes must not be indexed.
+- Frontend: Next.js App Router + strict TypeScript; no TypeScript `any`. Deploy it independently as a Node.js server using standalone output. Public marketing/docs pages must be SEO-friendly; private dashboard routes must not be indexed.
+- Browser authentication: server-side confidential OIDC Authorization Code + PKCE; opaque HttpOnly application session; mandatory same-origin Next.js BFF for every browser-originated NetPay HTTP API call.
+- FastAPI: independent API service; no frontend build, static export or static-file hosting. Preserve M2M and Safaricom callback contracts.
 - Redis: include as auxiliary infrastructure for coordination, short-lived locks, scheduling/caching, or dispatch where it materially helps reconciliation.
 - PostgreSQL is the source of truth for payments, transitions, idempotency, reconciliation history and durable event outbox.
 - Redis loss/restart must not lose payment state or permanently lose pending reconciliation/event work; pending work must be recoverable from PostgreSQL.
@@ -101,14 +103,18 @@ Use database uniqueness constraints to prevent conflicting integration ownership
 - Public, indexable marketing and documentation pages with metadata, canonical URLs, sitemap and robots rules.
 - Authenticated private dashboard for integrations, transactions, reconciliation and event delivery.
 - Keep private routes out of search indexes.
-- Never expose Daraja secrets in frontend code or API responses.
+- Never expose Daraja secrets or upstream IdP tokens in frontend code, browser storage or URLs.
+- All browser-originated HTTP API requests pass through explicit typed Next.js BFF Route Handlers; no arbitrary URL proxy.
+- FastAPI remains authoritative for merchant membership, tenant isolation and business authorization.
 - Dashboard is not required for M2M use.
 
 ## Deployment and repository constraints
 
-Retained infrastructure includes GitHub Actions, Dockerfile, compose/Kubernetes deployment files, env examples, and build/release intent. Inspect each before changing it. Preserve CI, GHCR image publishing, version tagging/releases, multi-architecture builds and deployment manifests; adapt paths and runtime only where required by Next.js and the new backend.
+Retained infrastructure includes GitHub Actions, Dockerfiles, compose/Kubernetes deployment files, environment examples and release workflows. Preserve CI, the FastAPI GHCR image identity `ghcr.io/nethub-ltd/netpay`, version tagging/releases and multi-architecture builds. Publish the independent frontend as `ghcr.io/nethub-ltd/netpay-frontend` with matching release tags.
 
-Current workflows/build files refer to a Vite SPA and legacy backend paths. Do not pretend they are compatible unchanged after pruning. Update them to run the new backend tests, Next.js lint/build and intended Docker image build. Keep the published image identity `ghcr.io/nethub-ltd/netpay`, image tags/release behavior and deployable runtime contract. Choose and document a deliberate Next.js/FastAPI runtime strategy; don't assume static export is suitable without checking Next.js requirements. Health checks and container startup must match the chosen strategy. Never commit secrets.
+Next.js runs as a standalone Node.js server in its own container. FastAPI runs independently and no longer builds or serves frontend files. The public ingress routes browser application traffic to Next.js, M2M API/callback traffic to FastAPI and never exposes internal BFF session routes. The Next.js server calls FastAPI through a private service URL. Configure separate runtime secrets for the frontend and API; never commit secrets.
+
+The BFF session store uses PostgreSQL with hashed opaque session handles and encrypted upstream tokens. The dedicated BFF internal secret and token encryption key are separate from Daraja keys. WSS upgrade routing is documented for a future authenticated realtime endpoint; do not deploy idle realtime infrastructure without a concrete use case.
 
 ## Build sequence
 
@@ -118,9 +124,9 @@ Current workflows/build files refer to a Vite SPA and legacy backend paths. Do n
 4. Implement onboarding + STK Push + callback handling.
 5. Implement opt-in C2B registration and callbacks.
 6. Implement verification/reconciliation, PostgreSQL-backed recoverable jobs, Redis coordination where useful, transactional outbox and event retries.
-7. Implement Next.js public SEO pages and dashboard against stable API contracts.
+7. Implement the independent Next.js runtime, server-side OIDC, mandatory BFF, login and dashboard against stable API contracts.
 8. Integrate Tawala as first M2M consumer and test end-to-end.
-9. Verify CI, multi-arch image, runtime startup, migrations, health checks and deployment compatibility.
+9. Verify CI, both multi-arch images, independent runtime startup, migrations, health checks, BFF/session security and deployment compatibility.
 10. Report changed files, commands/tests run, exact results, environment variables, provider assumptions and limitations.
 
 Use reviewable commits on the single branch. Do not merge until acceptance criteria pass.
