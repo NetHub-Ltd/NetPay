@@ -19,7 +19,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-npm run start -- --hostname 127.0.0.1 >"$log_file" 2>&1 &
+npm run start >"$log_file" 2>&1 &
 server_pid=$!
 
 ready=false
