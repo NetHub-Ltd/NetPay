@@ -56,5 +56,10 @@ test("diagnostic event contains only correlation metadata and an allowlisted cat
   assert.equal(event.category, "discovery_unreachable");
   assert.equal("message" in event, false);
   assert.equal("stack" in event, false);
-  assert.equal("secret-bearing detail" in JSON.stringify(event), false);
+
+  // Inspect serialized output with String.prototype.includes; the 'in' operator
+  // only tests object properties and throws when its right operand is a string.
+  const serialized = JSON.stringify(event);
+  assert.equal(serialized.includes("secret-bearing detail"), false);
+  assert.deepEqual(Object.keys(event).sort(), ["category", "event", "request_id", "timestamp"]);
 });
