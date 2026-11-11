@@ -99,7 +99,7 @@ Configure:
 - Ensure both services use the same PostgreSQL database and the API migration has run before frontend sign-in is tested.
 - Keep Safaricom callback URLs pointing to the API service origin unless ingress is configured to route /callbacks/mpesa to FastAPI.
 
-Render service names, private hostnames and domain bindings are operator-controlled; do not guess them in committed configuration. The frontend's browser-facing API remains same-origin because the browser calls the frontend BFF, not the API service hostname.
+FastAPI service names, private hostnames and domain bindings are operator-controlled; do not guess them in committed configuration. The Vercel server runtime must reach every FastAPI route required by the BFF, including `/internal/v1/bff/sessions/*`, over a service-to-service network path. Keep those session-store routes private to the Vercel/API service channel; the shared BFF secret is mandatory but is not a substitute for network controls. If no private Vercel-to-FastAPI path is available, this remains a staging blocker for the operator to resolve rather than a reason to expose the internal routes broadly. The frontend's browser-facing API remains same-origin because the browser calls the frontend BFF, not the API service hostname.
 
 ## API ingress and WSS
 
