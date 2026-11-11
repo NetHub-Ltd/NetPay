@@ -1,6 +1,6 @@
 # NetPay milestones — NetHubKe client + deploy readiness
 
-**Last updated:** 2026-11-10  
+**Last updated:** 2026-11-11  
 **Integration branch:** `dev`  
 **Verified dev baseline for #239:** `5792662c22b7d4a5059f329d7b61427ca48769b5`  
 **Status rule:** Do not mark VERIFIED without command/run/operator evidence. Use OBSERVED / VERIFIED / INFERRED / PROPOSED / UNKNOWN.
