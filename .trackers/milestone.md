@@ -9,12 +9,13 @@
 
 | Item | Contract |
 |------|----------|
-| Images | FastAPI API: `ghcr.io/nethub-ltd/netpay`; independent Next.js server: `ghcr.io/nethub-ltd/netpay-frontend` |
-| Release | GHCR publish from **`main` only** |
+| Frontend | Independent Vercel project; Root Directory `frontend`; normal Next.js server runtime |
+| Images | FastAPI API only: `ghcr.io/nethub-ltd/netpay`; no frontend image |
+| Release | FastAPI GHCR publish from **`main` only** |
 | PRs | Always target **`dev`** |
-| Runtime | k3s: migration Job → FastAPI API + worker + independent Next.js service; ingress routes app/API/callback traffic |
-| Readiness | `/health/ready` = PostgreSQL (+ Redis report). **Not** NetHubKe/IdP |
-| Secrets | Canonical names in `deploy/README.md` + `backend/.env.example` |
+| Runtime | FastAPI API + worker remain on their independent runtime; Vercel serves browser pages and the same-origin BFF |
+| Readiness | FastAPI `/health/ready` = PostgreSQL (+ Redis report). **Not** NetHubKe/IdP |
+| Secrets | Canonical names in `deploy/README.md` + `backend/.env.example`; Vercel server-only variables are documented in `deploy/README.md` |
 
 ## Program issues
 
@@ -107,3 +108,12 @@
 ## Historical notes
 
 Earlier R0–R2 / public-site / mpesa_core tracker rows from Oct 2026 remain useful history but are **not** the active handoff surface for identity client work. Prefer this program table and linked issues #232–#239.
+
+
+## Deployment correction — issue #245
+
+- Status: implementation in progress; final PR CI and review pending.
+- Next.js deployment is Vercel-managed; custom fonts are deferred and system font stacks are used for this pass.
+- Frontend Dockerfile, frontend container smoke, frontend GHCR publishing and Kubernetes frontend Deployment/Service are removed by the #245 change set.
+- FastAPI image, release, API, worker, M2M and Safaricom callback contracts remain unchanged.
+- External acceptance after merge: Vercel project Root Directory/framework settings, server-only environment variables, and live reachability from Vercel to the configured FastAPI origin.
