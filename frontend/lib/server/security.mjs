@@ -147,3 +147,55 @@ export function isOidcConfigured(environment) {
     typeof environment.OIDC_TRANSACTION_SECRET === "string" &&
     environment.OIDC_TRANSACTION_SECRET.trim().length >= 32;
 }
+
+/**
+ * Boolean-only OIDC configuration checks for operators.
+ * Never returns secret values, full redirect URLs, or exception text.
+ */
+export function getOidcConfigurationChecks(environment) {
+  const issuer = typeof environment.OIDC_ISSUER === "string" ? environment.OIDC_ISSUER.trim() : "";
+  const clientId = typeof environment.OIDC_CLIENT_ID === "string" ? environment.OIDC_CLIENT_ID.trim() : "";
+  const redirectUri = typeof environment.OIDC_REDIRECT_URI === "string" ? environment.OIDC_REDIRECT_URI.trim() : "";
+  const transactionSecret =
+    typeof environment.OIDC_TRANSACTION_SECRET === "string" ? environment.OIDC_TRANSACTION_SECRET.trim() : "";
+  const scopes = (typeof environment.OIDC_SCOPES === "string" && environment.OIDC_SCOPES.trim()
+    ? environment.OIDC_SCOPES.trim()
+    : "openid profile email");
+  const siteUrl = typeof environment.NEXT_PUBLIC_SITE_URL === "string"
+    ? environment.NEXT_PUBLIC_SITE_URL.trim()
+    : "";
+
+  let redirectUriHttps = false;
+  let redirectOriginMatchesSite = false;
+  try {
+    if (redirectUri) {
+      const redirect = new URL(redirectUri);
+      redirectUriHttps = redirect.protocol === "https:";
+      if (siteUrl) {
+        const site = new URL(siteUrl);
+        redirectOriginMatchesSite = redirect.origin === site.origin;
+      }
+    }
+  } catch {
+    redirectUriHttps = false;
+    redirectOriginMatchesSite = false;
+  }
+
+  let issuerHttps = false;
+  try {
+    if (issuer) issuerHttps = new URL(issuer).protocol === "https:";
+  } catch {
+    issuerHttps = false;
+  }
+
+  return {
+    issuer_present: issuer.length > 0,
+    issuer_https: issuerHttps,
+    client_id_present: clientId.length > 0,
+    redirect_uri_present: redirectUri.length > 0,
+    redirect_uri_https: redirectUriHttps,
+    redirect_origin_matches_site: siteUrl.length > 0 ? redirectOriginMatchesSite : false,
+    transaction_secret_ok: transactionSecret.length >= 32,
+    scopes_ok: scopes.split(/\s+/).includes("openid"),
+  };
+}
