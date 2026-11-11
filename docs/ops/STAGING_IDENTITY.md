@@ -8,7 +8,7 @@
 | System | Responsibility |
 |---|---|
 | Zitadel | User authentication |
-| Next.js | Confidential OIDC client, callback, opaque application session, login/dashboard and HTTP BFF |
+| Next.js | Public OIDC client using PKCE, callback, opaque application session, login/dashboard and HTTP BFF |
 | FastAPI | API, merchant authorization, payment flows and encrypted BFF session persistence |
 | NetHubKe | Human identity resolution and product/resource access decisions |
 | Vercel | Public browser application, login/callback, dashboard and same-origin BFF |
@@ -22,12 +22,12 @@ Record each step PASS / FAIL / N/A with date and redacted evidence only.
 
 | # | Step | Evidence |
 |---|---|---|
-| 1 | Register a confidential server-side OIDC web client for NetPay | Client name and redacted settings |
-| 2 | Enable Authorization Code + PKCE (S256) and client_secret_basic authentication | Redacted IdP configuration |
+| 1 | Register a public OIDC client for NetPay | Client name and redacted settings |
+| 2 | Enable Authorization Code + PKCE (S256); do not configure client-secret authentication | Redacted IdP configuration |
 | 3 | Exact redirect URI is the frontend public origin plus /auth/callback/ | Redacted IdP app settings |
 | 4 | Scopes include openid profile email; enable offline_access only if refresh tokens are intentionally required | Redacted scope configuration |
 | 5 | Register the client_id as a trusted NetPay client in NetHubKe | Redacted admin confirmation |
-| 6 | Configure frontend runtime secrets: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI, OIDC_SCOPES and OIDC_TRANSACTION_SECRET | Secret-manager key names only |
+| 6 | Configure frontend runtime settings: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_REDIRECT_URI, OIDC_SCOPES and OIDC_TRANSACTION_SECRET; no OIDC client secret exists | Setting names only |
 | 7 | Configure BFF_INTERNAL_SECRET identically in frontend and API secret stores | Secret-manager key names only |
 | 8 | Configure a separate BFF_SESSION_ENCRYPTION_KEY in the API secret store | Key name only; never record value |
 | 9 | Set NETPAY_BACKEND_INTERNAL_URL to the private FastAPI service origin | Redacted service configuration |
@@ -35,7 +35,7 @@ Record each step PASS / FAIL / N/A with date and redacted evidence only.
 | 11 | Confirm the API's NETHUB_API_BASE_URL and existing trusted-client integration | Redacted config evidence |
 | 12 | Confirm the exact frontend origin and callback URI are used in the deployed configuration | Operator evidence |
 
-The browser no longer performs OIDC token exchange. Do not register a public SPA client for the production NetPay frontend.
+The browser does not perform token exchange: the Next.js server handles the callback and token exchange, while the registered OIDC client remains public and uses PKCE. Do not add a client secret.
 
 ## Secret generation
 
@@ -43,7 +43,7 @@ Generate a dedicated Fernet encryption key:
 
     python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-Generate BFF_INTERNAL_SECRET and OIDC_TRANSACTION_SECRET as independent high-entropy random values using the organization's secret manager or cryptographically secure generator. The BFF internal secret must match across Next.js and FastAPI. Do not reuse M-Pesa encryption keys, database passwords or OIDC client secrets.
+Generate BFF_INTERNAL_SECRET and OIDC_TRANSACTION_SECRET as independent high-entropy random values using the organization's secret manager or cryptographically secure generator. OIDC_TRANSACTION_SECRET encrypts the short-lived PKCE transaction cookie; it is not a Zitadel client secret. The BFF internal secret must match across Next.js and FastAPI. Do not reuse M-Pesa encryption keys or database passwords.
 
 ## I6 — Live staging acceptance
 

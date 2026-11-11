@@ -48,7 +48,7 @@ Do not claim transaction verification or reconciliation capability for a transac
 
 - Backend: FastAPI, Python, SQLModel/SQLAlchemy async, PostgreSQL/asyncpg, Alembic, Pydantic, pytest, Loguru.
 - Frontend: Next.js App Router + strict TypeScript; no TypeScript `any`. Deploy it independently on Vercel using the normal Next.js server runtime (Root Directory: `frontend`); do not use static export or standalone container output. Public marketing/docs pages must be SEO-friendly; private dashboard routes must not be indexed.
-- Browser authentication: server-side confidential OIDC Authorization Code + PKCE; opaque HttpOnly application session; mandatory same-origin Next.js BFF for every browser-originated NetPay HTTP API call.
+- Browser authentication: server-side public OIDC client using Authorization Code + PKCE (S256); opaque HttpOnly application session; mandatory same-origin Next.js BFF for every browser-originated NetPay HTTP API call.
 - FastAPI: independent API service; no frontend build, static export or static-file hosting. Preserve M2M and Safaricom callback contracts.
 - Redis: include as auxiliary infrastructure for coordination, short-lived locks, scheduling/caching, or dispatch where it materially helps reconciliation.
 - PostgreSQL is the source of truth for payments, transitions, idempotency, reconciliation history and durable event outbox.
