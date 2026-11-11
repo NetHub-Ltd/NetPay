@@ -47,7 +47,7 @@ Do not claim transaction verification or reconciliation capability for a transac
 ## Stack and runtime
 
 - Backend: FastAPI, Python, SQLModel/SQLAlchemy async, PostgreSQL/asyncpg, Alembic, Pydantic, pytest, Loguru.
-- Frontend: Next.js App Router + strict TypeScript; no TypeScript `any`. Deploy it independently as a Node.js server using standalone output. Public marketing/docs pages must be SEO-friendly; private dashboard routes must not be indexed.
+- Frontend: Next.js App Router + strict TypeScript; no TypeScript `any`. Deploy it independently on Vercel using the normal Next.js server runtime (Root Directory: `frontend`); do not use static export or standalone container output. Public marketing/docs pages must be SEO-friendly; private dashboard routes must not be indexed.
 - Browser authentication: server-side confidential OIDC Authorization Code + PKCE; opaque HttpOnly application session; mandatory same-origin Next.js BFF for every browser-originated NetPay HTTP API call.
 - FastAPI: independent API service; no frontend build, static export or static-file hosting. Preserve M2M and Safaricom callback contracts.
 - Redis: include as auxiliary infrastructure for coordination, short-lived locks, scheduling/caching, or dispatch where it materially helps reconciliation.
@@ -110,9 +110,9 @@ Use database uniqueness constraints to prevent conflicting integration ownership
 
 ## Deployment and repository constraints
 
-Retained infrastructure includes GitHub Actions, Dockerfiles, compose/Kubernetes deployment files, environment examples and release workflows. Preserve CI, the FastAPI GHCR image identity `ghcr.io/nethub-ltd/netpay`, version tagging/releases and multi-architecture builds. Publish the independent frontend as `ghcr.io/nethub-ltd/netpay-frontend` with matching release tags.
+Retained infrastructure includes GitHub Actions, the FastAPI Dockerfile, backend Compose/Kubernetes deployment files, environment examples and release workflows. Preserve CI, the FastAPI GHCR image identity `ghcr.io/nethub-ltd/netpay`, version tagging/releases and multi-architecture builds. Do not build or publish a frontend image.
 
-Next.js runs as a standalone Node.js server in its own container. FastAPI runs independently and no longer builds or serves frontend files. The public ingress routes browser application traffic to Next.js, M2M API/callback traffic to FastAPI and never exposes internal BFF session routes. The Next.js server calls FastAPI through a private service URL. Configure separate runtime secrets for the frontend and API; never commit secrets.
+Next.js is deployed independently on Vercel with Root Directory `frontend`, the native Next.js framework preset and normal server runtime. FastAPI retains its independent runtime and existing image/release lifecycle. The FastAPI ingress routes M2M API and Safaricom callback traffic only; browser pages and the same-origin BFF are served by Vercel. Never expose internal BFF session routes. The Vercel server runtime must be able to reach the configured `NETPAY_BACKEND_INTERNAL_URL`; do not assume a cluster-only hostname is reachable from Vercel. Configure server-only secrets at runtime; never commit them.
 
 The BFF session store uses PostgreSQL with hashed opaque session handles and encrypted upstream tokens. The dedicated BFF internal secret and token encryption key are separate from Daraja keys. WSS upgrade routing is documented for a future authenticated realtime endpoint; do not deploy idle realtime infrastructure without a concrete use case.
 
