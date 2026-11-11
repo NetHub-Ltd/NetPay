@@ -5,7 +5,7 @@
 **Implementation branch:** chore/245-vercel-frontend-deployment  
 **Verified base:** dev @ b24acde75ea9a6b8161ea772247410c8d28b45d4  
 **PR target:** dev  
-**Status:** implementation in progress; CI and review pending.
+**Status:** PR #246 is open as a draft. CI status for the current PR head is authoritative in the linked GitHub checks; keep this draft until every required check is terminal green.
 
 ## Approved outcome
 
@@ -29,7 +29,7 @@ The first deployment pass uses system font stacks so the build does not depend o
 - Frontend: npm ci, npm run lint, npm run typecheck, npm test, npm run build, npm run smoke:production; the host-process smoke verifies login, robots/sitemap, non-secret OIDC status, fail-closed readiness, unauthenticated BFF rejection and logout CSRF.
 - Backend: existing migration, smoke-test and FastAPI container CI remain intact.
 - GitHub Actions must reach terminal green on the PR head before requesting review.
-- Vercel project settings and a live deployment are operator-side acceptance steps after merge; CI alone does not prove them.
+- Vercel project settings, private Vercel-to-FastAPI reachability for the BFF session-store routes and a live deployment are operator-side acceptance steps after merge; CI alone does not prove them.
 
 ## Approval boundaries
 
@@ -37,3 +37,11 @@ The first deployment pass uses system font stacks so the build does not depend o
 - No direct push to dev/main, no release, production deployment or secret changes.
 - No frontend Docker image, GHCR frontend package, static export or Docker-based full-stack deployment.
 - No changes to FastAPI runtime or backend container behavior.
+
+## Historical #239 / I0–I6 context retained
+
+- The preceding #239 work established PostgreSQL-backed BFF session persistence with hashed opaque handles and encrypted upstream tokens, confidential server-side OIDC, and the mandatory same-origin BFF.
+- Internal session-store routes require `BFF_INTERNAL_SECRET`; the browser never receives upstream tokens or calls FastAPI directly.
+- The dashboard BFF allowlist covers the human profile, memberships, merchant summary and merchant payment reads.
+- Earlier I0–I6 work remains separate from #245. Operator IdP/NetHubKe registration and live staging evidence remain outstanding under issue #238; this deployment correction does not close that acceptance work.
+- The previous PR #244 introduced the frontend container deployment path that #245 now removes. FastAPI behavior and its image/release contract remain unchanged.
