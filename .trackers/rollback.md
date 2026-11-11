@@ -1,27 +1,32 @@
-# Rollback
+# Rollback — NetHubKe client program
 
-**Last updated:** 2026-09-12
+**Last updated:** 2026-11-09
 
-## Previous known-good
+## Principles
 
-| Item | Value |
-|------|--------|
-| Commit | `709ceb9b05e7b0df939f77642e2176a8e83a9834` |
-| Branch tip | `main` / `dev` at foundation start |
-| Release/image | 1.1.0 / `ghcr.io/nethub-ltd/netpay` tags as of that commit |
+- Prefer revert of merge commit on `dev` over history rewrite
+- Never force-push protected branches
+- Secrets: unset or rotate in secret manager; never commit values to roll back
 
-## How to roll back this foundation work
+## By milestone
 
-1. If PR not merged: close/delete topic branch `chore/engineer-mode-foundation`.
-2. If PR merged into `dev`: revert the merge commit on `dev`.
-3. `dev` itself can remain (empty of product change) or be left as integration branch.
-4. Closing #6 is irreversible without reopening the issue; product behavior unchanged either way.
-5. Config placeholders are additive and inert; removing them is optional and non-urgent.
+| Slice | Rollback |
+|-------|----------|
+| I0 trackers only | Revert tracker commits; no runtime impact |
+| I2 deploy README + readiness test | Revert PR; probes unchanged in behavior if only docs/tests |
+| I3 SPA scopes/session | Revert FE/static; users re-login |
+| I4 human APIs | Revert API routes; M2M unaffected if isolation held |
+| I5 dashboard UI | Revert static export; public marketing pages independent if scoped |
+| I1 ops (trusted client) | Revoke client in NetHubKe admin; IdP app disable |
+| I6 staging | Scale or remove staging release; leave `main`/prod untouched |
+| Membership rows | Soft-revoke via admin API; no payment ledger delete |
 
-## Migrations / data
+## Data
 
-- None in this change set.
+- PostgreSQL remains source of truth; do not drop financial tables to “undo” identity
+- Membership revoke is sufficient to cut human dashboard access
 
-## Irreversible operations
+## Production
 
-- Issue/PR #6 closed (can be reopened on GitHub if needed).
+- No production promote until I6 go + explicit approval
+- If a bad image reached a cluster: roll image tag to previous known-good; run migrate only forward/compatible

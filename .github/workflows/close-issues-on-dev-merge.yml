@@ -1,0 +1,45 @@
+# GitHub only auto-closes issues on the default branch (main).
+# PRs target dev per AGENTS.md — close Closes/Fixes keywords when merging into dev.
+name: Close issues on merge to dev
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [dev]
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  close-issues:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close issues referenced by Closes/Fixes/Resolves
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || "";
+            const title = context.payload.pull_request.title || "";
+            const text = `${title}\n${body}`;
+            const re = /\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi;
+            const nums = new Set();
+            let m;
+            while ((m = re.exec(text)) !== null) {
+              nums.add(Number(m[1]));
+            }
+            for (const number of nums) {
+              try {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  state: "closed",
+                  state_reason: "completed",
+                });
+                core.info(`Closed #${number}`);
+              } catch (e) {
+                core.warning(`Could not close #${number}: ${e.message}`);
+              }
+            }

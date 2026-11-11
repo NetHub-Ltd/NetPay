@@ -12,18 +12,81 @@ spec:
     spec:
       containers:
         - name: api
-          image: nethub/payment-gateway:1.1.0
+          image: ghcr.io/nethub-ltd/netpay:latest
+          imagePullPolicy: Always
           ports: [{ containerPort: 8000 }]
           envFrom: [{ secretRef: { name: nethub-gateway-secrets } }]
           env:
             - { name: ENVIRONMENT, value: production }
-            - { name: REDIS_REQUIRED, value: "true" }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
           readinessProbe:
-            httpGet: { path: /health, port: 8000 }
-            initialDelaySeconds: 15
+            httpGet: { path: /health/ready, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health, port: 8000 }
-            initialDelaySeconds: 30
+            httpGet: { path: /health/live, port: 8000 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netpay-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: netpay-frontend }
+  template:
+    metadata:
+      labels: { app: netpay-frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/nethub-ltd/netpay-frontend:latest
+          imagePullPolicy: Always
+          ports: [{ containerPort: 3000 }]
+          envFrom: [{ secretRef: { name: netpay-frontend-secrets } }]
+          env:
+            - { name: NODE_ENV, value: production }
+            - { name: PORT, value: "3000" }
+            - { name: NETPAY_BACKEND_INTERNAL_URL, value: http://nethub-gateway }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          readinessProbe:
+            httpGet: { path: /api/health/ready, port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /login/, port: 3000 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nethub-gateway-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: nethub-gateway-worker }
+  template:
+    metadata:
+      labels: { app: nethub-gateway-worker }
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/nethub-ltd/netpay:latest
+          imagePullPolicy: Always
+          command: ["python", "-m", "app.worker"]
+          envFrom: [{ secretRef: { name: nethub-gateway-secrets } }]
+          env:
+            - { name: ENVIRONMENT, value: production }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 384Mi }
 ---
 apiVersion: v1
 kind: Service
@@ -32,3 +95,55 @@ metadata:
 spec:
   selector: { app: nethub-gateway }
   ports: [{ port: 80, targetPort: 8000 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: netpay-frontend
+spec:
+  selector: { app: netpay-frontend }
+  ports: [{ port: 80, targetPort: 3000 }]
+---
+# Public application traffic uses one origin. The API routes remain available for
+# M2M clients and Safaricom callbacks; the browser UI uses the Next.js BFF only.
+# Do not add /internal/* to public ingress. NGINX ingress supports WebSocket
+# upgrades when a dedicated authenticated realtime service is introduced later.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: netpay-public
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: pay.nethub.co.ke
+      http:
+        paths:
+          - path: /callbacks/mpesa
+            pathType: Prefix
+            backend:
+              service:
+                name: nethub-gateway
+                port: { number: 80 }
+          # Human identity endpoints are intentionally not exposed at the API origin.
+          - path: /api/v1/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: netpay-frontend
+                port: { number: 80 }
+          - path: /api/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: nethub-gateway
+                port: { number: 80 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: netpay-frontend
+                port: { number: 80 }

@@ -1,191 +1,109 @@
-# NetPay milestones — STK / C2B collections reliability
+# NetPay milestones — NetHubKe client + deploy readiness
 
-**Source:** STK + C2B audits (NetPay + mpesa-edge), gate evaluation  
+**Last updated:** 2026-11-10  
 **Integration branch:** `dev`  
-**Board:** NetPay Production Readiness Gate  
-**Updated:** 2026-09-15
+**Verified dev baseline for #239:** `5792662c22b7d4a5059f329d7b61427ca48769b5`  
+**Status rule:** Do not mark VERIFIED without command/run/operator evidence. Use OBSERVED / VERIFIED / INFERRED / PROPOSED / UNKNOWN.
 
-## Board milestone status
+## Deploy contract (binding for all milestones)
 
-| Gate milestone | State |
-|----------------|--------|
-| M0 Baseline | **CLOSED** |
-| P0 Financial integrity | **CLOSED** |
-| P1 Collections & async durability | **CLOSED** (incl. #24 C2B) |
-| P2 Security & operations | OPEN — next |
-| P3 Expand rails | OPEN |
+| Item | Contract |
+|------|----------|
+| Images | FastAPI API: `ghcr.io/nethub-ltd/netpay`; independent Next.js server: `ghcr.io/nethub-ltd/netpay-frontend` |
+| Release | GHCR publish from **`main` only** |
+| PRs | Always target **`dev`** |
+| Runtime | k3s: migration Job → FastAPI API + worker + independent Next.js service; ingress routes app/API/callback traffic |
+| Readiness | `/health/ready` = PostgreSQL (+ Redis report). **Not** NetHubKe/IdP |
+| Secrets | Canonical names in `deploy/README.md` + `backend/.env.example` |
 
-## Status legend
+## Program issues
 
-| Tag | Meaning |
-|-----|---------|
-| **DONE** | On `dev` / product path |
-| **NEXT** | Ordered work |
-| **LATER** | After NEXT |
+| Milestone | Issue | Title |
+|-----------|-------|-------|
+| I0 | #232 | chore(trackers): NetHubKe-client program baseline |
+| I1 | #233 | ops(identity): register NetPay confidential OIDC web client + NetHubKe RS |
+| I2 | #234 | chore(deploy): identity secret and rollout contract |
+| I3 | #235 | fix(identity): SPA token lifecycle and honest scopes |
+| I4 | #236 | feat(identity): membership-gated human read APIs |
+| I5 | #237 | feat(ui): membership-aware dashboard surface |
+| I6 | #238 | test(identity): staging E2E and deploy readiness gate |
+| I7 | #239 | feat(platform): independent Next.js deployment, mandatory BFF and server-side identity |
 
----
+## Milestone I0 — Tracker handoff baseline
 
-## Milestone S0 — Baseline STK path (exists)
+| ID | Acceptance criterion | Status |
+|----|----------------------|--------|
+| I0.1 | Program I0–I7 and issue links recorded | IN PROGRESS (this file) |
+| I0.2 | Handoff read order and evidence rules explicit | IN PROGRESS |
+| I0.3 | Deploy constraints table recorded | IN PROGRESS |
+| I0.4 | Stale “dashboard placeholder only” language corrected | IN PROGRESS |
+| I0.5 | PR to `dev` merges tracker baseline | OPEN |
 
-**Goal:** A correct shortcode + credentials can start STK; callback can settle via edge → NetPay.
+## Milestone I1 — Platform registration (ops)
 
-| ID | Item | Status |
-|----|------|--------|
-| S0.1 | `POST /v1/payment-intents` + required `Idempotency-Key` | DONE |
-| S0.2 | Persist intent: phone, amount_minor, integration, account_reference, optional `context_json` | DONE |
-| S0.3 | Daraja OAuth + STK `processrequest` | DONE |
-| S0.4 | Default callback URL via edge (`/cb/{gw_*}/stk`, Safaricom-safe path) | DONE |
-| S0.5 | Edge queue → `POST /internal/events` with internal API key | DONE |
-| S0.6 | Durable `inbound_events` + match `CheckoutRequestID` | DONE |
-| S0.7 | State machine → succeeded/failed + ledger credit on success | DONE |
-| S0.8 | Tenant-level merchant webhooks (HMAC) | DONE |
-| S0.9 | `outbound_requests` audit for OAuth/STK/C2B register (not intent-linked yet) | DONE |
+| ID | Acceptance criterion | Status |
+|----|----------------------|--------|
+| I1.1 | IdP confidential server-side OIDC client + exact callback URI | OPEN — runbook in docs/ops/STAGING_IDENTITY.md |
+| I1.2 | NetHubKe `trusted_clients` product=netpay | OPEN |
+| I1.3 | No browser CORS dependency for BFF; verify server-to-server NetHubKe access | OPEN |
+| I1.4 | Checklist in trackers without secrets | IN PROGRESS — template shipped |
 
-**Exit criteria:** Sandbox STK succeeds and lands **Paid** with ledger when edge secrets and shortcode are correct.
+## Milestone I2 — Deploy contract for identity
 
----
+| ID | Acceptance criterion | Status |
+|----|----------------------|--------|
+| I2.1 | `deploy/README.md` separates frontend OIDC and backend BFF secrets | IN PROGRESS |
+| I2.2 | OIDC secrets frontend-only; BFF internal secret shared; encryption key API-only | IN PROGRESS |
+| I2.3 | Rollout order + fail-closed human auth documented | IN PROGRESS |
+| I2.4 | Readiness independent of NetHubKe VERIFIED by test | IN PROGRESS |
+| I2.5 | No Flux apply by agent | VERIFIED policy |
 
-## Milestone S1 — Intent-grade STK audit & failure integrity
+## Milestone I3 — Token lifecycle
 
-**Goal:** Every STK attempt is fully reconstructible from the payment intent; failures never leave ambiguous state.
+| ID | Acceptance criterion | Status |
+|----|----------------------|--------|
+| I3.1 | Default scopes without unused `offline_access` (D1) | IN PROGRESS |
+| I3.2 | 401 invalidates server-side session and clears opaque cookie | IN PROGRESS |
+| I3.3 | Logout revokes server-side session and clears HttpOnly cookie | IN PROGRESS |
+| I3.4 | Frontend lint/typecheck/build | OPEN |
 
-| ID | Item | Status |
-|----|------|--------|
-| S1.1 | Persist **STK request payload** on the intent (or mandatory FK to outbound row) | DONE |
-| S1.2 | Persist **STK response payload** on the intent (full Daraja JSON, not only checkout ids) | DONE |
-| S1.3 | Add `payment_intent_id` to `outbound_requests` for all STK/OAuth calls in that flow | DONE |
-| S1.4 | On STK provider failure: transition intent → `failed`, set `failure_reason` from Daraja body | DONE |
-| S1.5 | Correct STK `TransactionType` for **till** vs **paybill** | DONE |
-| S1.6 | Payment detail UI: show last provider call outcome + callback timeline (inbound) | DONE |
+## Milestone I4 — Membership-gated human APIs
 
-**Exit criteria:** For any intent id, support can answer: what we sent, what Daraja returned, whether callback arrived, final state — without guessing.
+| ID | Acceptance criterion | Status |
+|----|----------------------|--------|
+| I4.1 | Human read route requires membership | IN PROGRESS |
+| I4.2 | M2M scopes path unchanged | IN PROGRESS (no payment router edits) |
+| I4.3 | Positive + negative tests | IN PROGRESS |
+| I4.4 | Auth matrix in docs/identity-nethub-rs.md | IN PROGRESS |
 
----
+## Milestone I5 — Dashboard surface
 
-## Milestone S2 — M2M collection contract
+| ID | Acceptance criterion | Status |
+|----|----------------------|--------|
+| I5.1 | Login/dashboard states (signed out / loading / no membership / membership / error) | IN PROGRESS |
+| I5.2 | No payment data without ACL | IN PROGRESS |
+| I5.3 | Frontend gates green | OPEN |
 
-**Goal:** Other services can start a collection with the minimum fields you specified and receive status reliably.
+## Milestone I6 — Staging E2E + deploy readiness
 
-| ID | Item | Status |
-|----|------|--------|
-| S2.1 | API accepts **phone** (STK number), **amount** (canonical minor units), **integration/shortcode ref** | DONE (shape) |
-| S2.2 | API accepts **status callback URL** per payment (notify endpoint) | DONE |
-| S2.3 | API accepts **metadata** as first-class field; returned on read (`IntentOut`) | DONE (detail) |
-| S2.4 | Fanout: prefer per-intent status URL, then tenant webhooks | DONE |
-| S2.5 | Document M2M: headers (`Idempotency-Key`, auth), body, callback signing, edge dependency | DONE (Help) |
-| S2.6 | OpenAPI / example client for create + status webhook | LATER |
+| ID | Acceptance criterion | Status |
+|----|----------------------|--------|
+| I6.1 | Staging checklist complete (VERIFIED steps) | IN PROGRESS — new two-origin BFF probe; live VERIFIED pending ops |
+| I6.2 | M2M regression still OK | OPEN — manual I6 step 12 |
+| I6.3 | Go/no-go recorded; no main merge without approval | OPEN |
 
-**Minimum create body (target after S2):**
+## Milestone I7 — Mandatory independent Next.js + BFF (#239)
 
-```json
-{
-  "integration_public_id": "gw_…",
-  "phone": "2547…",
-  "amount_minor": 100,
-  "status_callback_url": "https://partner.example/hooks/netpay",
-  "metadata": { "order_id": "…" },
-  "account_reference": "ORDER123",
-  "description": "Order 123"
-}
-```
+| ID | Acceptance criterion | Status |
+|----|----------------------|--------|
+| I7.1 | Architecture and implementation contract approved by owner | VERIFIED — 2026-11-10 |
+| I7.2 | Independent Next.js runtime, server-side OIDC, opaque sessions and mandatory HTTP BFF | IN PROGRESS on feat/239-nextjs-bff-runtime |
+| I7.3 | FastAPI separation, separate images and ingress/deployment docs | IN PROGRESS |
+| I7.4 | Login UI and dashboard session journey | IN PROGRESS |
+| I7.5 | WSS ingress/security readiness documented; no idle gateway | IN PROGRESS |
+| I7.6 | Security, payment regression, container and browser tests | IN PROGRESS |
+| I7.7 | Post-merge live staging acceptance | NOT STARTED — owner deployment required |
 
-**Exit criteria:** Partner can create STK with phone, amount, status endpoint, metadata; receives signed status posts for that payment.
+## Historical notes
 
----
-
-## Milestone S3 — Edge ↔ NetPay operational certainty
-
-**Goal:** No silent break between Daraja callbacks and NetPay settlement.
-
-| ID | Item | Status |
-|----|------|--------|
-| S3.1 | Edge `/cb/{gw_*}/…` (+ legacy `/mpesa/cb/…`) | DONE |
-| S3.2 | Edge → NetPay secure forward + heartbeat | DONE |
-| S3.3 | NetPay System status / last inbound without browser polling edge | DONE |
-| S3.4 | Surface outbound + inbound failures in product UI (ops-friendly) | DONE |
-| S3.5 | Runbook: STK stuck in waiting — checklist (creds, env, edge secrets, DLQ, checkout match) | DONE |
-| S3.6 | Alerting on outbound STK error rate / missing callbacks | LATER |
-
-**Exit criteria:** Ops can diagnose a stuck STK in &lt; 5 minutes using UI + `outbound_requests` + `inbound_events`.
-
----
-
-## Milestone S4 — UX completion for collections setup (related)
-
-**Goal:** Operators can set up shortcodes and understand STK vs app notifications without jargon traps.
-
-| ID | Item | Status |
-|----|------|--------|
-| S4.1 | Plain-language shortcode setup + connect confirmation | DONE |
-| S4.2 | Home dashboard + Lucide navigation | DONE |
-| S4.3 | Payment detail: provider/callback evidence (ties to S1.6) | DONE |
-| S4.4 | Guided empty states when no shortcode / STK never connected | LATER |
-
----
-
-## Milestone S5 — Gate leftovers (collections-adjacent)
-
-Aligned with original board / Production Gate — not all STK-specific.
-
-| ID | Item | Status |
-|----|------|--------|
-| S5.1 | C2B confirmation mapping + tests | DONE (code path) |
-| S5.2 | NetHub AS token validation (replace local auth in prod) | LATER (P2) |
-| S5.3 | Secrets manager / encryption at rest for provider credentials | LATER (P2) |
-| S5.4 | Rate limits, metrics, k3s hardening | LATER (P2) |
-| S5.5 | Refunds / B2C (gate scenarios) | LATER (P3) |
-
----
-
-## Suggested delivery order
-
-```text
-S1 (intent audit + fail integrity)
-  → S2 (M2M status URL + metadata)
-  → S3.4–S3.5 (ops surfaces + runbook)
-  → S4.3 (payment detail evidence)
-  → S5 P2+ as separate program
-```
-
-**Do not** expand edge responsibilities: edge remains public callback ingress only; NetPay remains financial authority.
-
----
-
-## Traceability
-
-| Audit theme | Milestone |
-|-------------|-----------|
-| Save every part of STK payload / response | S1.1–S1.3 |
-| Call Safaricom, edge receives, resolve payment | S0 (done) + S1.4 + S3 |
-| M2M: phone, amount, status endpoint, metadata | S2 |
-| User friction (setup / waiting / errors) | S4 + S1.6 |
-| M2M friction (contract / webhooks) | S2 |
-
----
-
-## Changelog
-
-| Date | Note |
-|------|------|
-| 2026-09-13 | Initial milestone map from STK E2E audit (NetPay + mpesa-edge) |
-
-| 2026-09-13 | S1 implemented: intent STK audit, redaction, fanout order, till type |
-
-| 2026-09-13 | S3.4–S3.5 + S2.5 Help: provider calls UI, payment timeline, runbook |
-
-
----
-
-## Milestone C2B — Paybill/till notifications (#24)
-
-**Goal:** Confirmation → canonical payment (no invented statuses).
-
-| ID | Item | Status |
-|----|------|--------|
-| C2B.1 | Edge event types `c2b_confirmation` / `c2b_validation` | DONE |
-| C2B.2 | Match open intent by BillRef / account_reference | DONE |
-| C2B.3 | TransID dedupe (no double ledger) | DONE |
-| C2B.4 | Unmatched / amount mismatch → reconciliation | DONE |
-| C2B.5 | Tests + Help docs | DONE |
-
-**Exit criteria:** Met on `dev` (PR #57). Issue #24 closed.
+Earlier R0–R2 / public-site / mpesa_core tracker rows from Oct 2026 remain useful history but are **not** the active handoff surface for identity client work. Prefer this program table and linked issues #232–#239.

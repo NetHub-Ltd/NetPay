@@ -1,89 +1,58 @@
-# NetHub Payment Gateway (NetPay)
+# NetPay — NetHub payment gateway
 
-Multi-tenant M-Pesa payment gateway — FastAPI backend + React dashboard.
+NetPay is NetHub's multi-merchant M-Pesa Daraja gateway. It provides merchant-scoped payment APIs, STK Push, callback handling, optional C2B registration, reconciliation and reliable payment events.
 
-## Layout
+## Architecture
 
-```text
-backend/     FastAPI app, Alembic, tests, static/ (SPA build output)
-frontend/    Vite + React source
-deploy/      docker-compose, k8s
-scripts/     helper scripts (e.g. build-frontend.sh)
-```
+NetPay runs as two independent application services:
 
-## Backend
+- **Next.js App Router:** public website, login, merchant dashboard, server-side OIDC and mandatory same-origin HTTP BFF.
+- **FastAPI:** payment APIs, M2M authentication, merchant authorization, Daraja integration, callbacks, persistence and encrypted BFF session storage.
 
-```bash
-cd backend
-cp .env.example .env
-./run.sh
-# API: http://127.0.0.1:8000  docs: /docs
-```
+Zitadel handles authentication. NetHubKe remains the resource server for human identity/access decisions. The browser receives only an opaque HttpOnly session cookie; IdP tokens remain server-side. Every browser-originated HTTP request to NetPay APIs goes through Next.js. FastAPI continues to enforce merchant membership and business authorization.
 
-Tests:
+M2M clients and Safaricom continue using the existing API and callback contracts. They do not depend on a human browser session.
 
-```bash
-cd backend
-pip install -e ".[dev]"
-pytest -q
-```
+## Start here
 
-## Frontend (dev)
+- Engineering rules: [AGENTS.md](AGENTS.md)
+- Product and payment specification: [docs/REBUILD_SPEC.md](docs/REBUILD_SPEC.md)
+- Verified Daraja capability notes: [docs/DARAJA_CAPABILITIES.md](docs/DARAJA_CAPABILITIES.md)
+- Backend setup: [backend/README.md](backend/README.md)
+- Frontend setup: [frontend/README.md](frontend/README.md)
+- Deployment and migration runbook: [deploy/README.md](deploy/README.md)
+- Human identity and BFF contract: [docs/identity-nethub-rs.md](docs/identity-nethub-rs.md)
+- Staging acceptance: [docs/ops/STAGING_IDENTITY.md](docs/ops/STAGING_IDENTITY.md)
 
-```bash
-cd frontend
-npm ci
-npm run dev    # http://127.0.0.1:5173 (proxies API to :8000)
-```
+## Payment foundation
 
-## SPA into FastAPI static
+- OAuth client-credentials for merchant M2M clients, hashed client secrets, short-lived scoped bearer tokens and merchant-level authorization.
+- Encrypted Daraja integration credentials and NetPay-hosted STK callback URLs.
+- STK Push initiation with KES amount validation, idempotency, explicit unknown outcomes, callback correlation, deduplication and guarded state transitions.
+- Opt-in C2B URL registration and confirmation handling.
+- PostgreSQL-backed event outbox, signed optional merchant webhook delivery, retries/dead-letter state and worker recovery.
 
-```bash
-./scripts/build-frontend.sh   # lint + build → backend/static/
-# then start backend; it serves backend/static at / and /assets
-```
+## Runtime and local development
 
-Or set `STATIC_DIR` to any folder containing `index.html` + `assets/`.
+Production uses two containers: backend/Dockerfile builds FastAPI; frontend/Dockerfile builds the Next.js standalone server. FastAPI no longer builds or serves frontend files.
 
-## Docker
+For local frontend development, copy frontend/.env.example to frontend/.env.local, configure the confidential OIDC client and BFF settings, then run:
 
-```bash
-# from repo root
-docker compose -f deploy/docker-compose.yml up --build
-```
+    cd frontend
+    npm ci
+    npm run dev
 
-Build context is the repo root (`backend/Dockerfile` copies frontend + backend).
+Run FastAPI separately on port 8000:
 
-## CI
+    cd backend
+    uvicorn app.main:app --reload --port 8000
 
-- **PRs** to `main` or `dev`: backend pytest + frontend lint + build (`.github/workflows/ci.yml`).
-- **Push to `main`**: after tests, CI **auto-creates** the next patch tag (`vX.Y.Z`), builds multi-arch images, pushes to GHCR, and opens a GitHub Release with changelog notes (`.github/workflows/release.yml`).
-- No manual version tags required. Include `[skip release]` in a `main` commit message to skip tagging/release.
-- Images: `ghcr.io/nethub-ltd/netpay` (`latest`, `vX.Y.Z`, `main`, `sha-…`).
+For a full container stack, configure backend/.env and frontend/.env.local, then run:
 
-Prefer merging only when checks are green.
+    docker compose -f deploy/docker-compose.yml up --build
 
-## Container (GHCR)
+See the service-specific READMEs and deployment runbook for all required settings and migrations.
 
-Images: `ghcr.io/nethub-ltd/netpay`
+## Delivery workflow
 
-| Ref | Tags |
-|-----|------|
-| `main` branch | `main`, `sha-<short>` |
-| Tag `v1.2.3` | `1.2.3`, `1.2`, `latest` |
-
-```bash
-# from repo root — builds SPA into /app/static inside the image
-docker build -f backend/Dockerfile -t netpay:local .
-
-docker run --rm -p 8000:8000 \
-  -e DATABASE_URL=sqlite+aiosqlite:///./data/gateway.db \
-  -e REDIS_REQUIRED=false \
-  -e SECRET_KEY=dev \
-  netpay:local
-# API + dashboard: http://localhost:8000
-# Health: http://localhost:8000/health
-```
-
-CI pushes a **multi-arch** image (`linux/amd64`, `linux/arm64`) to GHCR after tests pass on `main` and on version tags (`v*`). Typical VPS = amd64; Apple Silicon / some cloud = arm64.
-
+Implementation branches start from the latest verified dev and PRs target dev. The repository owner performs the final merge. CI must validate backend tests/migrations, frontend lint/typecheck/build, both production containers and security boundaries. Live staging acceptance is separate from CI and must be recorded after deployment.

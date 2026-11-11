@@ -1,0 +1,27 @@
+"""Initial frozen schema migration for the clean NetPay persistence layer."""
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+revision = "0001_initial_schema"
+down_revision = None
+branch_labels = None
+depends_on = None
+metadata = sa.MetaData()
+def table(name, *columns, constraints=()):
+    """Add standard UUID and timezone-aware lifecycle columns to a table."""
+    common = [sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True), sa.Column("created_at", sa.DateTime(timezone=True), nullable=False), sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False), sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True)]
+    return sa.Table(name, metadata, *common, *columns, *constraints)
+merchant = table("merchant", sa.Column("name", sa.String(160), nullable=False), sa.Column("slug", sa.String(100), nullable=False), sa.Column("default_currency", sa.String(3), nullable=False), sa.Column("status", sa.String(24), nullable=False), constraints=[sa.UniqueConstraint("slug", name="uq_merchant_slug")])
+integration = table("providerintegration", sa.Column("merchant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("merchant.id"), nullable=False), sa.Column("provider", sa.String(32), nullable=False), sa.Column("environment", sa.String(16), nullable=False), sa.Column("status", sa.String(24), nullable=False), sa.Column("credentials_ciphertext", sa.LargeBinary(), nullable=True), sa.Column("credential_reference", sa.String(255), nullable=True), constraints=[sa.UniqueConstraint("merchant_id", "provider", "environment", name="uq_integration_provider_environment")])
+payment = table("payment", sa.Column("merchant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("merchant.id"), nullable=False), sa.Column("integration_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("providerintegration.id"), nullable=False), sa.Column("direction", sa.String(16), nullable=False), sa.Column("merchant_reference", sa.String(120), nullable=False), sa.Column("provider_transaction_id", sa.String(120), nullable=True), sa.Column("amount_minor", sa.Integer(), nullable=False), sa.Column("currency", sa.String(3), nullable=False), sa.Column("status", sa.String(32), nullable=False), sa.Column("description", sa.String(250), nullable=True), sa.Column("succeeded_at", sa.DateTime(timezone=True), nullable=True), sa.Column("failed_at", sa.DateTime(timezone=True), nullable=True), constraints=[sa.UniqueConstraint("merchant_id", "merchant_reference", name="uq_payment_merchant_reference"), sa.CheckConstraint("amount_minor > 0", name="ck_payment_amount_positive")])
+attempt = table("paymentattempt", sa.Column("payment_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("payment.id"), nullable=False), sa.Column("attempt_number", sa.Integer(), nullable=False), sa.Column("status", sa.String(32), nullable=False), sa.Column("started_at", sa.DateTime(timezone=True), nullable=False), sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True), sa.Column("error_code", sa.String(100), nullable=True), sa.Column("error_message", sa.String(500), nullable=True), constraints=[sa.UniqueConstraint("payment_id", "attempt_number", name="uq_payment_attempt_number")])
+idempotency = table("idempotencyrecord", sa.Column("merchant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("merchant.id"), nullable=False), sa.Column("key", sa.String(160), nullable=False), sa.Column("request_hash", sa.String(64), nullable=False), sa.Column("response_status", sa.Integer(), nullable=True), sa.Column("response_snapshot", sa.JSON(), nullable=True), sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True), constraints=[sa.UniqueConstraint("merchant_id", "key", name="uq_idempotency_merchant_key")])
+callback = table("providercallback", sa.Column("integration_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("providerintegration.id"), nullable=False), sa.Column("provider_event_id", sa.String(120), nullable=False), sa.Column("payload", sa.JSON(), nullable=False), sa.Column("received_at", sa.DateTime(timezone=True), nullable=False), sa.Column("processing_status", sa.String(24), nullable=False), sa.Column("processed_at", sa.DateTime(timezone=True), nullable=True), constraints=[sa.UniqueConstraint("integration_id", "provider_event_id", name="uq_callback_integration_event")])
+outbox = table("eventoutbox", sa.Column("event_type", sa.String(100), nullable=False), sa.Column("aggregate_type", sa.String(50), nullable=False), sa.Column("aggregate_id", postgresql.UUID(as_uuid=True), nullable=False), sa.Column("payload", sa.JSON(), nullable=False), sa.Column("occurred_at", sa.DateTime(timezone=True), nullable=False), sa.Column("published_at", sa.DateTime(timezone=True), nullable=True), sa.Column("attempt_count", sa.Integer(), nullable=False))
+audit = table("auditevent", sa.Column("merchant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("merchant.id"), nullable=True), sa.Column("actor_type", sa.String(32), nullable=False), sa.Column("actor_id", postgresql.UUID(as_uuid=True), nullable=True), sa.Column("action", sa.String(100), nullable=False), sa.Column("resource_type", sa.String(80), nullable=False), sa.Column("resource_id", postgresql.UUID(as_uuid=True), nullable=True), sa.Column("metadata_json", sa.JSON(), nullable=False))
+def upgrade() -> None:
+    """Create the initial schema snapshot."""
+    metadata.create_all(op.get_bind())
+def downgrade() -> None:
+    """Drop all tables owned by this initial migration."""
+    metadata.drop_all(op.get_bind())
