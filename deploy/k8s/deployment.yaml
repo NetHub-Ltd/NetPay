@@ -33,40 +33,6 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: netpay-frontend
-spec:
-  replicas: 2
-  selector:
-    matchLabels: { app: netpay-frontend }
-  template:
-    metadata:
-      labels: { app: netpay-frontend }
-    spec:
-      containers:
-        - name: frontend
-          image: ghcr.io/nethub-ltd/netpay-frontend:latest
-          imagePullPolicy: Always
-          ports: [{ containerPort: 3000 }]
-          envFrom: [{ secretRef: { name: netpay-frontend-secrets } }]
-          env:
-            - { name: NODE_ENV, value: production }
-            - { name: PORT, value: "3000" }
-            - { name: NETPAY_BACKEND_INTERNAL_URL, value: http://nethub-gateway }
-          resources:
-            requests: { cpu: 100m, memory: 256Mi }
-            limits: { cpu: 500m, memory: 512Mi }
-          readinessProbe:
-            httpGet: { path: /api/health/ready, port: 3000 }
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          livenessProbe:
-            httpGet: { path: /login/, port: 3000 }
-            initialDelaySeconds: 20
-            periodSeconds: 20
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
   name: nethub-gateway-worker
 spec:
   replicas: 1
@@ -96,18 +62,10 @@ spec:
   selector: { app: nethub-gateway }
   ports: [{ port: 80, targetPort: 8000 }]
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: netpay-frontend
-spec:
-  selector: { app: netpay-frontend }
-  ports: [{ port: 80, targetPort: 3000 }]
----
-# Public application traffic uses one origin. The API routes remain available for
-# M2M clients and Safaricom callbacks; the browser UI uses the Next.js BFF only.
-# Do not add /internal/* to public ingress. NGINX ingress supports WebSocket
-# upgrades when a dedicated authenticated realtime service is introduced later.
+# FastAPI ingress is limited to API and Safaricom callback traffic. The browser
+# application is hosted independently on Vercel; do not route frontend paths here.
+# Keep /internal/* private. NGINX ingress supports WebSocket upgrades when a
+# dedicated authenticated realtime service is introduced for a concrete use case.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -128,22 +86,9 @@ spec:
               service:
                 name: nethub-gateway
                 port: { number: 80 }
-          # Human identity endpoints are intentionally not exposed at the API origin.
-          - path: /api/v1/auth
-            pathType: Prefix
-            backend:
-              service:
-                name: netpay-frontend
-                port: { number: 80 }
           - path: /api/v1
             pathType: Prefix
             backend:
               service:
                 name: nethub-gateway
-                port: { number: 80 }
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: netpay-frontend
                 port: { number: 80 }

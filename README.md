@@ -34,7 +34,7 @@ M2M clients and Safaricom continue using the existing API and callback contracts
 
 ## Runtime and local development
 
-Production uses two containers: backend/Dockerfile builds FastAPI; frontend/Dockerfile builds the Next.js standalone server. FastAPI no longer builds or serves frontend files.
+Production deploys Next.js independently on Vercel and FastAPI on its own server runtime. The frontend is not built into a container or served as static files by FastAPI.
 
 For local frontend development, copy frontend/.env.example to frontend/.env.local, configure the confidential OIDC client and BFF settings, then run:
 
@@ -47,12 +47,8 @@ Run FastAPI separately on port 8000:
     cd backend
     uvicorn app.main:app --reload --port 8000
 
-For a full container stack, configure backend/.env and frontend/.env.local, then run:
-
-    docker compose -f deploy/docker-compose.yml up --build
-
 See the service-specific READMEs and deployment runbook for all required settings and migrations.
 
 ## Delivery workflow
 
-Implementation branches start from the latest verified dev and PRs target dev. The repository owner performs the final merge. CI must validate backend tests/migrations, frontend lint/typecheck/build, both production containers and security boundaries. Live staging acceptance is separate from CI and must be recorded after deployment.
+Implementation branches start from the latest verified dev and PRs target dev. The repository owner performs the final merge. CI validates backend tests/migrations and its production container, plus frontend lint, strict typecheck, security tests, a real Next.js production build and a non-container production-server smoke test. Live staging acceptance is separate from CI and must be recorded after deployment.

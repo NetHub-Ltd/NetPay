@@ -3,7 +3,7 @@ name: Release
 # On every push to main (after tests):
 #   1. Bump patch version from latest v* tag (or pyproject.toml)
 #   2. Create annotated tag vX.Y.Z (no manual tags required)
-#   3. Multi-arch build + push to GHCR
+#   3. Multi-arch FastAPI image build + push to GHCR
 #   4. GitHub Release with changelog-style notes
 #
 # Skip: commit message contains [skip release]
@@ -75,7 +75,7 @@ jobs:
     uses: ./.github/workflows/frontend-build.yml
 
   version:
-    needs: [backend, frontend-lint, frontend-build]
+    needs: [backend, frontend-build]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
@@ -145,8 +145,7 @@ jobs:
           git tag -a "$tag" -m "Release ${tag}
 
           Automated patch release from main (${GITHUB_SHA}).
-          API image: ghcr.io/nethub-ltd/netpay:${tag}
-          Frontend image: ghcr.io/nethub-ltd/netpay-frontend:${tag}"
+          API image: ghcr.io/nethub-ltd/netpay:${tag}"
 
           git push origin "$tag"
 
@@ -206,30 +205,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Frontend Docker metadata
-        id: frontend-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/nethub-ltd/netpay-frontend
-          tags: |
-            type=raw,value=${{ needs.version.outputs.tag }}
-            type=raw,value=${{ needs.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.version }}
-            type=raw,value=latest
-            type=raw,value=main
-            type=sha,prefix=sha-,format=short
-
-      - name: Build and push Next.js frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: frontend/Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.frontend-meta.outputs.tags }}
-          labels: ${{ steps.frontend-meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   github-release:
     needs: [version, docker]
@@ -260,17 +235,13 @@ jobs:
             ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}
             ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.version }}
             ghcr.io/nethub-ltd/netpay:latest
-            ghcr.io/nethub-ltd/netpay-frontend:${{ needs.version.outputs.tag }}
-            ghcr.io/nethub-ltd/netpay-frontend:${{ needs.version.outputs.version }}
-            ghcr.io/nethub-ltd/netpay-frontend:latest
             ```
 
-            Build and deploy the API and frontend images as a compatible pair. Configure the required runtime secrets and service topology described in deploy/README.md. Do not run the API image as a standalone SQLite application.
+            Deploy the FastAPI image independently from the Next.js application on Vercel. Configure the required runtime secrets and service topology described in deploy/README.md. Do not run the API image as a standalone SQLite application.
 
             - API: `ghcr.io/nethub-ltd/netpay:${{ needs.version.outputs.tag }}`
-            - Next.js frontend: `ghcr.io/nethub-ltd/netpay-frontend:${{ needs.version.outputs.tag }}`
 
-            Health: API `/health/live` and `/health/ready`; frontend `/login/` and `/api/auth/status`. Run `alembic upgrade head` once against the target PostgreSQL database before starting API replicas.
+            Health: API `/health/live` and `/health/ready`. Vercel manages the Next.js runtime independently. Run `alembic upgrade head` once against the target PostgreSQL database before starting API replicas.
 
             ### Notes
 

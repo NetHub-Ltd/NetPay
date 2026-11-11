@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // A server runtime is required for Route Handlers, the BFF and server-side OIDC.
-  output: "standalone",
+  // Keep the normal Next.js server runtime for Route Handlers, the BFF and server-side OIDC.
+  // Vercel manages its own deployment output; standalone is only for custom container runtimes.
   trailingSlash: true,
   poweredByHeader: false,
   reactStrictMode: true,

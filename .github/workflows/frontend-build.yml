@@ -29,10 +29,13 @@ jobs:
         env:
           npm_config_registry: https://registry.npmjs.org/
         run: npm ci --no-audit --no-fund
-      - name: Build production Next.js server
+      - name: Lint
+        run: npm run lint
+      - name: Strict TypeScript check
+        run: npm run typecheck
+      - name: Frontend security helper tests
+        run: npm test
+      - name: Build production Next.js application
         run: npm run build
-      - name: Verify standalone runtime output
-        run: |
-          test -s .next/standalone/server.js
-          test -d .next/static
-          test ! -d out
+      - name: Smoke test the production Next.js server
+        run: npm run smoke:production

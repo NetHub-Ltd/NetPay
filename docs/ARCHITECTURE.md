@@ -1,5 +1,7 @@
 # NetPay Architecture Decision Record
 
+> **Historical record — superseded deployment assumptions.** This document records the October 2026 initial architecture proposal. Its early single-image/combined-runtime and deployment inventory sections are not current deployment instructions. Issue #245 is the current source of truth for deployment: Next.js runs independently on Vercel with the normal server runtime; FastAPI retains its independent backend image/runtime. The frontend is not published as a container, and browser application traffic is served by Vercel. See `deploy/README.md` and `AGENTS.md`.
+
 Status: proposed baseline for implementation on `work/minimal-netpay-rebuild`.
 Scope: first release of the multi-merchant M-Pesa Daraja gateway.
 

@@ -45,8 +45,8 @@ html[data-theme="ledger"] {
   --radius: 14px;
   --radius-lg: 18px;
   --radius-xl: 24px;
-  --font-sans: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: var(--font-mono-stack), ui-monospace, Menlo, monospace;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   --text-body: 0.9375rem;
   --leading-body: 1.55;
 
