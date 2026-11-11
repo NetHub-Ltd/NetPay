@@ -34,6 +34,25 @@ Deploy this directory as an independent Next.js application. Set the Vercel proj
 
 The Vercel server must be able to reach the configured `NETPAY_BACKEND_INTERNAL_URL`; do not assume a cluster-only hostname is reachable from Vercel.
 
+## OIDC login diagnostics
+
+Failed login initiation writes one structured JSON event to the Vercel function runtime log:
+
+- Event: `oidc_login_initiation_failed`
+- Fields: `request_id`, `category`, and `timestamp`
+- Categories distinguish local configuration, discovery HTTP/response/issuer/endpoint failures, provider unreachability and unexpected internal failures.
+
+The event intentionally excludes exception messages, stack traces, request URLs, cookies, authorization codes, tokens and environment-variable values. The browser receives only the existing generic configuration/provider error state; diagnostic details remain server-side.
+
+To investigate a production failure:
+1. Open the Vercel project `net-pay` and select the deployment serving the affected domain.
+2. Open Logs / Runtime Logs and filter to the `/api/auth/login` function around the reproduction time.
+3. Find the `oidc_login_initiation_failed` JSON event and use its category and request ID to correlate the failure.
+4. Verify the configured issuer's `/.well-known/openid-configuration` response independently. Its `issuer` must exactly match `OIDC_ISSUER`; authorization, token and JWKS endpoints must be valid HTTPS URLs.
+5. Do not paste secrets, tokens, authorization codes, cookies or raw provider responses into tickets or chat.
+
+The login page's error banner is derived from its `error` query parameter. Reloading the same URL preserves the banner; visit `/login/` without the query string to clear the displayed state after investigation.
+
 ## API boundary
 
 Browser requests use /api/backend/*. The BFF currently exposes an explicit GET allowlist for the dashboard's human profile, memberships, merchant summary and merchant payment list. Add new methods and routes deliberately with runtime validation, session checks, CSRF protection for mutations, safe cache headers and backend authorization preserved. Never turn the BFF into an arbitrary URL proxy.
