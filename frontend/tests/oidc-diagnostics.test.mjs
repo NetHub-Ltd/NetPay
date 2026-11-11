@@ -22,6 +22,18 @@ test("classifies provider discovery failures separately from local configuration
     "discovery_unreachable",
   );
   assert.equal(
+    classifyOidcLoginFailure(new SyntaxError("raw provider response")).category,
+    "discovery_invalid_response",
+  );
+  assert.equal(
+    classifyOidcLoginFailure(new TypeError("Invalid URL")).category,
+    "discovery_endpoint_invalid",
+  );
+  assert.equal(
+    classifyOidcLoginFailure(new TypeError("unrelated programming error")).category,
+    "internal",
+  );
+  assert.equal(
     classifyOidcLoginFailure(new Error("Identity provider metadata does not match configured issuer")).category,
     "discovery_issuer_mismatch",
   );
