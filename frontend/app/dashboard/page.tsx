@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { auth } from "../../auth";
 import { DashboardClient } from "../../components/DashboardClient";
-import { getCurrentSession } from "../../lib/server/session-store";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -18,12 +18,9 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  let current: Awaited<ReturnType<typeof getCurrentSession>>;
-  try {
-    current = await getCurrentSession();
-  } catch {
-    redirect("/login/?error=configuration");
+  const session = await auth();
+  if (!session?.hasAccessToken) {
+    redirect("/login/?returnTo=%2Fdashboard%2F");
   }
-  if (!current) redirect("/login/?returnTo=%2Fdashboard%2F");
   return <DashboardClient />;
 }
