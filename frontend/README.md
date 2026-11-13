@@ -2,6 +2,34 @@
 
 NetPay's frontend is an independently deployed Next.js App Router application. It runs as a Node.js server and owns public pages, login/callback routes, the authenticated dashboard and the same-origin HTTP BFF.
 
+## Human authentication (Auth.js public OIDC)
+
+NetPay’s browser app uses **Auth.js** the same way NetHubKe’s frontend does, as a **public** OIDC client (PKCE, no client secret). **NetHubKe is the identity resource server**; NetPay does not replace it.
+
+1. User clicks **Continue with NetHub** → `signIn("oidc")`.
+2. IdP redirects to **`/api/auth/callback/oidc`**.
+3. Access/refresh/id tokens are stored in the Auth.js JWT (HttpOnly cookie).
+4. Server Route Handlers read the IdP access token and call NetPay FastAPI (and/or NetHubKe) with `Authorization: Bearer <token>`.
+
+### Required environment
+
+| Variable | Purpose |
+|---|---|
+| `AUTH_URL` | Exact public origin, e.g. `https://netpay.nethub.co.ke` |
+| `AUTH_SECRET` | Stable encryption secret (≥32 chars) |
+| `AUTH_OIDC_ISSUER` | IdP issuer URL |
+| `AUTH_OIDC_CLIENT_ID` | Public client id (no secret) |
+| `NEXT_PUBLIC_SITE_URL` | Canonical site URL |
+| `NETPAY_BACKEND_INTERNAL_URL` | Private FastAPI base for merchant BFF |
+
+Zitadel redirect URI (exact):
+
+```text
+https://netpay.nethub.co.ke/api/auth/callback/oidc
+```
+
+Do **not** register `/auth/callback/` or `/api/auth/callback/` without the `oidc` provider segment for this flow.
+
 ## Local development
 
 1. Configure backend/.env and frontend/.env.local from their example files.
