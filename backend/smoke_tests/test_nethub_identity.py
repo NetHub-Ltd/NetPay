@@ -157,3 +157,100 @@ def test_auth_me_inactive_forbidden(identity_client: TestClient, monkeypatch: py
         headers={"Authorization": "Bearer idp-access"},
     )
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_resolve_human_cache_hit_skips_http(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.identity.principal import HumanPrincipal
+
+    principal = HumanPrincipal(
+        id=UUID(USER_ID),
+        email="merchant@example.com",
+        full_name="Example Merchant",
+        username="merchant",
+    )
+    calls: list[tuple[str, str]] = []
+
+    async def fake_request(method: str, path: str, access_token: str) -> httpx.Response:
+        calls.append((method, path))
+        return httpx.Response(200, json=USER_JSON)
+
+    async def fake_cache_get(token: str) -> HumanPrincipal | None:
+        assert token == "idp-token"
+        return principal
+
+    monkeypatch.setattr(nethub_client, "_request", fake_request)
+    monkeypatch.setattr(nethub_client, "_cache_get", fake_cache_get)
+
+    result = await resolve_human("idp-token")
+    assert result.email == "merchant@example.com"
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_resolve_human_cache_miss_sets_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.identity.principal import HumanPrincipal
+
+    stored: dict[str, HumanPrincipal] = {}
+
+    async def fake_request(method: str, path: str, access_token: str) -> httpx.Response:
+        assert path == "/api/v1/users/me"
+        return httpx.Response(200, json=USER_JSON)
+
+    async def fake_cache_get(token: str) -> HumanPrincipal | None:
+        return stored.get(token)
+
+    async def fake_cache_set(token: str, principal: HumanPrincipal) -> None:
+        stored[token] = principal
+
+    monkeypatch.setattr(nethub_client, "_request", fake_request)
+    monkeypatch.setattr(nethub_client, "_cache_get", fake_cache_get)
+    monkeypatch.setattr(nethub_client, "_cache_set", fake_cache_set)
+
+    first = await resolve_human("idp-token")
+    assert first.email == "merchant@example.com"
+    assert "idp-token" in stored
+
+    # Second resolve should hit cache (no HTTP if we clear request)
+    async def boom(method: str, path: str, access_token: str) -> httpx.Response:
+        raise AssertionError("HTTP should not run on cache hit")
+
+    monkeypatch.setattr(nethub_client, "_request", boom)
+    second = await resolve_human("idp-token")
+    assert second.email == first.email
+
+
+@pytest.mark.asyncio
+async def test_resolve_human_does_not_cache_unauthorized(monkeypatch: pytest.MonkeyPatch) -> None:
+    sets: list[str] = []
+
+    async def fake_request(method: str, path: str, access_token: str) -> httpx.Response:
+        return httpx.Response(401, json={"detail": "nope"})
+
+    async def fake_cache_get(token: str) -> None:
+        return None
+
+    async def fake_cache_set(token: str, principal: object) -> None:
+        sets.append(token)
+
+    monkeypatch.setattr(nethub_client, "_request", fake_request)
+    monkeypatch.setattr(nethub_client, "_cache_get", fake_cache_get)
+    monkeypatch.setattr(nethub_client, "_cache_set", fake_cache_set)
+
+    with pytest.raises(NetHubIdentityError) as excinfo:
+        await resolve_human("bad-token")
+    assert excinfo.value.status_code == 401
+    assert sets == []
+
+
+@pytest.mark.asyncio
+async def test_cache_get_redis_failure_degrades(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REDIS_ENABLED", "true")
+    monkeypatch.setenv("NETHUB_USER_CACHE_TTL_SECONDS", "45")
+    get_settings.cache_clear()
+
+    def boom_client(settings: object) -> object:
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr("app.core.cache.create_redis_client", boom_client)
+    assert await nethub_client._cache_get("any-token") is None

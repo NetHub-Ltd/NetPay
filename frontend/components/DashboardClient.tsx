@@ -1,5 +1,10 @@
 "use client";
 
+/* Product identity (me, memberships, payments) comes only from NetPay BFF →
+ * NetPay API → NetHubKe RS. Auth.js holds the IdP token server-side; do not
+ * treat Auth.js session claims as the merchant user profile.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import {
   CreditCard,
