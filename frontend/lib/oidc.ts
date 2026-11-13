@@ -41,7 +41,8 @@ async function authFetch<T>(path: string): Promise<T> {
   return await response.json() as T;
 }
 export function startLogin(): void {
-  window.location.assign("/api/auth/login?returnTo=%2Fdashboard%2F");
+  // Auth.js sign-in endpoint (public OIDC provider id = "oidc")
+  window.location.assign("/api/auth/signin/oidc?callbackUrl=%2Fdashboard%2F");
 }
 export async function clearSession(): Promise<void> {
   const response = await fetch("/api/auth/logout", {
