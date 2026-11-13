@@ -74,3 +74,8 @@ Callback routes:
 - POST /callbacks/mpesa/c2b/{integration_id}/confirmation
 
 Callbacks are untrusted evidence, stored with minimized payloads and deduplicated. The payment domain remains responsible for guarded state transitions and financial effects.
+
+## Human identity
+
+See [docs/identity-rs-contract.md](../docs/identity-rs-contract.md). Humans are resolved from NetHubKe RS with optional Redis cache.
+

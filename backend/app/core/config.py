@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     # NetHubKe resource server — human identity (forward IdP Bearer; do not verify JWT here)
     nethub_api_base_url: str | None = None
     nethub_api_timeout_seconds: float = 8.0
+    # Short TTL for cached RS user profiles (latency only; not durable identity store).
+    nethub_user_cache_ttl_seconds: int = 45
 
     # Next.js BFF session persistence. These secrets are independent of Daraja keys.
     bff_internal_secret: SecretStr | None = Field(default=None, repr=False, exclude=True)
@@ -155,6 +157,14 @@ class Settings(BaseSettings):
         """Require a bounded positive timeout for NetHubKe identity calls."""
         if value <= 0 or value > 60:
             raise ValueError("NETHUB_API_TIMEOUT_SECONDS must be between 0 and 60")
+        return value
+
+    @field_validator("nethub_user_cache_ttl_seconds")
+    @classmethod
+    def validate_nethub_user_cache_ttl(cls, value: int) -> int:
+        """Bound RS user cache TTL; 0 disables caching."""
+        if value < 0 or value > 300:
+            raise ValueError("NETHUB_USER_CACHE_TTL_SECONDS must be between 0 and 300")
         return value
 
     @field_validator("redis_url")
