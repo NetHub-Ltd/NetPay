@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.core.config import get_settings
 from app.identity import nethub_client
 from app.identity.nethub_client import NetHubIdentityError, fetch_me, resolve_human, sync_user
-from app.identity.router import router as identity_router
+from app.api_v1.routers.identity_router import router as identity_router
 
 USER_ID = str(uuid4())
 USER_JSON = {
