@@ -5,7 +5,7 @@
 **Implementation branch:** `feat/187-mpesa-core-quality`
 **Verified base:** `dev` @ `4246fbbce6361dea8d4c3506960a90aec2859ec9`
 **PR target:** `dev`
-**Status:** implementation and local validation complete; preparing a draft PR. Detailed provider operation contracts remain unverified where official docs are inaccessible.
+**Status:** draft PR #265 open against `dev`; local validation complete; GitHub checks pending. Detailed provider operation contracts remain unverified where official docs are inaccessible.
 
 ## Approved scope
 
@@ -22,7 +22,7 @@
 - Backend: `python3.12 -m alembic upgrade head`; `python3.12 -m pytest -q tests` — 107 passed.
 - Container: `docker build -t ghcr.io/nethub-ltd/netpay:ci -f backend/Dockerfile .`; `bash backend/scripts/container_startup_smoke.sh` — passed.
 - Frontend: `npm ci --no-audit --no-fund`, lint, strict typecheck, security tests (17 passed), production build, and production-server smoke — passed.
-- Remaining: GitHub CI/PR checks and provider-contract verification; no merge, deployment, production credentials, or live financial operation.
+- Remaining: GitHub CI/Vercel checks and provider-contract verification; no merge, deployment, production credentials, or live financial operation.
 
 ---
 

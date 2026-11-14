@@ -10,6 +10,7 @@
 - Preserve PostgreSQL payment/audit evidence. A Core code rollback must not delete or mutate payment, callback, or provider-operation records.
 - Keep any production capability disabled if provider behavior remains unverified; do not enable it as a rollback workaround.
 - This change adds no database migration or durable state; reverting the Core code restores the previous transport/cache behavior without data rollback.
+- Draft PR #265 targets `dev`; do not merge until required review and provider-contract follow-up are complete.
 
 ## Principles
 

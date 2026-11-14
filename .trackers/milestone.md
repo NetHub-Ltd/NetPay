@@ -15,7 +15,7 @@
 | Simplify transport/operation ownership and improve typed contracts | VERIFIED locally — transport/OAuth extracted; finite operation enum and response registry |
 | Add positive and negative unit coverage for all operations and security/failure boundaries | VERIFIED locally — 107 backend tests pass; no live provider contract tests were run |
 | Run required backend, migration, container, frontend, and PR CI gates | LOCAL GATES VERIFIED — migration, backend, container build/smoke, frontend gates pass; GitHub PR checks pending |
-| Open a PR to `dev`; no merge/deployment/live financial operation | IN PROGRESS — draft PR pending |
+| Open a PR to `dev`; no merge/deployment/live financial operation | IN PROGRESS — draft PR #265 open; GitHub Actions and Vercel checks pending |
 
 Do not treat local test evidence as provider-contract verification or live acceptance.
 
