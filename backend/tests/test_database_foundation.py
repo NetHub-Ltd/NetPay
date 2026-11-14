@@ -70,8 +70,10 @@ def test_database_configuration_validates_pool_and_port() -> None:
         Settings(db_max_overflow=-1)
 
 
-def test_legacy_database_url_can_bridge_existing_deployments() -> None:
+def test_legacy_database_url_can_bridge_existing_deployments(monkeypatch: pytest.MonkeyPatch) -> None:
     """An existing DATABASE_URL remains usable during the environment migration."""
+    for variable in ("DATABASE_URL", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_SSL_MODE"):
+        monkeypatch.delenv(variable, raising=False)
     settings = Settings(
         database_url="postgresql+asyncpg://legacy-user:legacy-pass@db.internal:5433/gateway?sslmode=require"
     )
