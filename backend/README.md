@@ -49,7 +49,7 @@ BFF_INTERNAL_SECRET is a high-entropy shared service credential. BFF_SESSION_ENC
 
 ## Tests
 
-    pytest -q smoke_tests
+    pytest -q tests
 
 Run alembic upgrade head against the test database before the full suite. CI verifies PostgreSQL/Redis, migrations, API startup and backend behavior.
 

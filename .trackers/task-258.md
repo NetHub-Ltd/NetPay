@@ -3,5 +3,5 @@
 - Issue: #258
 - Branch: feat/258-rs-principal-redis-cache
 - Decision: Option 2 phases 1–3 (backend cache + docs + frontend identity note)
-- Tests: `smoke_tests/test_nethub_identity.py` — 12 passed
+- Tests: `tests/test_nethub_identity.py` — 12 passed
 - Status: implementation complete; PR pending
