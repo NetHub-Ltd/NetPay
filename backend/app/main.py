@@ -5,13 +5,11 @@ from fastapi import FastAPI, HTTPException, Request
 from loguru import logger
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine
+from app.api_v1.api_router import api_router
 from app.core.cache import check_redis, create_redis_client
 from app.core.config import Settings, get_settings
 from app.core.database import check_database, create_database_engine, create_session_factory
 from app.mpesa_core import MpesaCore
-from app.identity.router import router as identity_router
-from app.identity.bff_sessions import router as bff_sessions_router
-from app.payments.router import router as payment_router
 from app import models  # noqa: F401 - register SQLModel metadata
 
 @asynccontextmanager
@@ -60,9 +58,7 @@ app = FastAPI(title="NetPay API", version="0.2.0", description="NetPay payment g
 
 
 
-app.include_router(identity_router)
-app.include_router(payment_router)
-app.include_router(bff_sessions_router)
+app.include_router(api_router)
 
 @app.get("/health/live", tags=["health"], summary="Liveness probe")
 async def liveness() -> dict[str, str]:

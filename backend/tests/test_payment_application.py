@@ -23,7 +23,7 @@ from app.models.payments import IdempotencyRecord, Payment, ProviderCallback
 from app.mpesa_core.credentials import decrypt_credentials, encrypt_credentials
 from app.mpesa_core.errors import AmbiguousOutcome, OAuthError, OperationOutcome, ProviderRejected, RetryDisposition
 from app.mpesa_core.schemas import ProviderOperationResult
-from app.payments import router as router_module
+from app.api_v1.routers import payments_router as router_module
 from app.payments import security
 from app.mpesa_core import credentials as core_credentials
 
