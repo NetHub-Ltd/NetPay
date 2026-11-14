@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from enum import StrEnum
 from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
@@ -9,6 +10,37 @@ from app.mpesa_core.errors import OperationOutcome, RetryDisposition
 
 
 Environment = Literal["sandbox", "production"]
+
+
+class DarajaOperation(StrEnum):
+    """Finite set of provider operations exposed by the Core facade."""
+
+    STK_PUSH = "stk_push"
+    STK_QUERY = "stk_query"
+    C2B_REGISTRATION = "c2b_registration"
+    C2B_SIMULATION = "c2b_simulation"
+    DYNAMIC_QR = "dynamic_qr"
+    TRANSACTION_STATUS = "transaction_status"
+    ACCOUNT_BALANCE = "account_balance"
+    REVERSAL = "reversal"
+    B2C = "b2c"
+    B2B = "b2b"
+    TAX_REMITTANCE = "tax_remittance"
+    PULL_TRANSACTIONS_REGISTER = "pull_transactions_register"
+    PULL_TRANSACTIONS = "pull_transactions"
+    B2B_EXPRESS_CHECKOUT = "b2b_express_checkout"
+    RATIBA = "ratiba"
+    LIPA_NA_BONGA = "lipa_na_bonga"
+    LIPA_NA_BONGA_QUOTE = "lipa_na_bonga_quote"
+    BILL_MANAGER_OPT_IN = "bill_manager_opt_in"
+    BILL_MANAGER_INVOICE = "bill_manager_invoice"
+    BILL_MANAGER_CANCEL_INVOICE = "bill_manager_cancel_invoice"
+    BILL_MANAGER_RECONCILIATION = "bill_manager_reconciliation"
+    BILL_MANAGER_BULK_INVOICE = "bill_manager_bulk_invoice"
+    BILL_MANAGER_CANCEL_BULK = "bill_manager_cancel_bulk"
+    BILL_MANAGER_UPDATE_OPT_IN = "bill_manager_update_opt_in"
+    BILL_MANAGER_UPDATE_INVOICE = "bill_manager_update_invoice"
+    BILL_MANAGER_UPDATE_BULK = "bill_manager_update_bulk"
 
 
 class CoreModel(BaseModel):
@@ -51,7 +83,7 @@ class IntegrationContext(CoreModel):
 class ProviderOperationResult(CoreModel):
     """Normalized operation response; never represents payment success implicitly."""
 
-    operation: str
+    operation: DarajaOperation
     outcome: OperationOutcome
     response: dict[str, Any] = Field(default_factory=dict)
     provider_request_id: str | None = None
@@ -446,6 +478,7 @@ class STKPushResponse(DarajaAcknowledgement):
     """Typed STK initiation acknowledgement; not a final payment result."""
 
     response_code: str = Field(alias="ResponseCode")
+    checkout_request_id: str = Field(alias="CheckoutRequestID")
 
 
 class STKQueryResponse(DarajaAcknowledgement):
@@ -497,3 +530,42 @@ class BillManagerResponse(DarajaAcknowledgement):
 
     external_reference: str | None = Field(default=None, alias="ExternalReference")
     invoice_id: str | None = Field(default=None, alias="InvoiceID")
+
+
+OPERATION_RESPONSE_SCHEMAS: dict[DarajaOperation, type[DarajaAcknowledgement]] = {
+    DarajaOperation.STK_PUSH: STKPushResponse,
+    DarajaOperation.STK_QUERY: STKQueryResponse,
+    DarajaOperation.C2B_REGISTRATION: C2BRegistrationResponse,
+    DarajaOperation.C2B_SIMULATION: C2BSimulationResponse,
+    DarajaOperation.DYNAMIC_QR: DynamicQRResponse,
+    DarajaOperation.TRANSACTION_STATUS: AsyncOperationResponse,
+    DarajaOperation.ACCOUNT_BALANCE: AsyncOperationResponse,
+    DarajaOperation.REVERSAL: AsyncOperationResponse,
+    DarajaOperation.B2C: AsyncOperationResponse,
+    DarajaOperation.B2B: AsyncOperationResponse,
+    DarajaOperation.TAX_REMITTANCE: AsyncOperationResponse,
+    DarajaOperation.PULL_TRANSACTIONS_REGISTER: AsyncOperationResponse,
+    DarajaOperation.PULL_TRANSACTIONS: PullTransactionsResponse,
+    DarajaOperation.B2B_EXPRESS_CHECKOUT: AsyncOperationResponse,
+    DarajaOperation.RATIBA: AsyncOperationResponse,
+    DarajaOperation.LIPA_NA_BONGA: LipaNaBongaResponse,
+    DarajaOperation.LIPA_NA_BONGA_QUOTE: LipaNaBongaResponse,
+    DarajaOperation.BILL_MANAGER_OPT_IN: BillManagerResponse,
+    DarajaOperation.BILL_MANAGER_INVOICE: BillManagerResponse,
+    DarajaOperation.BILL_MANAGER_CANCEL_INVOICE: BillManagerResponse,
+    DarajaOperation.BILL_MANAGER_RECONCILIATION: BillManagerResponse,
+    DarajaOperation.BILL_MANAGER_BULK_INVOICE: BillManagerResponse,
+    DarajaOperation.BILL_MANAGER_CANCEL_BULK: BillManagerResponse,
+    DarajaOperation.BILL_MANAGER_UPDATE_OPT_IN: BillManagerResponse,
+    DarajaOperation.BILL_MANAGER_UPDATE_INVOICE: BillManagerResponse,
+    DarajaOperation.BILL_MANAGER_UPDATE_BULK: BillManagerResponse,
+}
+
+SAFE_RETRY_OPERATIONS = frozenset({
+    DarajaOperation.STK_QUERY,
+    DarajaOperation.DYNAMIC_QR,
+    DarajaOperation.TRANSACTION_STATUS,
+    DarajaOperation.ACCOUNT_BALANCE,
+    DarajaOperation.PULL_TRANSACTIONS,
+    DarajaOperation.LIPA_NA_BONGA_QUOTE,
+})

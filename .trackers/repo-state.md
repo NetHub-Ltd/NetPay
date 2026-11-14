@@ -1,5 +1,21 @@
 # Repository state — NetPay
 
+## Active implementation — issue #187
+
+**Current active issue:** #187 — complete M-Pesa Core quality pass
+**Current implementation branch:** `feat/187-mpesa-core-quality`
+**Verified implementation base:** `dev` @ `4246fbbce6361dea8d4c3506960a90aec2859ec9`
+**Current implementation state:** code and local validation complete; preparing a draft PR. Detailed provider-contract verification remains limited by inaccessible official operation pages.
+**PR target:** `dev`; repository owner retains merge authority.
+
+The change adds bounded response streaming, a bounded OAuth token cache and fixed lock stripes, a typed operation/response registry, and stricter acknowledgement validation without moving application authorization or idempotency into Core. Existing production gates for provisional products remain unchanged. The official catalogue was checked, but detailed operation contracts could not be independently verified. No migrations, deployment changes, live credentials, production transactions, or merges are in scope.
+
+**Local evidence:** Alembic upgrade succeeded; backend suite 107 passed; FastAPI image build and container smoke passed; frontend lint, strict typecheck, security tests (17 passed), production build, and host-process smoke passed. GitHub PR checks remain pending.
+
+---
+
+## Historical identity/deployment handoff
+
 **Current active issue:** #248 — public OIDC client + PKCE  
 **Current implementation branch:** `fix/248-oidc-public-client`  
 **Verified implementation base:** `dev` @ `4ea426f20af6d273e1bd82c5ca2fefdb2f7fa0c5`  

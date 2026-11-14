@@ -1,6 +1,15 @@
 # Rollback — NetHubKe client program
 
-**Last updated:** 2026-11-11
+**Last updated:** 2026-11-14
+
+## Issue #187 — M-Pesa Core quality pass
+
+- Branch: `feat/187-mpesa-core-quality`, based on `dev` @ `4246fbbce6361dea8d4c3506960a90aec2859ec9`.
+- Expected scope is application code, tests, and trackers only; no schema migration, deployment, or live Daraja operation is approved.
+- If the change is unsafe, use a reviewed revert commit on the topic branch. Do not rewrite history or revert owner changes.
+- Preserve PostgreSQL payment/audit evidence. A Core code rollback must not delete or mutate payment, callback, or provider-operation records.
+- Keep any production capability disabled if provider behavior remains unverified; do not enable it as a rollback workaround.
+- This change adds no database migration or durable state; reverting the Core code restores the previous transport/cache behavior without data rollback.
 
 ## Principles
 
