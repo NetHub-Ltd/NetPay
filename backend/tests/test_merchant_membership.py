@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from app.identity.deps import get_human_principal, require_platform_admin
 from app.identity.membership import ALLOWED_ROLES, require_membership
 from app.identity.principal import HumanPrincipal
-from app.identity.router import router as identity_router
+from app.api_v1.routers.identity_router import router as identity_router
 from app.models.merchants import Merchant, MerchantMember
 
 
@@ -141,7 +141,7 @@ def test_grant_membership_as_admin(monkeypatch: pytest.MonkeyPatch) -> None:
         yield session
 
     from app.core.database import get_session
-    import app.identity.router as router_mod
+    import app.api_v1.routers.identity_router as router_mod
 
     monkeypatch.setattr(router_mod, "grant_membership", fake_grant)
     app.dependency_overrides[get_human_principal] = fake_principal

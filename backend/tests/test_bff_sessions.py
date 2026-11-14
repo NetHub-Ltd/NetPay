@@ -11,7 +11,7 @@ import pytest
 
 from app.core.config import get_settings
 from app.core.database import get_session
-from app.identity.bff_sessions import _decrypt, _encrypt, router
+from app.api_v1.routers.bff_sessions_router import _decrypt, _encrypt, router
 
 
 @pytest.fixture(autouse=True)
