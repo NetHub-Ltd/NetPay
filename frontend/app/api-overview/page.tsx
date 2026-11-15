@@ -64,9 +64,9 @@ export default function ApiOverviewPage() {
             </Card>
           </div>
 
-          <Card className="mt-10 overflow-hidden bg-[var(--navy)] p-6 text-[var(--on-navy)] sm:p-8">
+          <Card surface="navy" className="mt-10 overflow-hidden p-6 sm:p-8">
             <p className="text-sm font-bold text-[var(--on-navy-muted)]">Example</p>
-            <pre className="mt-4 overflow-x-auto font-mono text-sm leading-7 text-[var(--on-navy-muted)]">
+            <pre tabIndex={0} className="mt-4 overflow-x-auto font-mono text-sm leading-7 text-[var(--on-navy-muted)]">
               <code>{`POST /api/v1/payments/stk-push
 Authorization: Bearer <access-token>
 Idempotency-Key: order-123-attempt-1

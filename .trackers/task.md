@@ -1,4 +1,34 @@
-# Task tracker — NetPay #187 M-Pesa Core quality pass
+# Task tracker — NetPay #222 public theme and conversion polish
+
+**Last updated:** 2026-11-14
+**Active issue:** #222 — centralize light/dark themes and polish public conversion
+**Implementation branch:** `feat/frontend-theme-conversion`
+**Verified base:** `dev` @ `f9674f9ad9693e9d496ab79901c667b13f9fec68`
+**PR target:** `dev`
+**Status:** implementation and local validation complete; PR creation pending.
+
+## Current scope and decisions
+
+- Establish one semantic light/dark theme system in `frontend/app/globals.css`, with light as the clean-storage default and an accessible persisted theme control.
+- Polish the public product and developer journeys for accurate product positioning, responsive behavior, accessibility, SEO and conversion clarity.
+- Keep claims grounded in the rebuild specification; add no fabricated proof, analytics, backend/payment changes or unsupported capabilities.
+- Keep `/theme-test` noindex and out of the sitemap; do not claim a ranking or conversion uplift without measurement.
+
+## Evidence and remaining work
+
+- `cd frontend && npm ci --no-audit --no-fund` — completed successfully.
+- `cd frontend && npm test && npm run lint && npm run typecheck` — passed; 21 tests.
+- `cd frontend && npm audit --audit-level=moderate && npm audit --omit=dev --audit-level=moderate` — both reported zero vulnerabilities.
+- `cd frontend && NEXT_PUBLIC_SITE_URL=https://netpay.nethub.co.ke npm run build` — passed on Next.js 16.4.6.
+- `cd frontend && NEXT_PUBLIC_SITE_URL=https://netpay.nethub.co.ke npm run smoke:production` — passed, including fail-closed readiness and BFF/logout protections.
+- Browser QA covered 9 routes at 320, 360, 390, 768, 1024 and 1440 CSS px in both themes; axe reported zero violations, with no overflow or browser errors. Theme persistence, keyboard navigation and mobile menu were checked.
+- Rendered metadata check passed: unique titles, descriptions, canonical/index rules, single H1s, structured data, sitemap and robots behavior.
+- Remaining: commit and push the focused branch, open a draft PR to `dev`, then verify required GitHub checks for its latest head SHA.
+- No merge, deployment, or live payment operation is in scope.
+
+---
+
+## Historical task tracker — NetPay #187 M-Pesa Core quality pass
 
 **Last updated:** 2026-11-14
 **Active issue:** #187 — complete M-Pesa Core quality pass

@@ -1,6 +1,20 @@
 # Repository state — NetPay
 
-## Active implementation — issue #187
+## Active implementation — issue #222
+
+**Current active issue:** #222 — centralize light/dark themes and polish public conversion
+**Current implementation branch:** `feat/frontend-theme-conversion`
+**Verified implementation base:** `dev` @ `f9674f9ad9693e9d496ab79901c667b13f9fec68`
+**Current implementation state:** implementation and local validation complete; PR creation pending.
+**PR target:** `dev`; repository owner retains merge authority.
+
+The public-site redesign centralizes semantic light/dark tokens, defaults to light, and adds accessible theme preference persistence. Public pages now present a factual M-Pesa Daraja product story and clearer API/access paths. No backend/payment contracts, analytics, production secrets, or deployment behavior changed.
+
+**Local evidence:** frontend clean install completed; 21 tests, lint, strict typecheck, both dependency audits, production build and host-process smoke passed. Browser QA covered 9 routes at six viewport widths in both themes with zero axe violations; rendered metadata and sitemap checks passed. GitHub CI is pending PR creation.
+
+---
+
+## Historical implementation — issue #187
 
 **Current active issue:** #187 — complete M-Pesa Core quality pass
 **Current implementation branch:** `feat/187-mpesa-core-quality`
