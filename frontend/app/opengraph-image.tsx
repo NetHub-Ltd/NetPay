@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { siteUrl } from "../lib/site-url";
 
 export const alt = "NetPay — M-Pesa payments without the integration headache";
 export const size = { width: 1200, height: 630 };
@@ -57,7 +58,7 @@ export default function OpenGraphImage() {
           </div>
         </div>
         <div style={{ display: "flex", fontSize: "20px", color: "#c1d4de" }}>
-          pay.nethub.co.ke
+          {new URL(siteUrl).host}
         </div>
       </div>
     ),

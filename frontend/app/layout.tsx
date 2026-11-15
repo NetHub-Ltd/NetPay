@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { siteUrl } from "../lib/site-url";
 import "./globals.css";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 
 /** Runs before paint to restore data-theme and avoid flash. */
 const themeInitScript = `(function(){try{var k='netpay_theme';var t=localStorage.getItem(k);if(t==='harbor'||t==='shamba'||t==='ledger'){document.documentElement.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','ledger');}}catch(e){document.documentElement.setAttribute('data-theme','ledger');}})();`;

@@ -16,9 +16,8 @@ import {
   Webhook,
 } from "lucide-react";
 import { PublicSiteFrame } from "../components/PublicSiteFrame";
+import { siteUrl } from "../lib/site-url";
 import styles from "./home.module.css";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
 
 export const metadata: Metadata = {
   title: "M-Pesa payments without the integration headache",

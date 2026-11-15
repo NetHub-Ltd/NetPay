@@ -3,8 +3,7 @@ import Link from "next/link";
 import { ArrowRight, RefreshCw, ShieldCheck, Smartphone, Webhook } from "lucide-react";
 import { PublicSiteFrame } from "../../components/PublicSiteFrame";
 import { Badge, Button, Card, Section } from "../../components/ui";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
+import { siteUrl } from "../../lib/site-url";
 
 export const metadata: Metadata = {
   title: "Product — M-Pesa payment workflows",
