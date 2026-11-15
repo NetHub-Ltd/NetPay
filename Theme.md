@@ -1,179 +1,74 @@
-# NetPay Theme — Ledger (source of truth)
+# NetPay visual system
 
-> **Product default theme is `ledger`.**  
-> Agents and humans must not reintroduce ad-hoc hex, alternate brand palettes, or “temporary” colours on product UI without an approved Theme.md change.
+`frontend/app/globals.css` is the canonical source for application theme tokens, typography, spacing, containers, and responsive breakpoints. Keep this document aligned with that stylesheet.
 
-Related: `frontend/app/globals.css`, `frontend/lib/theme.ts`, `/theme` lab (noindex).
+## Identity and modes
 
----
-
-## 1. Identity
+NetPay uses a calm navy-and-teal identity for its M-Pesa Daraja gateway. Light is the first-visit default; dark is an optional user-selected mode. Both modes use the same semantic token names across public pages and the authenticated dashboard shell.
 
 | Field | Value |
-|--------|--------|
-| **Theme id** | `ledger` |
-| **Name** | Ledger |
-| **Positioning** | Modern fintech / API product — indigo structure, sky-blue action |
-| **Typeface** | **Plus Jakarta Sans** 400–800 (UI); **IBM Plex Mono** 400–600 (code) |
-| **Mode (v1)** | Light only (`color-scheme: light`) |
+|---|---|
+| Light theme id | `light` |
+| Dark theme id | `dark` |
+| Default | `light` |
+| Preference key | `netpay_theme` |
+| Valid stored values | `light`, `dark` |
+| Theme application | `document.documentElement[data-theme]` |
+| First-paint restore | Inline script from `frontend/lib/theme.ts` in `frontend/app/layout.tsx` |
 
-Lab-only alternatives (not product default): `harbor` (navy + teal), `shamba` (forest + gold). Do not ship marketing/dashboard chrome on those ids unless Theme.md is updated.
+Unknown or unavailable stored values fall back to light. The theme preference is non-sensitive UI state only; do not store credentials, tokens, payment data, or user identifiers in it.
 
----
+## Palette tokens
 
-## 2. Colour tokens (Ledger)
+Use semantic variables from `frontend/app/globals.css`; do not introduce page-local palettes.
 
-Use **CSS variables** only in components. Prefer `var(--token)` or mapped Tailwind `np-*` / arbitrary `bg-[var(--…)]`.
+| Token | Light | Dark | Purpose |
+|---|---|---|---|
+| `--navy` | `#071e32` | `#071e32` | Brand chrome and dark feature surfaces |
+| `--navy-soft` | `#0b2b43` | `#0b2b43` | Nested brand surface |
+| `--accent` | `#06736a` | `#70dfc8` | Primary action and accent |
+| `--accent-hover` | `#055d56` | `#93ebd8` | Hover/active action state |
+| `--accent-soft` | `#dff5f0` | `#1a3f45` | Soft accent surface |
+| `--ink` | `#10283e` | `#edf5f8` | Primary text |
+| `--muted` | `#4c6273` | `#b5c6cf` | Supporting text |
+| `--on-navy` | `#f7fbff` | `#f7fbff` | Primary text on navy |
+| `--on-navy-muted` | `#c1d4de` | `#c1d4de` | Supporting text on navy |
+| `--on-navy-accent` | `#70dfc8` | `#70dfc8` | Accent links on navy |
+| `--on-accent` | `#ffffff` | `#062b38` | Text on accent actions |
+| `--bg` | `#f5f8fa` | `#0b1722` | Page canvas |
+| `--panel` | `#ffffff` | `#112331` | Cards and raised surfaces |
+| `--surface` | `#edf3f5` | `#172c3a` | Recessed surfaces |
+| `--line` | `#d5e0e5` | `#2b4351` | Default borders |
+| `--line-strong` | `#adbec7` | `#456170` | Strong borders |
+| `--focus-ring` | `#087f75` | `#8ce8d4` | Keyboard focus indicator |
 
-### Structure & action
+Status colors use `--danger`, `--warn`, `--ok`, and `--info` with their matching `*-soft` surfaces. Legacy `--teal*` names remain aliases for compatibility; prefer `--accent*` in new code.
 
-| Token | Hex | Role |
-|--------|-----|------|
-| `--navy` | `#1e1b4b` | Header, hero chrome, dark panels, code wells |
-| `--navy-soft` | `#2e2a5a` | Nested dark surface |
-| `--navy-muted` | `#3f3a6d` | Dark secondary |
-| `--accent` | `#3b82f6` | Primary CTA, links, focus accent |
-| `--accent-hover` | `#2563eb` | Hover/active primary |
-| `--accent-soft` | `#eff6ff` | Soft fills, selected nav, icon wells |
-| `--on-navy` | `#f5f3ff` | **Primary text on navy** (titles) |
-| `--on-navy-muted` | `#c4b5fd` | Secondary text on navy only |
-| `--on-accent` | `#ffffff` | Text on solid accent buttons |
+## Typography, shape, and layout
 
-### Canvas & text
+- Body copy is at least 16px; supporting text is at least 14px and labels at least 12px.
+- Use `--np-text-*`, `--np-weight-*`, `--np-leading-*`, and `--np-tracking-*`, or semantic classes such as `.np-display`, `.np-h1`, `.np-h2`, `.np-lead`, `.np-body`, `.np-small`, and `.np-label`.
+- Use `--radius-*`, `--shadow-*`, `--space-page-x`, and `--space-section-y` for consistent shape, elevation, and rhythm.
+- Shared Tailwind breakpoints are declared in `@theme` in `frontend/app/globals.css`: `sm` 40rem, `md` 48rem, `lg` 64rem, `xl` 80rem, and `2xl` 96rem.
+- Use `.np-container` and `.np-section` for shared page width and spacing. Components can define their own composition but should use the global breakpoints and semantic theme tokens.
 
-| Token | Hex | Role |
-|--------|-----|------|
-| `--bg` | `#f4f2f8` | Page canvas |
-| `--panel` | `#ffffff` | Cards, modals, toasts |
-| `--surface` | `#eeecf5` | Recessed wells, table header |
-| `--line` | `#ddd6e8` | Default borders |
-| `--line-strong` | `#c4b9d6` | Strong / dashed borders |
-| `--ink` | `#1e1b2e` | Primary text on light |
-| `--muted` | `#5b5675` | Secondary text on light |
+## Component and accessibility rules
 
-### Semantic
+| Surface | Rule |
+|---|---|
+| Primary action | `--accent` fill and `--on-accent` text; use the semantic hover/focus states |
+| Action on navy | Accent fill with sufficient text contrast; use `--on-navy` for surrounding text |
+| Cards | `--panel` fill, `--line` border, and a shared `--shadow-*` |
+| Inputs and controls | Theme-aware surface/border and a visible `--focus-ring` |
+| Status | Pair semantic color with clear text or an icon; never rely on color alone |
+| Motion | Respect `prefers-reduced-motion` |
 
-| Token | Hex | Soft |
-|--------|-----|------|
-| `--danger` | `#dc2626` | `--danger-soft` `#fef2f2` |
-| `--warn` | `#d97706` | `--warn-soft` `#fffbeb` |
-| `--ok` | `#059669` | `--ok-soft` `#ecfdf5` |
-| `--info` | `#4f46e5` | `--info-soft` `#eef2ff` |
-| `--focus-ring` | `#3b82f6` | Focus outline |
+Meet WCAG 2.2 AA contrast: at least 4.5:1 for normal text, 3:1 for large text, and 3:1 for meaningful control boundaries and graphics. Verify both themes, hover/focus states, and mobile layouts. Keep visible and accessible names aligned; preserve logical heading order and keyboard operation.
 
-### Elevation & radius
+## Public site and search
 
-| Token | Value |
-|--------|--------|
-| `--shadow-sm` | Soft 1px lift |
-| `--shadow` | Card elevation |
-| `--shadow-lg` | Modal / hero depth |
-| `--radius-sm` | `10px` |
-| `--radius` | `14px` |
-| `--radius-lg` | `18px` |
-| `--radius-xl` | `24px` |
+The shared public header owns the theme toggle and navigation. Public pages use the same global theme as the dashboard shell. The `/theme-test/` route is a noindex visual check of the actual shared tokens and stays out of the sitemap.
 
-### Legacy aliases
+Keep page titles, descriptions, structured data, and visible content accurate. Do not invent customer logos, metrics, prices, guarantees, rankings, or product capabilities. Do not infer payment success from STK initiation acceptance; distinguish provider evidence from the request acknowledgement. Do not add analytics or tracking without approval.
 
-`--teal`, `--teal-dark`, `--teal-soft` map to `--accent*` for older class names. **New code should use `--accent*`.**
-
----
-
-## 3. Typography rules
-
-| Role | Weight | Notes |
-|------|--------|--------|
-| Page / hero H1 | **800** | On navy → `color: var(--on-navy)` only |
-| Section H2 / H3 | **700** | |
-| Body | **500–600** | Default body 500; controls 600 |
-| Muted / meta | **500** | `var(--muted)` |
-| Labels / badges | **700** uppercase, tracked | |
-| Code | Mono **500** | On navy wells use `on-navy-muted` |
-
-Do not use thin/light weights for primary UI.
-
----
-
-## 4. Component rules
-
-| Surface | Rules |
-|---------|--------|
-| **Buttons primary** | `bg-accent` + `text-on-accent`; hover `accent-hover` |
-| **Buttons on navy** | Same accent fill; outline uses white/20 border + on-navy text |
-| **Cards** | `panel` + `line` border + `shadow-sm` or `shadow` |
-| **Inputs / select** | `panel` fill, `line` border; focus → accent border / focus-ring |
-| **Toasts / modals** | `panel` + `shadow-lg`; status via left border semantic colour |
-| **Tables** | Header `surface`; rows `line` dividers |
-| **Spinners** | Accent colour; respect `prefers-reduced-motion` |
-| **Hardcoded hex** | **Forbidden** on product pages (landing, dashboard, primitives) |
-
-Contrast: titles on navy must use `--on-navy`, never `--muted` or `--ink`.
-
----
-
-## 5. Persistence & defaults
-
-| Item | Value |
-|------|--------|
-| Storage key | `netpay_theme` |
-| Product default | `ledger` |
-| Apply | `document.documentElement.dataset.theme` / `data-theme` |
-| Pre-paint | Inline script in `frontend/app/layout.tsx` |
-
-`/theme` may still switch lab themes for comparison; product chrome must assume Ledger tokens in `:root`.
-
----
-
-## 6. Agent checklist (anti-drift)
-
-Before shipping UI:
-
-1. Read **this file** and `frontend/app/globals.css` `:root` / `data-theme="ledger"`.
-2. No new raw `#hex` in JSX for brand colours — only tokens.
-3. Do not reintroduce green-teal-as-primary unless Theme.md is revised and approved.
-4. Keep SEO/metadata changes separate from palette play.
-5. Prefer existing primitives: `Button`, `Card`, `Badge`, `Container`, `Section`.
-6. Dashboard remains noindex until identity is live; still use Ledger tokens.
-
----
-
-## 7. Files to touch when changing the theme
-
-| File | Why |
-|------|-----|
-| `Theme.md` | This SOT (update first in the PR description) |
-| `frontend/app/globals.css` | Token values |
-| `frontend/lib/theme.ts` | Ids, meta, default |
-| `frontend/app/layout.tsx` | `themeColor`, default `data-theme`, init script |
-| `frontend/components/ui/*` | Primitives if API changes |
-| `frontend/app/theme/*` | Lab only |
-
----
-
-## 8. Out of scope (v1)
-
-- Full dark-mode product theme (may be a later Theme.md revision)
-- Restoring the pruned Vite SPA visual system
-- Merchant-branded white-label colours per tenant
-
-
----
-
-## 9. Type scale & layout tokens (globals.css)
-
-All product UI sizing should come from CSS variables in `frontend/app/globals.css`:
-
-| Token | Role |
-|-------|------|
-| `--text-xs` … `--text-display` | Font sizes (`clamp` on large steps for responsiveness) |
-| `--weight-*` | Font weights |
-| `--leading-*` / `--tracking-*` | Line height / tracking |
-| `--space-page-x` / `--space-section-y` | Responsive page padding |
-
-Prefer semantic classes: `.np-display`, `.np-h1`, `.np-h2`, `.np-h3`, `.np-lead`, `.np-body`, `.np-small`, `.np-label`, `.np-chrome`, `.np-panel`, `.np-page`, `.np-section`, `.np-container`, `.np-footer`, `.np-skip-link`.
-
-**Exceptions:** `opengraph-image.tsx` and `icon.svg` require literal colors for static image generation; keep them aligned with Ledger hex values documented above.
-
-## 10. Theme lab (local only)
-
-`/theme` and `ThemeLab.tsx` are for local comparison and are **gitignored**. Do not commit them. Product default remains Ledger via `:root`.
+`frontend/app/opengraph-image.tsx` and `frontend/app/icon.svg` use literal colors because static image generation cannot read CSS variables; keep them visually aligned with the navy-and-teal identity.
