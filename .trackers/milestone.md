@@ -5,7 +5,7 @@
 **Last updated:** 2026-11-14
 **Verified base:** `dev` @ `f9674f9ad9693e9d496ab79901c667b13f9fec68`
 **Branch:** `feat/frontend-theme-conversion`
-**Status:** local implementation and validation complete; PR to `dev` pending.
+**Status:** local implementation and validation complete; draft PR #271 to `dev` is open, required checks pending.
 
 | Criterion | Status |
 |---|---|
@@ -14,7 +14,7 @@
 | Improve truthful public product messaging and conversion paths | VERIFIED locally — landing/product paths describe merchant-owned credentials, core STK and opt-in C2B without fabricated proof |
 | Preserve SEO/indexing correctness and responsive layout | VERIFIED locally — nine routes, six viewport widths, both themes; metadata/sitemap check passed |
 | Run frontend tests, lint, typecheck, dependency audits, build and server smoke | VERIFIED locally — 21 tests pass; both audits report zero vulnerabilities |
-| Open a PR to `dev`; no merge/deployment | IN PROGRESS — branch is ready for commit/push and draft PR; owner retains merge authority |
+| Open a PR to `dev`; no merge/deployment | IN PROGRESS — draft PR #271 is open and required checks are pending; owner retains merge authority |
 
 Do not treat local accessibility/browser checks as user research or evidence of search-ranking or conversion uplift.
 

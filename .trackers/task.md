@@ -5,7 +5,7 @@
 **Implementation branch:** `feat/frontend-theme-conversion`
 **Verified base:** `dev` @ `f9674f9ad9693e9d496ab79901c667b13f9fec68`
 **PR target:** `dev`
-**Status:** implementation and local validation complete; PR creation pending.
+**Status:** implementation and local validation complete; draft PR #271 is open and CI is pending.
 
 ## Current scope and decisions
 
@@ -23,7 +23,7 @@
 - `cd frontend && NEXT_PUBLIC_SITE_URL=https://netpay.nethub.co.ke npm run smoke:production` — passed, including fail-closed readiness and BFF/logout protections.
 - Browser QA covered 9 routes at 320, 360, 390, 768, 1024 and 1440 CSS px in both themes; axe reported zero violations, with no overflow or browser errors. Theme persistence, keyboard navigation and mobile menu were checked.
 - Rendered metadata check passed: unique titles, descriptions, canonical/index rules, single H1s, structured data, sitemap and robots behavior.
-- Remaining: commit and push the focused branch, open a draft PR to `dev`, then verify required GitHub checks for its latest head SHA.
+- Remaining: verify required GitHub checks for PR #271's latest head SHA; keep it in draft until they pass.
 - No merge, deployment, or live payment operation is in scope.
 
 ---
