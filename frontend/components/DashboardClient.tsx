@@ -71,8 +71,7 @@ export function DashboardClient() {
     [],
   );
 
-  const refresh = useCallback(async () => {
-    setStatus({ kind: "loading" });
+  const loadDashboard = useCallback(async (): Promise<Status> => {
     try {
       const me = await fetchAuthMe();
       let memberships: Membership[] = [];
@@ -100,7 +99,7 @@ export function DashboardClient() {
         }
       }
 
-      setStatus({
+      return {
         kind: "signed_in",
         me,
         memberships,
@@ -108,7 +107,7 @@ export function DashboardClient() {
         merchant,
         payments,
         dataError,
-      });
+      };
     } catch (e) {
       const message = e instanceof Error ? e.message : "Could not load session";
       const is401 =
@@ -116,16 +115,26 @@ export function DashboardClient() {
         /session expired|sign in again/i.test(message);
       if (is401) {
         await clearSession().catch(() => undefined);
-        setStatus({ kind: "signed_out", oidcReady: true, message });
-        return;
+        return { kind: "signed_out", oidcReady: true, message };
       }
-      setStatus({ kind: "error", message });
+      return { kind: "error", message };
     }
   }, [loadMerchantData]);
 
+  const refresh = useCallback(async () => {
+    setStatus({ kind: "loading" });
+    setStatus(await loadDashboard());
+  }, [loadDashboard]);
+
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let active = true;
+    void loadDashboard().then((nextStatus) => {
+      if (active) setStatus(nextStatus);
+    });
+    return () => {
+      active = false;
+    };
+  }, [loadDashboard]);
 
   async function onSignIn() {
     setBusy(true);
