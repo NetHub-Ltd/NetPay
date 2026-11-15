@@ -3,8 +3,7 @@ import Link from "next/link";
 import { ArrowRight, RefreshCw, ShieldCheck, Smartphone, Webhook } from "lucide-react";
 import { PublicSiteFrame } from "../../components/PublicSiteFrame";
 import { Badge, Button, Card, Section } from "../../components/ui";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
+import { siteUrl } from "../../lib/site-url";
 
 export const metadata: Metadata = {
   title: "Product — M-Pesa payment workflows",
@@ -66,9 +65,9 @@ export default function ProductPage() {
         </Section>
         <Section className="bg-[var(--bg)]">
           <div className="rounded-3xl bg-[var(--navy)] p-7 text-[var(--on-navy)] sm:p-10">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Know the boundaries before you integrate.</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-[var(--on-navy)] sm:text-3xl">Know the boundaries before you integrate.</h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--on-navy-muted)]">Daraja products can require specific permissions and configuration. C2B is optional for merchants that need it. Transaction-status verification and merchant-specific validation behavior may require additional setup or may not be available for every integration.</p>
-            <Link className="mt-5 inline-flex items-center gap-2 font-semibold text-[var(--accent)] hover:underline" href="/api-overview/">Read current capabilities and limits <ArrowRight size={16} /></Link>
+            <Link className="mt-5 inline-flex items-center gap-2 font-semibold text-[var(--on-navy-accent)] hover:underline" href="/api-overview/">Read current capabilities and limits <ArrowRight size={16} /></Link>
           </div>
         </Section>
       </main>

@@ -42,7 +42,9 @@ async function authFetch<T>(path: string): Promise<T> {
 }
 export function startLogin(): void {
   // Auth.js sign-in endpoint (public OIDC provider id = "oidc")
-  window.location.assign("/api/auth/signin/oidc?callbackUrl=%2Fdashboard%2F");
+  window.location.assign(
+    new URL("/api/auth/signin/oidc?callbackUrl=%2Fdashboard%2F", window.location.origin),
+  );
 }
 export async function clearSession(): Promise<void> {
   const response = await fetch("/api/auth/logout", {

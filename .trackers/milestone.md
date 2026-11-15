@@ -1,4 +1,47 @@
-# NetPay milestones — NetHubKe client + deploy readiness
+# NetPay milestones and handoff state
+
+## Active milestone — Public theme and conversion polish (#222)
+
+**Last updated:** 2026-11-14
+**Verified base:** `dev` @ `f9674f9ad9693e9d496ab79901c667b13f9fec68`
+**Branch:** `feat/frontend-theme-conversion`
+**Status:** local implementation and validation complete; draft PR #271 to `dev` is open; exact-head status is recorded in issue #222 and the PR.
+
+| Criterion | Status |
+|---|---|
+| Centralize light/dark theme tokens and default to light | VERIFIED locally — shared semantic tokens and pre-paint preference restore |
+| Provide accessible, persistent theme selection and responsive public navigation | VERIFIED locally — keyboard and persistence checks passed |
+| Improve truthful public product messaging and conversion paths | VERIFIED locally — landing/product paths describe merchant-owned credentials, core STK and opt-in C2B without fabricated proof |
+| Preserve SEO/indexing correctness and responsive layout | VERIFIED locally — nine routes, six viewport widths, both themes; metadata/sitemap check passed |
+| Run frontend tests, lint, typecheck, dependency audits, build and server smoke | VERIFIED locally — 21 tests pass; both audits report zero vulnerabilities |
+| Open a PR to `dev`; no merge/deployment | IN PROGRESS — draft PR #271 is open; GitHub Actions, GitGuardian and Vercel passed on head `35b4f315a61f9297b33c5b030a8fb46ed45300c9`; owner retains merge authority |
+
+Do not treat local accessibility/browser checks as user research or evidence of search-ranking or conversion uplift.
+
+---
+
+## Historical milestone — M-Pesa Core quality pass (#187)
+
+**Last updated:** 2026-11-14
+**Verified base:** `dev` @ `4246fbbce6361dea8d4c3506960a90aec2859ec9`
+**Branch:** `feat/187-mpesa-core-quality`
+**Status:** implementation/local validation complete; draft PR and external provider verification remain.
+
+| Criterion | Status |
+|---|---|
+| Verify operation contracts against authoritative Daraja docs/sandbox; gate unresolved production capabilities | PARTIAL — catalogue checked; detail pages unavailable; existing provisional production gates retained |
+| Enforce bounded response reads and bounded OAuth cache lifecycle | VERIFIED — 51 focused Core tests and 107 backend tests pass |
+| Require validated operation-specific success responses; preserve ambiguity and retry safety | VERIFIED locally — operation registry, required STK correlation ID, rejection of empty/description-only acknowledgements, and failure classification tests |
+| Simplify transport/operation ownership and improve typed contracts | VERIFIED locally — transport/OAuth extracted; finite operation enum and response registry |
+| Add positive and negative unit coverage for all operations and security/failure boundaries | VERIFIED locally — 107 backend tests pass; no live provider contract tests were run |
+| Run required backend, migration, container, frontend, and PR CI gates | LOCAL GATES VERIFIED — migration, backend, container build/smoke, frontend gates pass; GitHub PR checks pending |
+| Open a PR to `dev`; no merge/deployment/live financial operation | IN PROGRESS — draft PR #265 open; GitHub Actions and Vercel checks pending |
+
+Do not treat local test evidence as provider-contract verification or live acceptance.
+
+---
+
+## Historical milestones — NetHubKe client + deploy readiness
 
 **Last updated:** 2026-11-11  
 **Integration branch:** `dev`  

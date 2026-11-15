@@ -1,11 +1,63 @@
-# Task tracker — NetPay #245 Vercel frontend deployment
+# Task tracker — NetPay #222 public theme and conversion polish
 
-**Last updated:** 2026-11-11  
-**Active issue:** #248 — public OIDC client + PKCE  
-**Implementation branch:** `fix/248-oidc-public-client`  
-**Verified base:** dev @ 4ea426f20af6d273e1bd82c5ca2fefdb2f7fa0c5  
-**PR target:** dev  
-**Status:** draft PR #249 open against `dev`; Vercel preview READY, GitGuardian success, GitHub Actions queued on the latest head.
+**Last updated:** 2026-11-14
+**Active issue:** #222 — centralize light/dark themes and polish public conversion
+**Implementation branch:** `feat/frontend-theme-conversion`
+**Verified base:** `dev` @ `f9674f9ad9693e9d496ab79901c667b13f9fec68`
+**PR target:** `dev`
+**Status:** implementation and local validation complete; draft PR #271 is open, with exact-head CI state tracked in issue #222 and the PR.
+
+## Current scope and decisions
+
+- Establish one semantic light/dark theme system in `frontend/app/globals.css`, with light as the clean-storage default and an accessible persisted theme control.
+- Polish the public product and developer journeys for accurate product positioning, responsive behavior, accessibility, SEO and conversion clarity.
+- Keep claims grounded in the rebuild specification; add no fabricated proof, analytics, backend/payment changes or unsupported capabilities.
+- Keep `/theme-test` noindex and out of the sitemap; do not claim a ranking or conversion uplift without measurement.
+
+## Evidence and remaining work
+
+- `cd frontend && npm ci --no-audit --no-fund` — completed successfully.
+- `cd frontend && npm test && npm run lint && npm run typecheck` — passed; 21 tests.
+- `cd frontend && npm audit --audit-level=moderate && npm audit --omit=dev --audit-level=moderate` — both reported zero vulnerabilities.
+- `cd frontend && NEXT_PUBLIC_SITE_URL=https://netpay.nethub.co.ke npm run build` — passed on Next.js 16.4.6.
+- `cd frontend && NEXT_PUBLIC_SITE_URL=https://netpay.nethub.co.ke npm run smoke:production` — passed, including fail-closed readiness and BFF/logout protections.
+- Browser QA covered 9 routes at 320, 360, 390, 768, 1024 and 1440 CSS px in both themes; axe reported zero violations, with no overflow or browser errors. Theme persistence, keyboard navigation and mobile menu were checked.
+- Rendered metadata check passed: unique titles, descriptions, canonical/index rules, single H1s, structured data, sitemap and robots behavior.
+- GitHub Actions, GitGuardian and Vercel checks passed on PR head `35b4f315a61f9297b33c5b030a8fb46ed45300c9`; the current exact-head result is recorded in issue #222 and PR #271.
+- No merge, deployment, or live payment operation is in scope.
+- No merge, deployment, or live payment operation is in scope.
+
+---
+
+## Historical task tracker — NetPay #187 M-Pesa Core quality pass
+
+**Last updated:** 2026-11-14
+**Active issue:** #187 — complete M-Pesa Core quality pass
+**Implementation branch:** `feat/187-mpesa-core-quality`
+**Verified base:** `dev` @ `4246fbbce6361dea8d4c3506960a90aec2859ec9`
+**PR target:** `dev`
+**Status:** draft PR #265 open against `dev`; local validation complete; GitHub checks pending. Detailed provider operation contracts remain unverified where official docs are inaccessible.
+
+## Approved scope
+
+- Verify each existing Daraja operation contract against current official documentation; record unavailable/uncertain operations as gated rather than guessing.
+- Bound response streaming and OAuth cache state while preserving async connection pooling and concurrent token refresh.
+- Require operation-specific response fields before returning accepted outcomes; retain unknown outcomes for ambiguous requests and never blindly retry financial mutations.
+- Improve typed operation/capability/result boundaries and simplify transport/operation module ownership without moving merchant authorization or idempotency out of the application layer.
+- Add positive and negative tests for operation responses, failure classification, capability denial, redaction, cache lifecycle, and credential key rotation.
+
+## Evidence and remaining work
+
+- Official Daraja catalogue checked; detailed operation pages could not be independently retrieved. Existing provisional production capability gates remain unchanged; no uncertain contract was newly enabled.
+- Added bounded streaming reads, bounded OAuth token/lock state, an operation enum/response registry, and stricter acknowledgement validation.
+- Backend: `python3.12 -m alembic upgrade head`; `python3.12 -m pytest -q tests` — 107 passed.
+- Container: `docker build -t ghcr.io/nethub-ltd/netpay:ci -f backend/Dockerfile .`; `bash backend/scripts/container_startup_smoke.sh` — passed.
+- Frontend: `npm ci --no-audit --no-fund`, lint, strict typecheck, security tests (17 passed), production build, and production-server smoke — passed.
+- Remaining: GitHub CI/Vercel checks and provider-contract verification; no merge, deployment, production credentials, or live financial operation.
+
+---
+
+## Historical task tracker — #245 Vercel frontend deployment
 
 ## Approved outcome
 

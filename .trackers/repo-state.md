@@ -1,5 +1,35 @@
 # Repository state — NetPay
 
+## Active implementation — issue #222
+
+**Current active issue:** #222 — centralize light/dark themes and polish public conversion
+**Current implementation branch:** `feat/frontend-theme-conversion`
+**Verified implementation base:** `dev` @ `f9674f9ad9693e9d496ab79901c667b13f9fec68`
+**Current implementation state:** implementation and local validation complete; draft PR #271 is open. Exact-head CI status is tracked in issue #222 and PR #271.
+**PR target:** `dev`; repository owner retains merge authority.
+
+The public-site redesign centralizes semantic light/dark tokens, defaults to light, and adds accessible theme preference persistence. Public pages now present a factual M-Pesa Daraja product story and clearer API/access paths. No backend/payment contracts, analytics, production secrets, or deployment behavior changed.
+
+**Local evidence:** frontend clean install completed; 21 tests, lint, strict typecheck, both dependency audits, production build and host-process smoke passed. Browser QA covered 9 routes at six viewport widths in both themes with zero axe violations; rendered metadata and sitemap checks passed. GitHub Actions, GitGuardian and Vercel checks passed on head `35b4f315a61f9297b33c5b030a8fb46ed45300c9`; current-head evidence is in issue #222 and PR #271.
+
+---
+
+## Historical implementation — issue #187
+
+**Current active issue:** #187 — complete M-Pesa Core quality pass
+**Current implementation branch:** `feat/187-mpesa-core-quality`
+**Verified implementation base:** `dev` @ `4246fbbce6361dea8d4c3506960a90aec2859ec9`
+**Current implementation state:** code and local validation complete; draft PR #265 is open, with GitHub checks pending. Detailed provider-contract verification remains limited by inaccessible official operation pages.
+**PR target:** `dev`; repository owner retains merge authority.
+
+The change adds bounded response streaming, a bounded OAuth token cache and fixed lock stripes, a typed operation/response registry, and stricter acknowledgement validation without moving application authorization or idempotency into Core. Existing production gates for provisional products remain unchanged. The official catalogue was checked, but detailed operation contracts could not be independently verified. No migrations, deployment changes, live credentials, production transactions, or merges are in scope.
+
+**Local evidence:** Alembic upgrade succeeded; backend suite 107 passed; FastAPI image build and container smoke passed; frontend lint, strict typecheck, security tests (17 passed), production build, and host-process smoke passed. GitHub Actions and Vercel checks on PR #265 remain pending.
+
+---
+
+## Historical identity/deployment handoff
+
 **Current active issue:** #248 — public OIDC client + PKCE  
 **Current implementation branch:** `fix/248-oidc-public-client`  
 **Verified implementation base:** `dev` @ `4ea426f20af6d273e1bd82c5ca2fefdb2f7fa0c5`  

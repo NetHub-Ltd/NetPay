@@ -1,20 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { siteUrl } from "../lib/site-url";
+import { PRODUCT_THEME, THEME_INIT_SCRIPT } from "../lib/theme";
 import "./globals.css";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pay.nethub.co.ke";
-
-/** Runs before paint to restore data-theme and avoid flash. */
-const themeInitScript = `(function(){try{var k='netpay_theme';var t=localStorage.getItem(k);if(t==='harbor'||t==='shamba'||t==='ledger'){document.documentElement.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','ledger');}}catch(e){document.documentElement.setAttribute('data-theme','ledger');}})();`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "NetPay | M-Pesa payments without the integration headache",
+    default: "NetPay | M-Pesa Daraja API for business software",
     template: "%s | NetPay",
   },
   description:
-    "A practical M-Pesa payment gateway for collecting payments, tracking outcomes, and keeping transaction records in order.",
+    "Integrate M-Pesa STK Push into POS, commerce, and business apps using each merchant's Daraja setup. Track payment outcomes from provider evidence.",
   applicationName: "NetPay",
   robots: {
     index: true,
@@ -30,27 +27,26 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "NetPay",
-    title: "NetPay | M-Pesa payments without the integration headache",
-    description:
-      "Merchant-aware M-Pesa integrations and callback-backed payment outcomes for business software.",
+    title: "NetPay | M-Pesa Daraja API for business software",
+    description: "Merchant-owned Daraja integrations, STK Push, and provider-informed payment outcomes for business software.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "NetPay | M-Pesa payment API for business software",
-    description: "Merchant-owned Daraja integrations and payment events for business software.",
+    title: "NetPay | M-Pesa Daraja API for business software",
+    description: "Integrate M-Pesa STK Push using each merchant's Daraja setup and track provider-informed outcomes.",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#071e32",
-  colorScheme: "light",
+  themeColor: "#f5f8fa",
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" data-theme="ledger" suppressHydrationWarning>
+    <html lang="en" data-theme={PRODUCT_THEME} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>{children}</body>
     </html>

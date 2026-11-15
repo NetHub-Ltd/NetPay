@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
-from typing import Any
+from typing import Any, AsyncIterator
 
 import httpx
 from cryptography import x509
@@ -21,6 +21,7 @@ from app.mpesa_core.callbacks import (
     parse_stk_callback,
 )
 from app.mpesa_core.client import MpesaCore
+import app.mpesa_core.transport as transport_module
 from app.mpesa_core.errors import (
     AmbiguousOutcome,
     CapabilityDisabled,
@@ -113,9 +114,26 @@ def handler_for(routes: dict[str, Any], seen: list[httpx.Request] | None = None)
                                              "QRCode": "test-qr-payload", "RequestID": "request-123"})
         if result is None:
             return httpx.Response(200, json={"ResponseCode": "0", "ResponseDescription": "Accepted",
-                                             "RequestID": "request-123", "ConversationID": "conversation-123"})
+                                             "RequestID": "request-123", "ConversationID": "conversation-123",
+                                             "CheckoutRequestID": "checkout-123"})
         return result
     return handler
+
+
+class TrackingStream(httpx.AsyncByteStream):
+    """Track bytes consumed by a response reader without buffering a full body."""
+
+    def __init__(self, chunks: list[bytes]) -> None:
+        self.chunks = chunks
+        self.bytes_yielded = 0
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        for chunk in self.chunks:
+            self.bytes_yielded += len(chunk)
+            yield chunk
+
+    async def aclose(self) -> None:
+        return None
 
 
 @pytest.mark.parametrize(("phone", "expected"), [
@@ -234,6 +252,96 @@ async def test_malformed_provider_json_is_not_treated_as_success() -> None:
                 merchant_name="Test Shop", reference="INV-1", amount_minor=100,
                 transaction_code="PB", credit_party_identifier="174379",
             ))
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_empty_or_unrecognized_provider_acknowledgement_is_not_accepted() -> None:
+    for body in (
+        {},
+        {"unrecognized": "value"},
+        {"ResponseCode": None},
+        {"ResponseDescription": "Accepted"},
+    ):
+        core = MpesaCore(settings(), transport=httpx.MockTransport(handler_for({
+            "/mpesa/accountbalance/v1/query": httpx.Response(200, json=body),
+        })))
+        try:
+            with pytest.raises(MalformedProviderResponse):
+                await core.account_balance(context(), AccountBalanceRequest(
+                    result_url="https://example.test/result",
+                    timeout_url="https://example.test/timeout",
+                ))
+        finally:
+            await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_stk_push_acknowledgement_requires_checkout_correlation_id() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/v1/generate":
+            return httpx.Response(200, json={"access_token": "test-token", "expires_in": 3600})
+        return httpx.Response(200, json={
+            "ResponseCode": "0",
+            "MerchantRequestID": "merchant-request-123",
+        })
+
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(MalformedProviderResponse):
+            await core.stk_push(context(), STKPushRequest(
+                phone_number="0712345678",
+                amount_minor=100,
+                account_reference="INV",
+                description="Sale",
+                callback_url="https://example.test/stk",
+            ))
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_provider_response_is_streamed_with_a_fixed_memory_limit() -> None:
+    chunks = [b"x" * transport_module._RESPONSE_CHUNK_BYTES for _ in range(20)]
+    stream = TrackingStream(chunks)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth/v1/generate":
+            return httpx.Response(200, json={"access_token": "test-token", "expires_in": 3600})
+        return httpx.Response(200, stream=stream)
+
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(MalformedProviderResponse):
+            await core.account_balance(context(), AccountBalanceRequest(
+                result_url="https://example.test/result",
+                timeout_url="https://example.test/timeout",
+            ))
+        assert stream.bytes_yielded <= (
+            transport_module._MAX_RESPONSE_BYTES + transport_module._RESPONSE_CHUNK_BYTES
+        )
+        assert stream.bytes_yielded < sum(map(len, chunks))
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_oversized_oauth_response_is_rejected_before_full_read() -> None:
+    chunks = [b"x" * transport_module._RESPONSE_CHUNK_BYTES for _ in range(20)]
+    stream = TrackingStream(chunks)
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, stream=stream)
+
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(OAuthError):
+            await core._token(context())
+        assert stream.bytes_yielded <= (
+            transport_module._MAX_RESPONSE_BYTES + transport_module._RESPONSE_CHUNK_BYTES
+        )
+        assert stream.bytes_yielded < sum(map(len, chunks))
     finally:
         await core.aclose()
 
@@ -729,6 +837,64 @@ async def test_oauth_cache_isolated_by_environment_and_credential_identity() -> 
         assert len({first, second, third}) == 3
         assert token_calls.count("sandbox.safaricom.co.ke") == 2
         assert token_calls.count("api.safaricom.co.ke") == 1
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_oauth_cache_key_includes_rotated_secret_without_version_change() -> None:
+    token_calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal token_calls
+        if request.url.path == "/oauth/v1/generate":
+            token_calls += 1
+            return httpx.Response(200, json={"access_token": f"token-{token_calls}", "expires_in": 3600})
+        return httpx.Response(200, json={"ResponseCode": "0"})
+
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+    original = context()
+    rotated = original.model_copy(update={"credentials": original.credentials.model_copy(
+        update={"consumer_secret": SecretStr("rotated-secret-without-version-change")},
+    )})
+    try:
+        assert await core._token(original) == "token-1"
+        assert await core._token(rotated) == "token-2"
+        assert token_calls == 2
+    finally:
+        await core.aclose()
+
+
+@pytest.mark.asyncio
+async def test_oauth_cache_and_refresh_locks_are_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(transport_module, "_MAX_CACHED_TOKENS", 2)
+    token_calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal token_calls
+        if request.url.path == "/oauth/v1/generate":
+            token_calls += 1
+            return httpx.Response(200, json={"access_token": f"token-{token_calls}", "expires_in": 3600})
+        return httpx.Response(200, json={"ResponseCode": "0"})
+
+    base = context()
+    contexts = [
+        base.model_copy(update={"credentials": base.credentials.model_copy(update={
+            "consumer_key": SecretStr(f"consumer-key-{index}"),
+            "consumer_secret": SecretStr(f"consumer-secret-{index}"),
+        })})
+        for index in range(3)
+    ]
+    core = MpesaCore(settings(), transport=httpx.MockTransport(handler))
+    try:
+        for ctx in contexts:
+            await core._token(ctx)
+        assert len(core._transport._tokens) == 2
+        assert len(core._transport._token_locks) == transport_module._TOKEN_LOCK_STRIPES
+
+        assert await core._token(contexts[0]) == "token-4"
+        assert len(core._transport._tokens) == 2
+        assert token_calls == 4
     finally:
         await core.aclose()
 

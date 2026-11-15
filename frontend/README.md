@@ -2,6 +2,12 @@
 
 NetPay's frontend is an independently deployed Next.js App Router application. It runs as a Node.js server and owns public pages, login/callback routes, the authenticated dashboard and the same-origin HTTP BFF.
 
+## Visual system
+
+The site uses the semantic theme tokens in `app/globals.css` for both public pages and the authenticated dashboard shell. Light is the first-visit default; the shared header toggle switches to dark mode and stores only the non-sensitive `netpay_theme` preference (`light` or `dark`) in local storage. The root layout restores a valid preference before paint.
+
+Use the global color, typography, spacing, container, and Tailwind breakpoint tokens when adding UI. Page styles may define component composition, but should not introduce a separate palette or breakpoint system. `/theme-test/` is a private, noindex preview of the same global tokens and must stay out of the sitemap.
+
 ## Human authentication (Auth.js public OIDC)
 
 NetPay’s browser app uses **Auth.js** the same way NetHubKe’s frontend does, as a **public** OIDC client (PKCE, no client secret). **NetHubKe is the identity resource server**; NetPay does not replace it.

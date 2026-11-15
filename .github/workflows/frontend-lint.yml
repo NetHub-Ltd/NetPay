@@ -27,6 +27,8 @@ jobs:
         env:
           npm_config_registry: https://registry.npmjs.org/
         run: npm ci --no-audit --no-fund
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=moderate
       - name: Lint
         run: npm run lint
       - name: Typecheck
