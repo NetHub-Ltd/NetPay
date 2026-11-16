@@ -7,11 +7,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "NetPay | M-Pesa Daraja API for business software",
+    default: "NetPay | Payments that work for your business",
     template: "%s | NetPay",
   },
   description:
-    "Integrate M-Pesa STK Push into POS, commerce, and business apps using each merchant's Daraja setup. Track payment outcomes from provider evidence.",
+    "NetPay helps businesses in Kenya accept and manage supported M-Pesa payments, receive clear payment outcomes, and connect those outcomes to how the business works.",
   applicationName: "NetPay",
   robots: {
     index: true,
@@ -27,13 +27,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "NetPay",
-    title: "NetPay | M-Pesa Daraja API for business software",
-    description: "Merchant-owned Daraja integrations, STK Push, and provider-informed payment outcomes for business software.",
+    title: "NetPay | Payments that work for your business",
+    description: "Accept and manage supported M-Pesa payments with clearer outcomes for businesses in Kenya.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "NetPay | M-Pesa Daraja API for business software",
-    description: "Integrate M-Pesa STK Push using each merchant's Daraja setup and track provider-informed outcomes.",
+    title: "NetPay | Payments that work for your business",
+    description: "Accept and manage supported M-Pesa payments with clearer outcomes for businesses in Kenya.",
   },
 };
 

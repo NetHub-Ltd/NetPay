@@ -86,13 +86,21 @@ html[data-theme="light"] {
 html[data-theme="dark"] {
   color-scheme: dark;
 
+  /* Navy scale adapted for dark theme so header/hero/footer stay intentional
+     and distinct from page bg/panel, without carrying light-theme navy values. */
+  --navy: #061622;
+  --navy-soft: #0a1f2e;
+  --navy-muted: #122a3c;
+  --on-navy: #edf5f8;
+  --on-navy-muted: #b5c6cf;
+  --on-navy-accent: #70dfc8;
+
   --accent: #70dfc8;
   --accent-hover: #93ebd8;
   --accent-soft: #1a3f45;
   --ink: #edf5f8;
   --muted: #b5c6cf;
   --on-accent: #062b38;
-  --on-navy-accent: #70dfc8;
   --bg: #0b1722;
   --panel: #112331;
   --surface: #172c3a;

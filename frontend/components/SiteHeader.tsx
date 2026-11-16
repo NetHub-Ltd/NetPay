@@ -8,10 +8,11 @@ import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "./ui";
 
 const links = [
-  { href: "/product/", label: "Product" },
+  { href: "/how-it-works/", label: "How it works" },
+  { href: "/solutions/", label: "Solutions" },
+  { href: "/mpesa-payments/", label: "M-Pesa" },
+  { href: "/features/", label: "Features" },
   { href: "/developers/", label: "Developers" },
-  { href: "/why-netpay/", label: "Why NetPay" },
-  { href: "/api-overview/", label: "Resources" },
 ];
 
 /** Shared public navigation with mobile menu and color-theme control. */
